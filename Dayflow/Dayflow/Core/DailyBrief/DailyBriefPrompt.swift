@@ -133,7 +133,7 @@ enum DailyBriefPrompt {
     ### `docket` — "Your docket today"
     3–5 concrete things worth doing today, synthesized from yesterday's unfinished threads, things people
     asked them for (connectors), and work in progress. Each item is one action, phrased as the thing to
-    do, not a topic ("Reply to Maggie about the Miami dates", not "Maggie"). Include a due date only if
+    do, not a topic ("Reply to the coordinator about the workshop dates", not "Workshop"). Include a due date only if
     a source states it. Attach the evidence: the people involved, or the docs/threads/issues it came from
     (with links when the connector gives one). Leave out chores they obviously already track, and
     anything they finished.
@@ -199,7 +199,7 @@ enum DailyBriefPrompt {
           "title": "Design iterations for Flow paywall",
           "detail": "Look at how other apps handle paywalls and draft options, including a 7-day free trial CTA.",
           "due": "2026-10-24",
-          "people": [{ "name": "Jeremy Hong", "note": "Asked for a bigger Start button" }],
+          "people": [{ "name": "Example Designer", "note": "Asked for a bigger Start button" }],
           "links": [{ "title": "Daily design comp", "url": "https://...", "app": "figma" }]
         }
       ],
@@ -210,7 +210,7 @@ enum DailyBriefPrompt {
         { "project": "Flow", "title": "Shipped the island map in Flow", "apps": ["claude", "chatgpt"], "cardId": 1234 }
       ],
       "team_decisions": [
-        { "decision": "Launch moved to Nov 1 because of the payments review.", "date": "2026-10-19", "people": ["Maggie Chang"], "place": "#dayflow", "app": "slack", "url": "https://..." }
+        { "decision": "Launch moved to Nov 1 because of the payments review.", "date": "2026-10-19", "people": ["Example Coordinator"], "place": "#sample-project", "app": "slack", "url": "https://..." }
       ],
       "related_reading_intro": "You've been deep in Flow's retention loop, so these might spark some ideas.",
       "related_reading": [
@@ -220,7 +220,7 @@ enum DailyBriefPrompt {
         { "headline": "...", "source": "Financial Times", "url": "https://...", "published": "2026-10-21" }
       ],
       "site_seeing": [
-        { "file": "1234_1342.jpg", "caption": "Shoji bar, saved for Miami" }
+        { "file": "1234_1342.jpg", "caption": "Cafe saved for the next trip" }
       ]
     }
     ```

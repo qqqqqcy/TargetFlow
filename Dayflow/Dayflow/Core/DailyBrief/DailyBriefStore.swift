@@ -22,20 +22,13 @@ final class DailyBriefStore: ObservableObject {
 
   // MARK: - Access
 
-  /// Signed-in Dayflow account emails that get the brief. Widen this when it rolls out.
-  static let allowlistedEmails: Set<String> = [
-    "zhengyu.j.liu@gmail.com",
-    "maggiechangjx@gmail.com",
-  ]
-
   /// The brief runs when yesterday had at least this much recorded activity.
   static let minimumSourceMinutes: Double = 60
   /// Automatic runs per day before giving up. The Retry button ignores this.
   static let maxAutomaticAttemptsPerDay = 2
 
   var isFeatureEnabled: Bool {
-    guard let email = DayflowAuthManager.shared.signedInEmail?.lowercased() else { return false }
-    return Self.allowlistedEmails.contains(email)
+    false
   }
 
   // MARK: - State

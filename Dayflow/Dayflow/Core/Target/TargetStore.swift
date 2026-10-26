@@ -56,6 +56,7 @@ final class TargetStore: ObservableObject {
     }
     // Reordering or recoloring an event does not restart the active goal session.
     guard target?.events != active else { return }
+    NotchNotificationController.shared.dismissImmediately()
     let legacyStart = target.flatMap { old in
       old.events == nil && active.count == 1 && active[0].id == old.id ? old.startedAt : nil
     }
@@ -72,6 +73,7 @@ final class TargetStore: ObservableObject {
   }
 
   private func clearTarget() {
+    NotchNotificationController.shared.dismissImmediately()
     target = nil
     defaults.removeObject(forKey: Self.targetKey)
     pending.removeAll()

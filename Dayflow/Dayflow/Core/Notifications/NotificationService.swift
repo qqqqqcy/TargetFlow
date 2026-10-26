@@ -21,6 +21,7 @@ final class NotificationService: NSObject, ObservableObject {
   static let shared = NotificationService()
 
   private let center = UNUserNotificationCenter.current()
+  private var targetSound: NSSound?
   nonisolated private static let targetNotificationPrefix = "target.deviation."
 
   @Published private(set) var permissionGranted: Bool = false
@@ -46,9 +47,10 @@ final class NotificationService: NSObject, ObservableObject {
   private func retireExcludedNotifications() async {
     let requests = await center.pendingNotificationRequests()
     let delivered = await center.deliveredNotifications()
+    let keepsTargetNotices = TargetPreferences.notificationStyle() == .notice
     let shouldRetire: (String) -> Bool = { identifier in
       identifier != "gettingStarted.firstCards"
-        && !identifier.hasPrefix(Self.targetNotificationPrefix)
+        && !(keepsTargetNotices && identifier.hasPrefix(Self.targetNotificationPrefix))
     }
     center.removePendingNotificationRequests(
       withIdentifiers: requests.map(\.identifier).filter(shouldRetire))
@@ -130,36 +132,78 @@ final class NotificationService: NSObject, ObservableObject {
     }
   }
 
-  /// Sends a Target alert only when permission already exists; never prompts automatically.
-  /// The request is enqueued synchronously after the permission check, before awaiting delivery.
+  /// System notices require authorization; notch reminders play their own short sound.
   func notifyTargetDeviation(
     identifier: String, body: String, shouldSend: () -> Bool = { true }
   ) async throws -> Bool {
-    let status = await authorizationStatus()
-    guard Self.canScheduleNotifications(for: status), shouldSend() else { return false }
+    guard shouldSend() else { return false }
+    switch TargetPreferences.notificationStyle() {
+    case .notch:
+      guard NotchNotificationController.shared.show(body: body) else { return false }
+      playTargetReminderSound()
+      return true
+    case .notice:
+      let status = await authorizationStatus()
+      // Preferences or the active goal may have changed during the permission lookup.
+      guard Self.canScheduleNotifications(for: status),
+        TargetPreferences.notificationStyle() == .notice, shouldSend()
+      else { return false }
+      let request = Self.targetNoticeRequest(
+        identifier: identifier, body: body, soundEnabled: TargetPreferences.soundEnabled(),
+        sound: TargetPreferences.reminderSound())
+      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        center.add(request) { error in
+          if let error { continuation.resume(throwing: error) }
+          else { continuation.resume() }
+        }
+      }
+      return true
+    }
+  }
 
+  static func targetNoticeRequest(
+    identifier: String, body: String, soundEnabled: Bool, sound: TargetReminderSound
+  ) -> UNNotificationRequest {
     let content = UNMutableNotificationContent()
     content.title = "当前目标提醒"
     content.body = body
-    content.sound = .default
-    let request = UNNotificationRequest(
-      identifier: Self.targetNotificationPrefix + identifier, content: content, trigger: nil)
-    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-      center.add(request) { error in
-        if let error {
-          continuation.resume(throwing: error)
-        } else {
-          continuation.resume()
-        }
-      }
+    content.sound = soundEnabled ? UNNotificationSound(named: .init(sound.filename)) : nil
+    return UNNotificationRequest(
+      identifier: targetNotificationPrefix + identifier, content: content, trigger: nil)
+  }
+
+  @discardableResult
+  func playTargetReminderSound() -> Bool {
+    guard TargetPreferences.soundEnabled(), let url = TargetPreferences.reminderSound().url else {
+      return false
     }
-    return true
+    targetSound?.stop()
+    targetSound = NSSound(contentsOf: url, byReference: true)
+    return targetSound?.play() ?? false
+  }
+
+  func stopTargetReminderSound() {
+    targetSound?.stop()
+  }
+
+  /// Remove old notices when changing delivery style so the two modes do not overlap.
+  func clearTargetNotifications() async {
+    stopTargetReminderSound()
+    let pending = await center.pendingNotificationRequests()
+    let delivered = await center.deliveredNotifications()
+    center.removePendingNotificationRequests(
+      withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix(Self.targetNotificationPrefix) })
+    center.removeDeliveredNotifications(
+      withIdentifiers: delivered.map { $0.request.identifier }
+        .filter { $0.hasPrefix(Self.targetNotificationPrefix) })
   }
 
   func sendTargetTestNotification() async throws -> Bool {
-    try await notifyTargetDeviation(
-      identifier: "test.\(UUID().uuidString)",
-      body: "这是一条测试通知。事件未推进当前目标时，会在这里提醒你。点击可打开事件与目标。")
+    let body = TargetPreferences.notificationStyle() == .notch
+      ? "这是一条刘海测试提醒。先选一个当前目标，从一个具体的小步骤继续。悬停可保持展开，点击下方按钮查看事件与目标。"
+      : "这是一条目标测试通知。先选一个当前目标，从一个具体的小步骤继续。点击可打开事件与目标。"
+    return try await notifyTargetDeviation(
+      identifier: "test.\(UUID().uuidString)", body: body)
   }
 
   /// Request notification permission from the user
@@ -472,6 +516,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
     let isTarget = notification.request.identifier.hasPrefix(Self.targetNotificationPrefix)
-    completionHandler(isTarget ? [.banner, .sound] : [])
+    let sound: UNNotificationPresentationOptions = TargetPreferences.soundEnabled() ? [.sound] : []
+    completionHandler(isTarget ? sound.union([.banner]) : [])
   }
 }

@@ -460,7 +460,7 @@ enum ChatPromptBuilder {
 
       Example:
       ```memory
-      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
+      Profile: Software developer, works on a sample productivity app with a design team.
       Style: standup=Yesterday/Today/Blockers, brief bullets | weekly_summary=detailed with metrics | default=brief, scannable
       ```
 
@@ -470,7 +470,7 @@ enum ChatPromptBuilder {
 
       User's current memory:
       ```memory
-      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
+      Profile: Software developer, works on a sample productivity app with a design team.
       Style: default=brief, scannable
       ```
 
@@ -478,13 +478,13 @@ enum ChatPromptBuilder {
 
       Your response should use that structure for the standup data, and your memory block should become:
       ```memory
-      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
+      Profile: Software developer, works on a sample productivity app with a design team.
       Style: standup=Yesterday/Today/Blockers, brief bullets | default=brief, scannable
       ```
 
       If the user later says "for weekly summaries, give me more detail with metrics," update to:
       ```memory
-      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
+      Profile: Software developer, works on a sample productivity app with a design team.
       Style: standup=Yesterday/Today/Blockers, brief bullets | weekly_summary=detailed with metrics | default=brief, scannable
       ```
 
