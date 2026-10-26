@@ -17,20 +17,20 @@ struct TerminalCommandView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       Text(title)
-        .font(.custom("Figtree", size: 16))
+        .font(.system(size: 16))
         .fontWeight(.semibold)
-        .foregroundColor(.black.opacity(0.9))
+        .foregroundColor(SettingsStyle.text)
 
       Text(subtitle)
-        .font(.custom("Figtree", size: 14))
-        .foregroundColor(.black.opacity(0.6))
+        .font(.system(size: 14))
+        .foregroundColor(SettingsStyle.secondary)
 
       // Command block with trailing copy button (overlay for tight right alignment)
       ZStack(alignment: .leading) {
         // Command text area
         Text(command)
-          .font(.custom("SF Mono", size: 13))
-          .foregroundColor(.black.opacity(0.85))
+          .font(.system(size: 13, design: .monospaced))
+          .foregroundColor(SettingsStyle.text)
           .textSelection(.enabled)
           .padding(.horizontal, 16)
           .padding(.vertical, 14)
@@ -45,15 +45,15 @@ struct TerminalCommandView: View {
               Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
                 .font(.system(size: 12, weight: .medium))
               Text(isCopied ? String(localized: "Copied") : String(localized: "Copy"))
-                .font(.custom("Figtree", size: 13))
+                .font(.system(size: 13))
                 .fontWeight(.medium)
             }
             .foregroundColor(
-              isCopied ? Color(red: 0.34, green: 1, blue: 0.45) : .black.opacity(0.75))
+              isCopied ? SettingsStyle.statusGood : SettingsStyle.secondary)
           },
-          background: Color.white.opacity(0.93),
-          foreground: .black,
-          borderColor: Color.black.opacity(0.12),
+          background: SettingsStyle.surface,
+          foreground: SettingsStyle.text,
+          borderColor: SettingsStyle.editorBorder,
           cornerRadius: 6,
           horizontalPadding: 14,
           verticalPadding: 10,
@@ -62,11 +62,11 @@ struct TerminalCommandView: View {
         .padding(.trailing, 6)
         .padding(.vertical, 6)
       }
-      .background(Color(hex: "F8F9FA"))
+      .background(SettingsStyle.canvas)
       .cornerRadius(8)
       .overlay(
         RoundedRectangle(cornerRadius: 8)
-          .stroke(Color.black.opacity(0.08), lineWidth: 1)
+          .stroke(SettingsStyle.divider, lineWidth: 1)
       )
     }
   }

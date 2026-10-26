@@ -4,6 +4,7 @@ import AVFoundation
 import CoreVideo
 
 // Regenerate with: swift scripts/generate-brand-assets.swift
+// Primary icon only: swift scripts/generate-brand-assets.swift --icons-only
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let assets = root.appendingPathComponent("Dayflow/Dayflow/Assets.xcassets")
 let fm = FileManager.default
@@ -63,25 +64,14 @@ func mark(in rect: NSRect, color: NSColor = cyan, active: Bool = true) {
   NSGraphicsContext.restoreGraphicsState()
 }
 
+// Keep the generated master as the source for every app-icon rendition.
+let appIconSourceURL = root.appendingPathComponent("docs/images/target-flow-icon-source.png")
+guard let appIconSource = NSImage(contentsOf: appIconSourceURL) else {
+  fatalError("Missing app icon master: \(appIconSourceURL.path)")
+}
+
 func appIcon(in rect: NSRect) {
-  NSGraphicsContext.saveGraphicsState()
-  let tile = NSBezierPath(roundedRect: rect.insetBy(dx: rect.width * 0.08, dy: rect.height * 0.08),
-    xRadius: rect.width * 0.185, yRadius: rect.height * 0.185)
-  let shadow = NSShadow()
-  shadow.shadowColor = NSColor.black.withAlphaComponent(0.25)
-  shadow.shadowBlurRadius = rect.width * 0.025
-  shadow.shadowOffset = NSSize(width: 0, height: -rect.height * 0.012)
-  shadow.set()
-  navy.setFill()
-  tile.fill()
-  NSShadow().set()
-  NSGradient(starting: NSColor(srgbRed: 0.26, green: 0.30, blue: 0.57, alpha: 1), ending: navy)!
-    .draw(in: tile, angle: -80)
-  NSColor.white.withAlphaComponent(0.16).setStroke()
-  tile.lineWidth = max(1, rect.width / 512)
-  tile.stroke()
-  mark(in: rect.insetBy(dx: rect.width * 0.045, dy: rect.height * 0.045))
-  NSGraphicsContext.restoreGraphicsState()
+  appIconSource.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
 }
 
 func imageSet(_ name: String, filename: String, size: NSSize, template: Bool = false, draw: () -> Void) throws {
@@ -96,7 +86,7 @@ func imageSet(_ name: String, filename: String, size: NSSize, template: Bool = f
     .write(to: directory.appendingPathComponent("Contents.json"))
 }
 
-let iconDirectory = assets.appendingPathComponent("AppIcon.appiconset")
+let iconDirectory = assets.appendingPathComponent("TargetFlowAppIcon.appiconset")
 var iconEntries: [[String: String]] = []
 for points in [16, 32, 128, 256, 512] {
   for scale in [1, 2] {
@@ -111,15 +101,21 @@ for points in [16, 32, 128, 256, 512] {
 try JSONSerialization.data(withJSONObject: ["images": iconEntries, "info": ["author": "xcode", "version": 1]],
   options: [.prettyPrinted, .sortedKeys]).write(to: iconDirectory.appendingPathComponent("Contents.json"))
 
-try imageSet("TargetFlowLogo", filename: "target-flow-mark.png", size: NSSize(width: 512, height: 512)) {
-  mark(in: NSRect(x: 0, y: 0, width: 512, height: 512))
-}
 try imageSet("TargetFlowLogoMainApp", filename: "target-flow-badge.png", size: NSSize(width: 512, height: 512)) {
   appIcon(in: NSRect(x: 0, y: 0, width: 512, height: 512))
 }
 try imageSet("Favicons/TargetFlowFavicon", filename: "target-flow-favicon.png", size: NSSize(width: 128, height: 128)) {
   appIcon(in: NSRect(x: 0, y: 0, width: 128, height: 128))
 }
+if CommandLine.arguments.contains("--icons-only") {
+  let preview = root.appendingPathComponent("docs/images/target-flow-icon.png")
+  if fm.fileExists(atPath: preview.path) { try fm.removeItem(at: preview) }
+  try fm.copyItem(at: iconDirectory.appendingPathComponent("target-flow-512@2x.png"), to: preview)
+  print("Generated app icon sizes, main-app badge, favicon, and documentation preview.")
+  exit(0)
+}
+
+// TargetFlowLogo is a standalone vector asset; keep its SVG and catalog metadata intact.
 try imageSet("TargetFlowLaunch", filename: "target-flow-launch.png", size: NSSize(width: 560, height: 640)) {
   appIcon(in: NSRect(x: 80, y: 160, width: 400, height: 400))
   text("Target Flow", at: NSPoint(x: 102, y: 82), size: 64, color: .white)

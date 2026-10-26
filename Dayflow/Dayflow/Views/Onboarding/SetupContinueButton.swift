@@ -29,25 +29,25 @@ struct SetupContinueButton: View {
     Button(action: isEnabled ? action : {}) {
       HStack(alignment: .center, spacing: 6) {
         Text(title)
-          .font(.custom("Figtree", size: 14))
-          .fontWeight(.regular)
+          .font(.system(size: 13, weight: .medium))
         Image(systemName: "chevron.right")
           .font(.system(size: 12, weight: .medium))
       }
       .foregroundColor(.white)
-      .padding(.leading, 36)
-      .padding(.trailing, 32)
-      .frame(height: 44)
+      .padding(.leading, 20)
+      .padding(.trailing, 16)
+      .frame(height: 36)
       .background(theme.primaryButtonFill)
-      .cornerRadius(200)
+      .cornerRadius(9)
       .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
       .overlay(
-        Capsule()
+        RoundedRectangle(cornerRadius: 9)
           .inset(by: 0.25)
           .stroke(theme.primaryButtonBorder, lineWidth: 0.5)
       )
       .overlay(
-        InnerGlow(shape: Capsule(), color: theme.primaryButtonInnerGlow, radius: 3)
+        InnerGlow(
+          shape: RoundedRectangle(cornerRadius: 9), color: theme.primaryButtonInnerGlow, radius: 3)
       )
       .opacity(isEnabled ? 1.0 : 0.4)
     }

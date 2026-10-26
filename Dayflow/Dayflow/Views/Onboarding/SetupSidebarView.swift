@@ -16,7 +16,7 @@ struct SetupSidebarView: View {
 
   var body: some View {
     // Just the steps list - no extra VStack or ScrollView
-    VStack(alignment: .leading, spacing: 24) {
+    VStack(alignment: .leading, spacing: 16) {
       ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
         SetupSidebarItem(
           title: step.title,
@@ -51,7 +51,7 @@ struct SetupSidebarItem: View {
 
   @State private var isHovered = false
 
-  private let textColor = Color(hex: "634342")
+  private var textColor: Color { isSelected ? SettingsStyle.ink : SettingsStyle.secondary }
 
   var body: some View {
     Button(action: onTap) {
@@ -75,7 +75,7 @@ struct SetupSidebarItem: View {
           HStack(alignment: .center, spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
               .font(.system(size: 15, weight: .medium))
-              .foregroundColor(Color(hex: "21A638"))
+              .foregroundColor(SettingsStyle.statusGood)
               .frame(width: 16, height: 16)
 
             itemLabel
@@ -103,7 +103,7 @@ struct SetupSidebarItem: View {
 
   private var itemLabel: some View {
     Text(title)
-      .font(.custom("Figtree", size: 16))
+      .font(.system(size: 13))
       .fontWeight(.medium)
       .foregroundColor(textColor)
   }
@@ -112,9 +112,8 @@ struct SetupSidebarItem: View {
     let shape = RoundedRectangle(cornerRadius: 10)
     return
       shape
-      .fill(Color(hex: "FFFAF8"))
-      .overlay(shape.strokeBorder(Color(hex: "FFB693"), lineWidth: 1))
-      .shadow(color: Color(hex: "D5D3D9"), radius: 2, x: 0, y: 1)
+      .fill(SettingsStyle.ink.opacity(0.08))
+      .overlay(shape.strokeBorder(SettingsStyle.ink.opacity(0.2), lineWidth: 1))
       .matchedGeometryEffect(id: "selection", in: namespace)
   }
 }

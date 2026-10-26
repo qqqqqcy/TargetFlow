@@ -56,61 +56,39 @@ enum TimelineReviewRating: String, CaseIterable, Identifiable {
     }
   }
 
+  // Rating semantics stay red / gray / green; controls use the app's blue accent.
   var overlayColor: Color {
     switch self {
-    case .distracted: return Color(hex: "975D57").opacity(0.6)
-    case .neutral: return Color(hex: "8C8379").opacity(0.55)
-    case .focused: return Color(hex: "43765E").opacity(0.6)
+    case .distracted: return Color(hex: "754B4A").opacity(0.88)
+    case .neutral: return Color(hex: "4D5B70").opacity(0.88)
+    case .focused: return Color(hex: "3F685A").opacity(0.88)
     }
   }
 
-  var overlayTextColor: Color {
-    switch self {
-    case .distracted: return Color(hex: "F9D8D4")
-    case .neutral: return Color(hex: "F4F0ED")
-    case .focused: return Color(hex: "D9F7E4")
-    }
-  }
+  var overlayTextColor: Color { .white }
 
   var barGradient: LinearGradient {
-    switch self {
-    case .distracted:
-      return LinearGradient(
-        colors: [Color(hex: "FFBDB1"), Color(hex: "FF8772")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
-    case .neutral:
-      return LinearGradient(
-        colors: [Color(hex: "FFFEFE"), Color(hex: "EAE0DB")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
-    case .focused:
-      return LinearGradient(
-        colors: [Color(hex: "92F1E3"), Color(hex: "42D0BB")],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      )
-    }
+    LinearGradient(
+      colors: [iconTint.opacity(0.55), iconTint.opacity(0.85)],
+      startPoint: .topLeading,
+      endPoint: .bottomTrailing
+    )
   }
 
-  var barStroke: Color {
-    switch self {
-    case .distracted: return Color(hex: "FF8772")
-    case .neutral: return Color(hex: "EAE0DB")
-    case .focused: return Color(hex: "42D0BB")
-    }
-  }
+  var barStroke: Color { iconTint.opacity(0.7) }
 
-  var labelColor: Color { Color(hex: "707070") }
+  var labelColor: Color { Self.adaptiveColor(light: "65748B", dark: "B6C3D7") }
 
   var iconTint: Color {
     switch self {
-    case .distracted: return Color(hex: "FF7B67")
-    case .neutral: return Color(hex: "C8C8C8")
-    case .focused: return Color(hex: "47D2BD")
+    case .distracted: return Self.adaptiveColor(light: "B56C64", dark: "DCA098")
+    case .neutral: return Self.adaptiveColor(light: "8794A8", dark: "A5B6CF")
+    case .focused: return Self.adaptiveColor(light: "538876", dark: "82BDA8")
     }
+  }
+
+  private static func adaptiveColor(light: String, dark: String) -> Color {
+    Color.dayflowAdaptive(light: NSColor(Color(hex: light)), dark: NSColor(Color(hex: dark)))
   }
 
   var swipeOffset: CGSize {

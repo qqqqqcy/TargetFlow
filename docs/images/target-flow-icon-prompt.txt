@@ -1,0 +1,4 @@
+Generated using the built-in image_gen tool.
+Reference: user-provided black target-and-arrow silhouette.
+
+Use case: logo-brand. Create a polished macOS application icon for Target Flow using the attached reference as the exact conceptual silhouette: one thick open target ring, a solid central bullseye and a bold diagonal arrow extending toward upper right. Preserve its strong simple recognizability. Reinterpret the black symbol as a crisp white mark on a rounded-square cobalt blue tile. Project palette: primary #2869EF, deep blue #163F91, restrained lighter blue #5790FF. Very subtle blue tonal gradient, refined almost-flat finish, no glossy 3D, no extra rings, no text, no letters, no decorative elements. Center the mark with generous clear margins inside tile, tile occupies 84% of square canvas with macOS rounded corners; outside tile genuinely transparent. Output single square 1024px production app icon, sharp smooth edges, excellent small-size readability.

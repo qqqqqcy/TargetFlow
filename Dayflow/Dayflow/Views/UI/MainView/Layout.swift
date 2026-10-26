@@ -19,10 +19,10 @@ extension MainView {
   // Layer 1: layout + visual overlays.
   private var mainLayoutWithOverlays: some View {
     contentStack
-      .padding([.top, .trailing, .bottom], 15)
+      .padding([.top, .trailing, .bottom], 7)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background(Color.clear)
+      .background(theme.sidebarBackground)
       .ignoresSafeArea()
       // Hero animation overlay for video expansion (Emil Kowalski: shared element transitions)
       .overlay { overlayContent }

@@ -42,21 +42,15 @@ final class TimelineReviewScrubberNSView: NSView {
     wantsLayer = true
     layerContentsRedrawPolicy = .onSetNeedsDisplay
 
-    trackLayer.backgroundColor =
-      NSColor(red: 163 / 255, green: 151 / 255, blue: 141 / 255, alpha: 0.5).cgColor
     layer?.addSublayer(trackLayer)
 
-    progressLayer.backgroundColor =
-      NSColor(red: 255 / 255, green: 109 / 255, blue: 0 / 255, alpha: 0.65).cgColor
     layer?.addSublayer(progressLayer)
 
-    pillLayer.backgroundColor =
-      NSColor(red: 249 / 255, green: 110 / 255, blue: 0 / 255, alpha: 1.0).cgColor
     pillLayer.cornerRadius = 4
     layer?.addSublayer(pillLayer)
 
     textLayer.fontSize = 8
-    textLayer.font = NSFont(name: "Figtree-SemiBold", size: 8)
+    textLayer.font = NSFont.systemFont(ofSize: 8, weight: .semibold)
     textLayer.foregroundColor = NSColor.white.cgColor
     textLayer.alignmentMode = .center
     textLayer.isWrapped = false
@@ -64,6 +58,15 @@ final class TimelineReviewScrubberNSView: NSView {
   }
 
   required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  func updateColors(track: Color, progress: Color, pill: Color) {
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    trackLayer.backgroundColor = NSColor(track).cgColor
+    progressLayer.backgroundColor = NSColor(progress).cgColor
+    pillLayer.backgroundColor = NSColor(pill).cgColor
+    CATransaction.commit()
+  }
 
   override func viewDidChangeBackingProperties() {
     super.viewDidChangeBackingProperties()
@@ -145,6 +148,7 @@ final class TimelineReviewScrubberNSView: NSView {
 }
 
 struct TimelineReviewPlaybackTimeline: NSViewRepresentable {
+  @Environment(\.dayflowTheme) private var theme
   let playbackState: TimelineReviewPlaybackTimelineState
   let activityStartTime: Date
   let activityEndTime: Date
@@ -162,6 +166,8 @@ struct TimelineReviewPlaybackTimeline: NSViewRepresentable {
   }
 
   func updateNSView(_ nsView: TimelineReviewScrubberNSView, context: Context) {
+    nsView.updateColors(
+      track: theme.separator, progress: theme.accent, pill: theme.primaryButtonFill)
     nsView.playbackState = playbackState
     nsView.activityStartTime = activityStartTime
     nsView.activityEndTime = activityEndTime

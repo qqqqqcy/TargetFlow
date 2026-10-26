@@ -80,15 +80,15 @@ struct ChatCLIDetectionStepView: View {
   let selectedTool: CLITool?
   let onSelectTool: (CLITool) -> Void
 
-  let accentColor = Color(hex: "FF9F6F")
+  let accentColor = SettingsStyle.primaryButtonFill
 
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
       Text(
         "Target Flow can talk to ChatGPT (via the Codex CLI) or Claude Code. You only need one installed and signed in on this Mac. After installing, run `codex auth` or `claude login` in Terminal to connect it to your account."
       )
-      .font(.custom("Figtree", size: 16))
-      .foregroundColor(Color(hex: "333333"))
+      .font(.system(size: 16))
+      .foregroundColor(SettingsStyle.text)
 
       HStack(alignment: .top, spacing: 18) {
         ChatCLIToolStatusRow(
@@ -106,15 +106,15 @@ struct ChatCLIDetectionStepView: View {
       Text(
         "Tip: Once both are installed, you can choose which provider Target Flow uses from Settings → AI Provider."
       )
-      .font(.custom("Figtree", size: 16))
-      .foregroundColor(Color(hex: "333333"))
+      .font(.system(size: 16))
+      .foregroundColor(SettingsStyle.text)
 
       VStack(alignment: .leading, spacing: 8) {
         VStack(alignment: .leading, spacing: 14) {
           Text("Choose which provider Target Flow should use")
-            .font(.custom("Figtree", size: 14))
+            .font(.system(size: 14))
             .fontWeight(.medium)
-            .foregroundColor(Color(hex: "333333"))
+            .foregroundColor(SettingsStyle.text)
           HStack(spacing: 12) {
             ForEach(CLITool.allCases, id: \.self) { tool in
               selectionButton(for: tool)
@@ -123,11 +123,11 @@ struct ChatCLIDetectionStepView: View {
         }
         .padding(16)
         .frame(maxWidth: 516)
-        .background(Color.white.opacity(0.6))
+        .background(SettingsStyle.surface)
         .cornerRadius(12)
         .overlay(
           RoundedRectangle(cornerRadius: 12)
-            .stroke(Color(hex: "EDE5E1"), lineWidth: 1)
+            .stroke(SettingsStyle.divider, lineWidth: 1)
         )
 
         DayflowSurfaceButton(
@@ -146,19 +146,19 @@ struct ChatCLIDetectionStepView: View {
                   .frame(width: 16, height: 16)
               }
               Text(isChecking ? String(localized: "Checking…") : String(localized: "Check"))
-                .font(.custom("Figtree", size: 14))
+                .font(.system(size: 14))
                 .fontWeight(.medium)
             }
           },
-          background: Color(hex: "FDCEA4"),
-          foreground: Color(hex: "926244"),
-          borderColor: Color(hex: "F1CEBC"),
-          cornerRadius: 200,
+          background: SettingsStyle.primaryButtonFill,
+          foreground: Color.white,
+          borderColor: SettingsStyle.primaryButtonFill,
+          cornerRadius: 9,
           horizontalPadding: 24,
           verticalPadding: 8,
           fixedHeight: 41,
           showOverlayStroke: false,
-          innerGlowColor: Color(hex: "FFECE6")
+          innerGlowColor: Color.clear
         )
         .disabled(isChecking)
       }
@@ -186,15 +186,15 @@ struct ChatCLIDetectionStepView: View {
         Image(systemName: selectedTool == tool ? "largecircle.fill.circle" : "circle")
           .font(.system(size: 22, weight: .regular))
           .frame(width: 24, height: 24)
-          .foregroundColor(selectedTool == tool ? accentColor : Color(hex: "D0C8C2"))
+          .foregroundColor(selectedTool == tool ? accentColor : SettingsStyle.editorBorder)
         VStack(alignment: .leading, spacing: 4) {
           Text(tool.shortName)
-            .font(.custom("Figtree", size: 16))
+            .font(.system(size: 16))
             .fontWeight(.semibold)
-            .foregroundColor(.black)
+            .foregroundColor(SettingsStyle.text)
           Text(enabled ? String(localized: "Ready to use") : String(localized: "Install to enable"))
-            .font(.custom("Figtree", size: 12))
-            .foregroundColor(Color(hex: "727272"))
+            .font(.system(size: 12))
+            .foregroundColor(SettingsStyle.secondary)
         }
       }
       .padding(.horizontal, 14)
@@ -202,11 +202,11 @@ struct ChatCLIDetectionStepView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(
         RoundedRectangle(cornerRadius: 12)
-          .fill(Color.white.opacity(0.8))
+          .fill(SettingsStyle.surface)
       )
       .overlay(
         RoundedRectangle(cornerRadius: 12)
-          .stroke(Color(hex: "EDE5E1"), lineWidth: 1)
+          .stroke(SettingsStyle.divider, lineWidth: 1)
       )
     }
     .buttonStyle(.plain)
@@ -219,7 +219,7 @@ struct ChatCLIToolStatusRow: View {
   let status: CLIDetectionState
   let onInstall: () -> Void
 
-  let accentColor = Color(hex: "FF9F6F")
+  let accentColor = SettingsStyle.primaryButtonFill
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -231,11 +231,11 @@ struct ChatCLIToolStatusRow: View {
           .frame(width: 32, height: 32)
 
         Text(tool.shortName)
-          .font(.custom("Figtree", size: 16))
+          .font(.system(size: 16))
           .fontWeight(.semibold)
-          .foregroundColor(.black)
+          .foregroundColor(SettingsStyle.text)
 
-        Spacer(minLength: 53)
+        Spacer(minLength: 8)
 
         statusView
       }
@@ -248,11 +248,11 @@ struct ChatCLIToolStatusRow: View {
             HStack(spacing: 6) {
               Image(systemName: "arrow.down.circle.fill").font(.system(size: 11, weight: .semibold))
               Text(installLabel)
-                .font(.custom("Figtree", size: 12))
+                .font(.system(size: 12))
                 .fontWeight(.semibold)
             }
           },
-          background: .white.opacity(0.85),
+          background: SettingsStyle.surface,
           foreground: accentColor,
           borderColor: accentColor.opacity(0.35),
           cornerRadius: 6,
@@ -263,11 +263,11 @@ struct ChatCLIToolStatusRow: View {
       }
     }
     .padding(14)
-    .background(Color.white.opacity(0.9))
+    .background(SettingsStyle.surface)
     .cornerRadius(12)
     .overlay(
       RoundedRectangle(cornerRadius: 12)
-        .stroke(Color(hex: "EDE5E1"), lineWidth: 1)
+        .stroke(SettingsStyle.divider, lineWidth: 1)
     )
   }
 
@@ -278,40 +278,40 @@ struct ChatCLIToolStatusRow: View {
       HStack(spacing: 5) {
         ProgressView().scaleEffect(0.5)
         Text(status.statusLabel)
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 12))
           .fontWeight(.semibold)
-          .foregroundColor(Color(hex: "634342"))
+          .foregroundColor(SettingsStyle.secondary)
       }
       .padding(.horizontal, 8)
       .padding(.vertical, 4)
-      .background(Color(hex: "634342").opacity(0.08))
+      .background(SettingsStyle.secondary.opacity(0.08))
       .cornerRadius(20)
     case .installed:
       Text(status.statusLabel)
-        .font(.custom("Figtree", size: 12))
+        .font(.system(size: 12))
         .fontWeight(.semibold)
-        .foregroundColor(Color(hex: "21A638"))
+        .foregroundColor(SettingsStyle.statusGood)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color(hex: "DEF3E0"))
+        .background(SettingsStyle.statusGood.opacity(0.1))
         .cornerRadius(20)
     case .notFound:
       Text(status.statusLabel)
-        .font(.custom("Figtree", size: 11))
+        .font(.system(size: 11))
         .fontWeight(.semibold)
-        .foregroundColor(Color(hex: "E91515"))
+        .foregroundColor(SettingsStyle.destructive)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(Color(hex: "FFD1D1"))
+        .background(SettingsStyle.destructive.opacity(0.1))
         .cornerRadius(999)
     case .failed:
       Text(status.statusLabel)
-        .font(.custom("Figtree", size: 11))
+        .font(.system(size: 11))
         .fontWeight(.semibold)
-        .foregroundColor(Color(red: 0.91, green: 0.34, blue: 0.16))
+        .foregroundColor(SettingsStyle.statusWarn)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(Color(red: 0.91, green: 0.34, blue: 0.16).opacity(0.18))
+        .background(SettingsStyle.statusWarn.opacity(0.18))
         .cornerRadius(999)
     }
   }

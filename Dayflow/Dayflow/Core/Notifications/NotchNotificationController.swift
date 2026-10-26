@@ -197,16 +197,22 @@ final class NotchNotificationPanel: NSPanel {
 
 private struct NotchNotificationView: View {
   @ObservedObject var controller: NotchNotificationController
+  // The notch always uses a black surface, including when the app is in light mode.
+  private let accent = DayflowTheme.dark.accent
 
   var body: some View {
     VStack(spacing: 0) {
       // Keep all text below the physical camera. Only the two status marks flank it.
       HStack {
-        Image(systemName: "scope")
-          .font(.system(size: 17, weight: .semibold))
-          .foregroundStyle(.orange)
+        Image("TargetFlowLogo")
+          .renderingMode(.template)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 22, height: 22)
+          .foregroundStyle(accent)
+          .accessibilityHidden(true)
         Spacer(minLength: 0)
-        Circle().fill(.orange).frame(width: 7, height: 7)
+        Circle().fill(accent).frame(width: 7, height: 7)
       }
       .padding(.horizontal, 22)
       .frame(height: controller.cameraHeight + 6)
@@ -234,7 +240,7 @@ private struct NotchNotificationView: View {
             }
             .buttonStyle(.plain)
             .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.orange)
+            .foregroundStyle(accent)
             Spacer()
             Button("收起", action: controller.dismiss)
               .buttonStyle(.plain)

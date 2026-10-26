@@ -2,9 +2,9 @@
 //  DayflowTheme.swift
 //  Dayflow
 //
-//  Single source of truth for light/dark styling. Every value here comes from
-//  the Figma "Interface refresh" file. Views read `@Environment(\.dayflowTheme)`
-//  instead of hardcoding hex colors so both appearances stay side by side.
+//  Shared blue-and-white palette for Target Flow. Views read
+//  `@Environment(\.dayflowTheme)` so surfaces, controls and text remain
+//  consistent in the system, light and dark appearances.
 //
 
 import SwiftUI
@@ -95,7 +95,7 @@ struct DayflowTheme {
   let accent: Color
   let accentText: Color
 
-  // Peach "glass" control (calendar pill, Pause, selected Day/Week segment)
+  // Emphasized control (Pause, selected Day/Week segment)
   let controlFill: Color
   let controlBorder: Color
   let controlInnerGlow: Color
@@ -224,426 +224,166 @@ struct DayflowTheme {
   let chatCodeFill: Color
 }
 
-// MARK: - Light
+// MARK: - Blue-and-white palettes
 
 extension DayflowTheme {
-  /// The in-progress "After" light palette.
-  static let light = lightPalette(after: true)
-  /// The shipped light palette, rendered when the style preview is "Before".
-  static let lightBefore = lightPalette(after: false)
+  static let brandBlue = Color(hex: "2869EF")
+  static let light = palette(isDark: false)
+  static let dark = palette(isDark: true)
+  // Keep the upstream style-preview API compatible with the active palette.
+  static let lightBefore = light
+  static let darkBefore = dark
 
-  private static func lightPalette(after: Bool) -> DayflowTheme {
-    DayflowTheme(
-      isDark: false,
-      windowBackground: AnyShapeStyle(
-        after
-          ? RadialGradient(
-            stops: [
-              .init(color: Color(hex: "FFE6CF"), location: 0.17),
-              .init(color: Color(hex: "FFE6E0"), location: 0.33),
-              .init(color: Color(hex: "D6E8FF"), location: 1),
-            ],
-            center: UnitPoint(x: 0.64, y: 1.0),
-            startRadius: 0,
-            endRadius: 1250
-          )
-          : RadialGradient(
-            stops: [
-              .init(color: Color(hex: "FFE6CF"), location: 0),
-              .init(color: Color(hex: "FFE6E0"), location: 0.37),
-              .init(color: Color(hex: "DAEAFC"), location: 0.99),
-            ],
-            center: UnitPoint(x: 0.59, y: 1.0),
-            startRadius: 0,
-            endRadius: 1250
-          )
-      ),
-      windowBorder: Color(hex: "DBDBDB"),
+  var sidebarBackground: Color { isDark ? Color(hex: "163F91") : Self.brandBlue }
+  var surfaceFill: Color { rightPanelFill }
+  var surfaceMuted: Color { isDark ? Color(hex: "202D43") : Color(hex: "F6F8FB") }
+  var separator: Color { rightPanelDivider }
+  var accentSoft: Color { isDark ? Color(hex: "213A60") : Color(hex: "EDF3FF") }
+  var accentBorder: Color { isDark ? Color(hex: "385889") : Color(hex: "DCE8FF") }
+  var statusFocused: Color { accent }
+  var statusNeutral: Color { isDark ? Color(hex: "A7B5CB") : Color(hex: "6E7B90") }
+  var statusDistracted: Color { isDark ? Color(hex: "E9A29C") : Color(hex: "AF625B") }
 
-      panelFill: AnyShapeStyle(Color(hex: "FBFBFB").opacity(0.55)),
-      panelBorder: Color(hex: "FAFAFA"),
-      panelShadow: Color.black.opacity(0.08),
-      panelInnerGlow: after ? Color.white.opacity(0.25) : .clear,
-      panelSolid: Color(hex: "FBF6F4"),
+  private static func palette(isDark: Bool) -> DayflowTheme {
+    let canvas = Color(hex: isDark ? "131E30" : "F6F8FB")
+    let surface = Color(hex: isDark ? "1B283D" : "FFFFFF")
+    let inset = Color(hex: isDark ? "202D43" : "F6F8FB")
+    let line = Color(hex: isDark ? "314059" : "E9EDF3")
+    let primary = Color(hex: isDark ? "EDF3FC" : "202B3D")
+    let secondary = Color(hex: isDark ? "B6C3D7" : "65748B")
+    let muted = Color(hex: isDark ? "93A5BF" : "7A899F")
+    let blue = Color(hex: isDark ? "79A7FF" : "2869EF")
+    let blueSoft = Color(hex: isDark ? "213A60" : "EDF3FF")
+    let blueLine = Color(hex: isDark ? "385889" : "DCE8FF")
+    let shell = Color(hex: isDark ? "163F91" : "2869EF")
+    let distraction = Color(hex: isDark ? "E9A29C" : "AF625B")
 
-      sidebarSelectedFill: LinearGradient(
-        colors: [Color.white.opacity(0.7), Color.white.opacity(0.35)],
-        startPoint: .top,
-        endPoint: .bottom
-      ),
-      sidebarSelectedBorder: Color.white.opacity(0.2),
-      sidebarSelectedInnerGlow: Color.white.opacity(0.8),
-      sidebarSelectedShadow: Color(hex: "D5D3D9"),
-      sidebarLabel: Color(hex: "727272"),
-      sidebarLabelActive: Color(hex: "333333"),
-      sidebarIcon: Color(hex: "727272"),
-      sidebarIconActive: Color(hex: "333333"),
+    return DayflowTheme(
+      isDark: isDark,
+      windowBackground: AnyShapeStyle(shell),
+      windowBorder: shell,
+      panelFill: AnyShapeStyle(canvas),
+      panelBorder: .clear,
+      panelShadow: Color.black.opacity(isDark ? 0.12 : 0.03),
+      panelInnerGlow: .clear,
+      panelSolid: canvas,
 
-      textPrimary: Color(hex: "333333"),
-      textSecondary: Color(hex: "707070"),
-      textTertiary: Color(hex: "787878"),
-      textMuted: Color(hex: "979797"),
-      accent: Color(hex: "F3854B"),
-      accentText: Color(hex: "FFA376"),
-
-      controlFill: Color(hex: "FFD2B9"),
-      controlBorder: Color(hex: "EAD5CD"),
-      controlInnerGlow: Color(hex: "FFECE6"),
-      controlText: Color(hex: "606060"),
-
-      segmentTrackFill: Color(hex: "E7E6E5"),
-      segmentTrackBorder: Color(hex: "D5D5D5"),
-      segmentInactiveText: Color(hex: "727272"),
-
-      editButtonFill: Color(hex: "DBCFCB"),
-      editButtonBorder: Color(hex: "D9CECA"),
-      editButtonInnerGlow: Color.white.opacity(0.25),
-
-      chipFill: Color.white.opacity(0.9),
-      chipBorder: Color(hex: "E1E1E1"),
-      chipText: Color(hex: "333333"),
-
-      hourLabel: Color(hex: "727272"),
-      hourLabelFuture: Color(hex: "594838"),
-      hourLine: Color.black.opacity(0.12),
-
-      cardFill: Color.white.opacity(after ? 0.61 : 0.9),
-      cardBorder: Color(hex: "D0D0D0"),
-      cardInnerGlow: Color.white,
-      cardTitle: Color(hex: "333333"),
-      cardTime: Color(hex: "979797"),
-      cardFailedFill: Color(hex: "FFECE4"),
-
-      generatingGradient: LinearGradient(
-        colors: [
-          Color(red: 50 / 255, green: 135 / 255, blue: 1).opacity(0.55),
-          Color(red: 1, green: 165 / 255, blue: 153 / 255).opacity(0.36),
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-      ),
-      pausedCardGradient: LinearGradient(
-        stops: [
-          .init(color: Color(hex: "F7E6D5"), location: 0.13),
-          .init(color: Color(hex: "DADEE4"), location: 1.00),
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-      ),
-      pausedCardText: Color(hex: "888D95"),
-
-      weekCardFillOpacity: 0.2,
-
-      rightPanelFill: Color.white.opacity(after ? 0.6 : 0.3),
-      rightPanelBorder: Color(hex: "ECECEC"),
-      rightPanelShadow: Color.black.opacity(0.05),
-      rightPanelDivider: Color(hex: "E7E5E3"),
-
-      targetsFill: Color.white.opacity(0.2),
-      targetsBorder: Color(hex: "EDE5E1"),
-      targetsTrackFill: Color(hex: "EEEEEE"),
-      targetsTrackBorder: Color(hex: "DEDEDE"),
-      targetsBubbleFill: Color(hex: "E7E7E7"),
-      targetsBubbleBorder: Color(hex: "FDFBFB"),
-      targetsInactiveTrack: Color(hex: "E4E4E4"),
-      targetsInactiveFill: Color(hex: "F6F6F6"),
-
-      summaryCardFill: Color.white.opacity(0.75),
-      summaryCardBorder: Color(hex: "F2EEEC"),
-      summaryCardShadow: Color.black.opacity(0.05),
-      summaryCardInnerGlow: .clear,
-      summaryValue: Color(hex: "FFA376"),
-
-      donutRingBackground: Color(red: 0.95, green: 0.94, blue: 0.94),
-      donutCenterFill: .white,
-      donutShadow: Color(red: 0.39, green: 0.28, blue: 0.22).opacity(0.35),
-      legendSwatchOpacity: 0.4,
-
-      secondaryButtonFill: Color(hex: "FCF9F7"),
-      secondaryButtonBorder: Color(hex: "D0D0D0"),
-      secondaryButtonText: Color(hex: "727272"),
-
-      primaryButtonFill: Color(hex: "FF9F6F"),
-      primaryButtonBorder: Color(hex: "F4C8B1"),
-      primaryButtonInnerGlow: Color(red: 1, green: 220 / 255, blue: 203 / 255).opacity(0.9),
-      primaryButtonText: .white,
-
-      popoverFill: Color(red: 0.98, green: 0.96, blue: 0.95).opacity(0.86),
-      popoverBorder: Color(red: 0.91, green: 0.88, blue: 0.87),
-
-      sheetOverlay: Color(red: 214 / 255, green: 188 / 255, blue: 180 / 255).opacity(0.25),
-      sheetCardFill: Color.white.opacity(0.6),
-      sheetCardBorder: Color(hex: "E1DADA"),
-      sheetFocusHeader: Color(hex: "628CFF"),
-      sheetDistractionHeader: Color(hex: "FA8282"),
-      sheetFocusStatText: Color(hex: "628CFF"),
-      sheetDistractionStatText: Color(hex: "FF706B"),
-      sheetPanelFill: Color.white.opacity(0.4),
-      sheetPanelBorder: Color(hex: "E1DADA"),
-      sheetInnerBoxFill: Color.white.opacity(0.3),
-      sheetInnerBoxBorder: Color(hex: "E6DDD5"),
-      sheetFooterFill: Color.white.opacity(0.6),
-      sheetWheelGradient: LinearGradient(
-        stops: [
-          .init(color: Color(hex: "E9E4E2"), location: 0),
-          .init(color: Color(hex: "FFFDFC"), location: 0.25),
-          .init(color: Color(hex: "FFFDFC"), location: 0.75),
-          .init(color: Color(hex: "E9E4E2"), location: 1),
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-      ),
-      sheetWheelBorder: Color(hex: "E6DDD9"),
-      sheetWheelDimText: Color(hex: "AAA6A3"),
-
-      dailyGridFill: Color.white.opacity(after ? 0.46 : 0.75),
-      dailyGridBorder: Color(hex: "EBE6E3"),
-      dailyTotalsFill: Color(hex: "FAF7F5"),
-      dailyEmptyCell: Color(hex: "989898").opacity(0.1),
-      dailyDistractionTrack: Color(hex: "F3F3F3"),
-      dailyDistractionTrackBorder: .clear,
-      dailyStatValue: Color(hex: "A49D98"),
-      standupCardGradient: LinearGradient(
-        stops: [
-          .init(color: Color.white.opacity(0.2), location: 0),
-          .init(color: Color.white.opacity(0.7), location: 0.5),
-          .init(color: Color.white.opacity(0.2), location: 1),
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-      ),
-      standupCardBorder: Color(hex: "E5E5E5"),
-      standupBlockersFill: Color(hex: "E3DBD2").opacity(0.25),
-      standupBlockersBorder: Color(hex: "E5E5E5"),
-
-      inputFill: Color.white.opacity(0.9),
-      inputBorder: Color(hex: "E1E1E1"),
-
-      // "After" is clear so the chat page shows the shared main-panel background
-      // (FBFBFB @ 55% with FAFAFA stroke, inner glow, drop shadow).
-      chatBackground: after
-        ? AnyShapeStyle(Color.clear)
-        : AnyShapeStyle(
-          LinearGradient(
-            colors: [Color(hex: "FFFAF5"), Color(hex: "FFF6EC")],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-        ),
-      chatSoftAccentFill: Color(hex: "FFF4E9"),
-      chatSoftAccentBorder: Color(hex: "F96E00").opacity(0.25),
-      chatSidePanelFill: Color.white,
-      chatSidePanelHeaderFill: Color(hex: "F5F5F5"),
-      chatCodeFill: Color(hex: "FAF7F2")
-    )
-  }
-}
-
-// MARK: - Dark
-
-extension DayflowTheme {
-  /// The in-progress "After" dark palette.
-  static let dark = darkPalette(after: true)
-  /// The shipped dark palette, rendered when the style preview is "Before".
-  static let darkBefore = darkPalette(after: false)
-
-  private static func darkPalette(after: Bool) -> DayflowTheme {
-    DayflowTheme(
-      isDark: true,
-      windowBackground: AnyShapeStyle(
-        LinearGradient(
-          stops: [
-            .init(color: Color(red: 48 / 255, green: 60 / 255, blue: 91 / 255), location: 0.21),
-            .init(color: Color(red: 49 / 255, green: 51 / 255, blue: 72 / 255), location: 0.53),
-            .init(color: Color(red: 59 / 255, green: 41 / 255, blue: 75 / 255), location: 1.05),
-          ],
-          // CSS -15deg: runs from bottom-left toward top-right, nearly horizontal.
-          startPoint: UnitPoint(x: 0, y: 0.63),
-          endPoint: UnitPoint(x: 1, y: 0.37)
-        )
-      ),
-      windowBorder: Color(hex: "DBDBDB"),
-
-      panelFill: AnyShapeStyle(
-        LinearGradient(
-          stops: [
-            .init(
-              color: Color(red: 39 / 255, green: 41 / 255, blue: 58 / 255).opacity(0.8),
-              location: 0.09),
-            .init(
-              color: Color(red: 32 / 255, green: 39 / 255, blue: 51 / 255).opacity(0.8),
-              location: 0.80),
-          ],
-          // CSS 140deg: top-left toward bottom-right.
-          startPoint: UnitPoint(x: 0.1, y: 0),
-          endPoint: UnitPoint(x: 0.9, y: 1)
-        )
-      ),
-      panelBorder: Color(hex: "414141"),
-      panelShadow: Color.black.opacity(0.12),
-      panelInnerGlow: Color.white.opacity(0.2),
-      panelSolid: Color(hex: "272A3C"),
-
-      sidebarSelectedFill: LinearGradient(
-        colors: [
-          Color(red: 116 / 255, green: 114 / 255, blue: 1).opacity(0.3),
-          Color(red: 167 / 255, green: 167 / 255, blue: 167 / 255).opacity(0.05),
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-      ),
-      sidebarSelectedBorder: Color(hex: "848484"),
-      sidebarSelectedInnerGlow: Color.white.opacity(0.2),
+      sidebarSelectedFill: LinearGradient(colors: [canvas, canvas], startPoint: .top, endPoint: .bottom),
+      sidebarSelectedBorder: .clear,
+      sidebarSelectedInnerGlow: .clear,
       sidebarSelectedShadow: .clear,
-      sidebarLabel: Color(hex: "A2A2A2"),
-      sidebarLabelActive: .white,
-      sidebarIcon: Color(hex: "A2A2A2"),
-      sidebarIconActive: .white,
+      sidebarLabel: Color.white.opacity(0.85),
+      sidebarLabelActive: blue,
+      sidebarIcon: Color.white.opacity(0.85),
+      sidebarIconActive: blue,
 
-      textPrimary: .white,
-      textSecondary: Color(hex: "DDDDDD"),
-      textTertiary: Color(hex: "B3B3B3"),
-      textMuted: Color(hex: "B4B4B4"),
-      accent: Color(hex: "F3854B"),
-      accentText: Color(hex: "F77952"),
+      textPrimary: primary,
+      textSecondary: secondary,
+      textTertiary: muted,
+      textMuted: muted,
+      accent: blue,
+      accentText: blue,
 
-      controlFill: Color(red: 226 / 255, green: 160 / 255, blue: 121 / 255).opacity(0.4),
-      controlBorder: Color(hex: "875C46"),
-      controlInnerGlow: Color(red: 243 / 255, green: 182 / 255, blue: 152 / 255).opacity(0.5),
+      controlFill: brandBlue,
+      controlBorder: brandBlue,
+      controlInnerGlow: .clear,
       controlText: .white,
+      segmentTrackFill: inset,
+      segmentTrackBorder: line,
+      segmentInactiveText: secondary,
+      editButtonFill: brandBlue,
+      editButtonBorder: brandBlue,
+      editButtonInnerGlow: .clear,
+      chipFill: blueSoft,
+      chipBorder: blueLine,
+      chipText: blue,
 
-      segmentTrackFill: Color.black.opacity(0.35),
-      segmentTrackBorder: Color(hex: "3F3F3F"),
-      segmentInactiveText: Color(hex: "9D9D9D"),
-
-      editButtonFill: Color(red: 149 / 255, green: 126 / 255, blue: 112 / 255).opacity(0.5),
-      editButtonBorder: Color(hex: "777777"),
-      editButtonInnerGlow: Color(red: 166 / 255, green: 154 / 255, blue: 148 / 255).opacity(0.5),
-
-      chipFill: Color.white.opacity(0.15),
-      chipBorder: Color(hex: "888888"),
-      chipText: .white,
-
-      hourLabel: Color(hex: "DDDDDD"),
-      hourLabelFuture: Color(hex: "DDDDDD").opacity(0.4),
-      hourLine: Color.white.opacity(0.18),
-
-      cardFill: after ? Color(hex: "3A3A4C") : Color.white.opacity(0.15),
-      cardBorder: Color(hex: "999999"),
-      cardInnerGlow: Color.white.opacity(after ? 0.08 : 0.15),
-      cardTitle: .white,
-      cardTime: Color(hex: "B4B4B4"),
-      cardFailedFill: Color(red: 1, green: 89 / 255, blue: 80 / 255).opacity(0.22),
-
+      hourLabel: muted,
+      hourLabelFuture: muted.opacity(0.7),
+      hourLine: line,
+      cardFill: inset,
+      cardBorder: line,
+      cardInnerGlow: .clear,
+      cardTitle: primary,
+      cardTime: muted,
+      cardFailedFill: Color(hex: isDark ? "402E38" : "FAEDEA"),
       generatingGradient: LinearGradient(
-        colors: [
-          Color(red: 50 / 255, green: 135 / 255, blue: 1).opacity(0.55),
-          Color(red: 1, green: 165 / 255, blue: 153 / 255).opacity(0.36),
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-      ),
+        colors: [blueSoft, inset], startPoint: .leading, endPoint: .trailing),
       pausedCardGradient: LinearGradient(
-        colors: [Color.white.opacity(0.18), Color.white.opacity(0.08)],
-        startPoint: .leading,
-        endPoint: .trailing
-      ),
-      pausedCardText: Color(hex: "DDDDDD"),
+        colors: [inset, inset], startPoint: .leading, endPoint: .trailing),
+      pausedCardText: secondary,
+      weekCardFillOpacity: isDark ? 0.24 : 0.11,
 
-      weekCardFillOpacity: 0.25,
+      rightPanelFill: surface,
+      rightPanelBorder: line,
+      rightPanelShadow: Color.black.opacity(isDark ? 0.12 : 0.025),
+      rightPanelDivider: line,
+      targetsFill: surface,
+      targetsBorder: line,
+      targetsTrackFill: blueSoft,
+      targetsTrackBorder: blueLine,
+      targetsBubbleFill: surface,
+      targetsBubbleBorder: blueLine,
+      targetsInactiveTrack: inset,
+      targetsInactiveFill: inset,
+      summaryCardFill: surface,
+      summaryCardBorder: line,
+      summaryCardShadow: Color.black.opacity(isDark ? 0.08 : 0.025),
+      summaryCardInnerGlow: .clear,
+      summaryValue: blue,
+      donutRingBackground: line,
+      donutCenterFill: surface,
+      donutShadow: Color.black.opacity(0.06),
+      legendSwatchOpacity: isDark ? 0.7 : 0.6,
 
-      rightPanelFill: Color(red: 102 / 255, green: 108 / 255, blue: 161 / 255).opacity(0.18),
-      rightPanelBorder: Color(hex: "4E4E4E"),
-      rightPanelShadow: Color.black.opacity(0.2),
-      rightPanelDivider: Color(hex: "585858"),
-
-      targetsFill: Color(red: 127 / 255, green: 122 / 255, blue: 148 / 255).opacity(0.12),
-      targetsBorder: Color(hex: "585858"),
-      targetsTrackFill: Color.black.opacity(0.3),
-      targetsTrackBorder: Color(hex: "666666"),
-      targetsBubbleFill: Color(hex: "272634"),
-      targetsBubbleBorder: Color(hex: "666666"),
-      targetsInactiveTrack: Color.black.opacity(0.3),
-      targetsInactiveFill: Color.white.opacity(0.08),
-
-      summaryCardFill: Color.white.opacity(0.12),
-      summaryCardBorder: Color(hex: "717171"),
-      summaryCardShadow: .clear,
-      summaryCardInnerGlow: Color.white.opacity(after ? 0.12 : 0.25),
-      summaryValue: Color(hex: "F77952"),
-
-      donutRingBackground: Color.white.opacity(0.2),
-      donutCenterFill: Color(hex: "2B2D44"),
-      donutShadow: Color.black.opacity(0.35),
-      legendSwatchOpacity: 0.6,
-
-      secondaryButtonFill: Color(red: 104 / 255, green: 109 / 255, blue: 138 / 255).opacity(0.4),
-      secondaryButtonBorder: Color(hex: "777777"),
-      secondaryButtonText: Color(hex: "DDDDDD"),
-
-      primaryButtonFill: Color(hex: "D1653E"),
-      primaryButtonBorder: Color(hex: "EA9265"),
-      primaryButtonInnerGlow: Color(red: 1, green: 135 / 255, blue: 77 / 255).opacity(0.9),
+      secondaryButtonFill: surface,
+      secondaryButtonBorder: line,
+      secondaryButtonText: secondary,
+      primaryButtonFill: brandBlue,
+      primaryButtonBorder: brandBlue,
+      primaryButtonInnerGlow: .clear,
       primaryButtonText: .white,
+      popoverFill: surface,
+      popoverBorder: line,
 
-      popoverFill: Color(red: 39 / 255, green: 41 / 255, blue: 58 / 255).opacity(0.92),
-      popoverBorder: Color(hex: "585858"),
-
-      sheetOverlay: Color.black.opacity(0.4),
-      sheetCardFill: Color(red: 127 / 255, green: 122 / 255, blue: 148 / 255).opacity(0.25),
-      sheetCardBorder: Color(hex: "686868"),
-      sheetFocusHeader: Color(hex: "3362E3"),
-      sheetDistractionHeader: Color(hex: "E55A3E"),
-      sheetFocusStatText: Color(hex: "59A6FF"),
-      sheetDistractionStatText: Color(hex: "FF7053"),
-      sheetPanelFill: Color(hex: "6A6A6A").opacity(0.22),
-      sheetPanelBorder: Color(hex: "585858"),
-      sheetInnerBoxFill: Color.black.opacity(0.15),
-      sheetInnerBoxBorder: Color(hex: "444444"),
-      sheetFooterFill: Color(hex: "D6D6D6").opacity(0.2),
+      sheetOverlay: Color.black.opacity(isDark ? 0.4 : 0.16),
+      sheetCardFill: surface,
+      sheetCardBorder: line,
+      sheetFocusHeader: blue,
+      sheetDistractionHeader: distraction,
+      sheetFocusStatText: blue,
+      sheetDistractionStatText: distraction,
+      sheetPanelFill: inset,
+      sheetPanelBorder: line,
+      sheetInnerBoxFill: surface,
+      sheetInnerBoxBorder: line,
+      sheetFooterFill: surface,
       sheetWheelGradient: LinearGradient(
-        stops: [
-          .init(color: Color(hex: "4F4F4F").opacity(0.8), location: 0),
-          .init(color: Color(hex: "787878").opacity(0.8), location: 0.3),
-          .init(color: Color(hex: "999999").opacity(0.8), location: 0.5),
-          .init(color: Color(hex: "787878").opacity(0.8), location: 0.7),
-          .init(color: Color(hex: "4F4F4F").opacity(0.8), location: 1),
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-      ),
-      sheetWheelBorder: Color(hex: "5A5A5A"),
-      sheetWheelDimText: Color(hex: "B7B7B7"),
+        colors: [inset, surface, surface, inset], startPoint: .top, endPoint: .bottom),
+      sheetWheelBorder: line,
+      sheetWheelDimText: muted,
 
-      dailyGridFill: Color(hex: "7F7A94").opacity(0.1),
-      dailyGridBorder: Color(hex: "4E4E4E"),
-      dailyTotalsFill: Color(hex: "ABA8B9").opacity(0.2),
-      dailyEmptyCell: Color.white.opacity(0.08),
-      dailyDistractionTrack: Color.black.opacity(0.2),
-      dailyDistractionTrackBorder: Color(hex: "4D4D4D"),
-      dailyStatValue: Color(hex: "909ECD"),
+      dailyGridFill: surface,
+      dailyGridBorder: line,
+      dailyTotalsFill: inset,
+      dailyEmptyCell: line,
+      dailyDistractionTrack: inset,
+      dailyDistractionTrackBorder: line,
+      dailyStatValue: secondary,
       standupCardGradient: LinearGradient(
-        stops: [
-          .init(color: Color(hex: "807B93").opacity(0.152), location: 0),
-          .init(color: Color(hex: "DEDAEF").opacity(0.152), location: 0.5),
-          .init(color: Color(hex: "807B93").opacity(0.152), location: 1),
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-      ),
-      standupCardBorder: Color(hex: "4E4E4E"),
-      standupBlockersFill: Color(hex: "ABA8B9").opacity(0.2),
-      standupBlockersBorder: Color(hex: "4E4E4E"),
-
-      inputFill: Color.white.opacity(0.1),
-      inputBorder: Color(hex: "666666"),
+        colors: [surface, surface], startPoint: .leading, endPoint: .trailing),
+      standupCardBorder: line,
+      standupBlockersFill: inset,
+      standupBlockersBorder: line,
+      inputFill: surface,
+      inputBorder: line,
 
       chatBackground: AnyShapeStyle(Color.clear),
-      chatSoftAccentFill: Color(hex: "F3854B").opacity(0.18),
-      chatSoftAccentBorder: Color(hex: "F77952").opacity(0.4),
-      chatSidePanelFill: Color(hex: "272A3C"),
-      chatSidePanelHeaderFill: Color.white.opacity(0.06),
-      chatCodeFill: Color.black.opacity(0.25)
+      chatSoftAccentFill: blueSoft,
+      chatSoftAccentBorder: blueLine,
+      chatSidePanelFill: surface,
+      chatSidePanelHeaderFill: inset,
+      chatCodeFill: inset
     )
   }
 }
@@ -707,7 +447,7 @@ extension Color {
 
 // MARK: - Shared shapes
 
-/// Faux "inset box-shadow" glow used all over the Figma: a soft stroke drawn
+/// Optional inset glow for shared controls: a soft stroke drawn
 /// just inside the shape's edge.
 struct InnerGlow<S: InsettableShape>: View {
   let shape: S

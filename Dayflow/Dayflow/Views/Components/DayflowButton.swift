@@ -19,6 +19,8 @@ struct DayflowButton: View {
   @State private var isHovered = false
   @State private var showPulse = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dayflowTheme) private var theme
+  @Environment(\.isEnabled) private var isEnabled
 
   // Animation constants following Emil Kowalski principles
   private let hoverAnimation = Animation.spring(
@@ -56,17 +58,17 @@ struct DayflowButton: View {
       }
     }) {
       Text(title)
-        .font(.custom("Figtree", size: fontSize))
+        .font(.system(size: fontSize))
         .fontWeight(.semibold)
-        .foregroundColor(isSubtle ? .black.opacity(0.7) : .white)
+        .foregroundColor(isSubtle ? theme.secondaryButtonText : theme.primaryButtonText)
         .frame(width: width, height: 56, alignment: .center)
         .background(
           ZStack {
             // Main background
             if isSubtle {
-              Color.white.opacity(0.9)
+              theme.secondaryButtonFill
             } else {
-              Color(red: 1, green: 0.42, blue: 0.02)
+              theme.primaryButtonFill
             }
 
             // Pulse effect
@@ -75,7 +77,7 @@ struct DayflowButton: View {
                 if isSubtle {
                   Color.gray.opacity(0.1)
                 } else {
-                  Color(red: 1, green: 0.42, blue: 0.02)
+                  theme.primaryButtonFill
                     .opacity(0.3)
                 }
               }
@@ -86,35 +88,20 @@ struct DayflowButton: View {
           }
         )
         .cornerRadius(12)
-        // Enhanced shadows with hover state
         .shadow(
-          color: .black.opacity(isHovered ? 0.35 : 0.25),
-          radius: isHovered ? 0.5 : 0.25,
+          color: theme.accent.opacity(isSubtle ? 0 : (isHovered ? 0.16 : 0.10)),
+          radius: isHovered ? 8 : 5,
           x: 0,
-          y: isHovered ? 1 : 0.5
-        )
-        .shadow(
-          color: .black.opacity(isHovered ? 0.22 : 0.16),
-          radius: isHovered ? 1 : 0.5,
-          x: 0,
-          y: isHovered ? 2 : 1
-        )
-        .shadow(
-          color: .black.opacity(isHovered ? 0.4 : 0.3),
-          radius: isHovered ? 10 : 6,
-          x: 0,
-          y: isHovered ? 4 : 2
+          y: 3
         )
         .overlay(
           RoundedRectangle(cornerRadius: 12)
-            .inset(by: 0.75)
-            .stroke(
-              isSubtle
-                ? Color.black.opacity(isHovered ? 0.15 : 0.1)
-                : .white.opacity(isHovered ? 0.25 : 0.17),
-              lineWidth: 1.5
+            .strokeBorder(
+              isSubtle ? theme.secondaryButtonBorder : theme.primaryButtonBorder,
+              lineWidth: 1
             )
         )
+        .opacity(isEnabled ? 1 : 0.5)
         .dayflowPressScale(
           isPressed,
           enabled: !reduceMotion,

@@ -1,21 +1,5 @@
 import SwiftUI
 
-private enum SidebarMetrics {
-  static let itemSpacing: CGFloat = 5.25
-  static let scale: CGFloat = 1.1
-  static let itemSize: CGFloat = 56 * scale
-  static let selectedBackgroundSize: CGFloat = 30 * scale
-  static let selectedBackgroundRadius: CGFloat = 10
-  static let iconSize: CGFloat = 16 * scale
-  static let fallbackSymbolSize: CGFloat = 15 * scale
-  static let badgeSize: CGFloat = 8 * scale
-  static let badgeOffsetX: CGFloat = 10 * scale
-  static let badgeOffsetY: CGFloat = -10 * scale
-  static let iconContainerSize: CGFloat = 34 * scale
-  static let iconLabelSpacing: CGFloat = 3
-  static let labelFontSize: CGFloat = 11 * scale
-}
-
 enum SidebarIcon: String, CaseIterable {
   case timeline
   case settings
@@ -45,99 +29,77 @@ struct SidebarView: View {
   @Binding var selectedIcon: SidebarIcon
 
   var body: some View {
-    VStack(alignment: .center, spacing: SidebarMetrics.itemSpacing) {
+    VStack(alignment: .leading, spacing: 8) {
       ForEach(SidebarIcon.allCases, id: \.self) { icon in
-        SidebarIconButton(
-          icon: icon,
-          isSelected: selectedIcon == icon,
-          action: { selectedIcon = icon }
-        )
-        .frame(width: SidebarMetrics.itemSize, height: SidebarMetrics.itemSize)
+        SidebarIconButton(icon: icon, isSelected: selectedIcon == icon) {
+          selectedIcon = icon
+        }
       }
     }
+    .padding(.leading, 14)
   }
-
 }
 
 struct SidebarIconButton: View {
   @Environment(\.dayflowTheme) private var theme
-
   let icon: SidebarIcon
   let isSelected: Bool
-  var showBadge: Bool = false
+  var showBadge = false
   let action: () -> Void
-
-  private var iconColor: Color {
-    isSelected ? theme.sidebarIconActive : theme.sidebarIcon
-  }
-
-  private var labelColor: Color {
-    isSelected ? theme.sidebarLabelActive : theme.sidebarLabel
-  }
 
   var body: some View {
     Button(action: action) {
-      VStack(spacing: SidebarMetrics.iconLabelSpacing) {
-        iconBox
-
+      HStack(spacing: 12) {
+        Image(systemName: icon == .timeline ? "rectangle.stack" : "gearshape")
+          .font(.system(size: 15, weight: .medium))
+          .frame(width: 18)
         Text(icon.displayName)
-          .font(.custom("Figtree", size: SidebarMetrics.labelFontSize))
-          .lineLimit(1)
-          .minimumScaleFactor(0.75)
-          .foregroundColor(labelColor)
+          .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+        Spacer(minLength: 0)
+        if showBadge { Circle().frame(width: 5, height: 5) }
       }
-      .frame(width: SidebarMetrics.itemSize, height: SidebarMetrics.itemSize)
+      .foregroundStyle(isSelected ? theme.sidebarLabelActive : theme.sidebarLabel)
+      .padding(.leading, 18)
+      .padding(.trailing, 12)
+      .frame(height: 46)
+      .background {
+        if isSelected {
+          SidebarSelectionShape()
+            .fill(theme.panelSolid)
+            .allowsHitTesting(false)
+        }
+      }
       .contentShape(Rectangle())
     }
-    .buttonStyle(DayflowPressScaleButtonStyle())
-    .contentShape(Rectangle())
-    .hoverScaleEffect(scale: 1.02)
+    .buttonStyle(.plain)
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
     .pointingHandCursor()
   }
+}
 
-  private var iconBox: some View {
-    let shape = RoundedRectangle(
-      cornerRadius: SidebarMetrics.selectedBackgroundRadius, style: .continuous)
-
-    return ZStack {
-      if isSelected {
-        shape
-          .fill(theme.sidebarSelectedFill)
-          .overlay(InnerGlow(shape: shape, color: theme.sidebarSelectedInnerGlow, radius: 3))
-          .overlay(shape.strokeBorder(theme.sidebarSelectedBorder, lineWidth: 0.58))
-          .shadow(color: theme.sidebarSelectedShadow, radius: 2, x: 0, y: 1)
-          .frame(
-            width: SidebarMetrics.selectedBackgroundSize,
-            height: SidebarMetrics.selectedBackgroundSize
-          )
-      }
-
-      iconImage
-        .frame(width: SidebarMetrics.iconSize, height: SidebarMetrics.iconSize)
-
-      if showBadge {
-        Circle()
-          .fill(theme.accent)
-          .frame(width: SidebarMetrics.badgeSize, height: SidebarMetrics.badgeSize)
-          .offset(x: SidebarMetrics.badgeOffsetX, y: SidebarMetrics.badgeOffsetY)
-      }
-    }
-    .frame(width: SidebarMetrics.iconContainerSize, height: SidebarMetrics.iconContainerSize)
-  }
-
-  @ViewBuilder
-  private var iconImage: some View {
-    if let asset = icon.assetName {
-      Image(asset)
-        .resizable()
-        .interpolation(.high)
-        .renderingMode(.template)
-        .aspectRatio(contentMode: .fit)
-        .foregroundColor(iconColor)
-    } else if let sys = icon.systemNameFallback {
-      Image(systemName: sys)
-        .font(.system(size: SidebarMetrics.fallbackSymbolSize))
-        .foregroundColor(iconColor)
-    }
+private struct SidebarSelectionShape: Shape {
+  func path(in rect: CGRect) -> Path {
+    let radius: CGFloat = min(12, min(rect.width, rect.height) / 2)
+    var path = Path()
+    path.move(to: CGPoint(x: rect.minX + radius, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.maxX - radius, y: rect.minY))
+    // Extend into the sidebar above and below the row to meet the content panel smoothly.
+    path.addArc(
+      tangent1End: CGPoint(x: rect.maxX, y: rect.minY),
+      tangent2End: CGPoint(x: rect.maxX, y: rect.minY - radius), radius: radius)
+    path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY + radius))
+    path.addArc(
+      tangent1End: CGPoint(x: rect.maxX, y: rect.maxY),
+      tangent2End: CGPoint(x: rect.maxX - radius, y: rect.maxY), radius: radius)
+    path.addLine(to: CGPoint(x: rect.minX + radius, y: rect.maxY))
+    path.addArc(
+      tangent1End: CGPoint(x: rect.minX, y: rect.maxY),
+      tangent2End: CGPoint(x: rect.minX, y: rect.maxY - radius), radius: radius)
+    path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + radius))
+    path.addArc(
+      tangent1End: CGPoint(x: rect.minX, y: rect.minY),
+      tangent2End: CGPoint(x: rect.minX + radius, y: rect.minY), radius: radius)
+    path.closeSubpath()
+    return path
   }
 }

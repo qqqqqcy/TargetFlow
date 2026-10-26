@@ -7,20 +7,20 @@ import SwiftUI
 
 // Compact month calendar popover (Figma 4291:4828).
 // Single-variant rendering: every day is a cell in a flat grid, with the
-// selected date shown as an 18pt orange circle. No week-pill; week-mode
+// selected date shown as a blue circle. No week-pill; week-mode
 // indication is conveyed elsewhere in the UI (the Day/Week toggle + the
 // header title). Self-contained: tracks its own displayed month, reports
 // picks via `onSelect`.
 struct TimelineCalendarPopover: View {
-  static let horizontalPadding: CGFloat = 28
+  static let horizontalPadding: CGFloat = 16
   static let topPadding: CGFloat = 20
   static let bottomPadding: CGFloat = 20
   static let contentSpacing: CGFloat = 16
-  static let columnWidth: CGFloat = 30
-  static let columnSpacing: CGFloat = 12
+  static let columnWidth: CGFloat = 24
+  static let columnSpacing: CGFloat = 3
   static let weekdayHeight: CGFloat = 20
   static let dayCellHeight: CGFloat = 24
-  static let rowSpacing: CGFloat = 12
+  static let rowSpacing: CGFloat = 5
   static let selectedCircleSize: CGFloat = 24
   static let selectedWeekHighlightHeight: CGFloat = 30
   static let contentWidth: CGFloat = (columnWidth * 7) + (columnSpacing * 6)
@@ -34,6 +34,8 @@ struct TimelineCalendarPopover: View {
   let highlightsSelectedWeek: Bool
   let onSelect: (Date) -> Void
 
+  let isEmbedded: Bool
+
   @State private var displayMonth: Date
 
   // Monday-first ordering matches the timeline's week model, so each row in the
@@ -41,6 +43,7 @@ struct TimelineCalendarPopover: View {
   private static let mondayCalendar: Calendar = {
     var c = Calendar(identifier: .gregorian)
     c.timeZone = .autoupdatingCurrent
+    c.locale = .autoupdatingCurrent
     c.firstWeekday = 2
     return c
   }()
@@ -56,13 +59,15 @@ struct TimelineCalendarPopover: View {
     selectedDate: Date,
     canSelectFutureDates: Bool,
     highlightsSelectedWeek: Bool,
-    onSelect: @escaping (Date) -> Void
+    onSelect: @escaping (Date) -> Void,
+    isEmbedded: Bool = false
   ) {
     self._isPresented = isPresented
     self.selectedDate = selectedDate
     self.canSelectFutureDates = canSelectFutureDates
     self.highlightsSelectedWeek = highlightsSelectedWeek
     self.onSelect = onSelect
+    self.isEmbedded = isEmbedded
 
     // Seed display month to the month containing the current selection.
     let calendar = Self.mondayCalendar
@@ -72,38 +77,37 @@ struct TimelineCalendarPopover: View {
   }
 
   var body: some View {
+    Group {
+      if isEmbedded {
+        calendarContent
+      } else {
+        calendarContent
+          .padding(Self.horizontalPadding)
+          .dayflowPanel()
+          .shadow(color: theme.panelShadow, radius: 12, y: 4)
+      }
+    }
+    .onChange(of: selectedDate) { _, date in
+      let components = Self.mondayCalendar.dateComponents([.year, .month], from: date)
+      displayMonth = Self.mondayCalendar.date(from: components) ?? date
+    }
+  }
+
+  private var calendarContent: some View {
     let weeks = weeksToDisplay()
 
-    VStack(alignment: .leading, spacing: Self.contentSpacing) {
+    return VStack(alignment: .leading, spacing: Self.contentSpacing) {
       monthHeader
       weekdayRow
       dateGrid(weeks: weeks)
     }
     .frame(width: Self.contentWidth, alignment: .leading)
-    .padding(.horizontal, Self.horizontalPadding)
-    .padding(.top, Self.topPadding)
-    .padding(.bottom, Self.bottomPadding)
-    .frame(width: Self.preferredWidth, alignment: .topLeading)
-    .background {
-      ZStack {
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-          .fill(.ultraThinMaterial)
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
-          .fill(theme.popoverFill)
-      }
-    }
-    .overlay {
-      RoundedRectangle(cornerRadius: 8, style: .continuous)
-        .strokeBorder(theme.popoverBorder, lineWidth: 1)
-    }
-    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    .shadow(color: .black.opacity(0.16), radius: 4, x: 0, y: 1)
   }
 
   private var monthHeader: some View {
     HStack(spacing: 0) {
       Text(Self.monthYearFormatter.string(from: displayMonth))
-        .font(.custom("Figtree", size: 14))
+        .font(.system(size: 12, weight: .semibold))
         .foregroundColor(theme.textPrimary)
         .lineLimit(1)
 
@@ -145,7 +149,7 @@ struct TimelineCalendarPopover: View {
     return HStack(spacing: Self.columnSpacing) {
       ForEach(labels.indices, id: \.self) { i in
         Text(labels[i])
-          .font(.custom("InstrumentSerif-Regular", size: 12))
+          .font(.system(size: 10))
           .foregroundColor(theme.textPrimary)
           .frame(width: Self.columnWidth, height: Self.weekdayHeight)
       }
@@ -214,7 +218,7 @@ struct TimelineCalendarPopover: View {
             .frame(width: Self.selectedCircleSize, height: Self.selectedCircleSize)
         }
         Text(day.label)
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 11))
           .foregroundColor(foregroundColor)
       }
       .frame(width: Self.columnWidth, height: Self.dayCellHeight)

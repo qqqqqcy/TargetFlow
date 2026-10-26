@@ -301,7 +301,7 @@ struct CanvasTimelineDataView: View {
       ForEach(CanvasConfig.startHour..<CanvasConfig.endHour, id: \.self) { hour in
         let hourIndex = hour - CanvasConfig.startHour
         Text(formatHour(hour))
-          .font(.custom("Figtree", size: timeLabelFontSize))
+          .font(.system(size: timeLabelFontSize))
           .foregroundColor(hourLabelColor(for: hour))
           .padding(.trailing, 5)
           .padding(.top, 2)
@@ -511,17 +511,17 @@ struct CanvasTimelineDataView: View {
       alignment: .leading
     )
     .background(
-      RoundedRectangle(cornerRadius: 3, style: .continuous)
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
         .fill(baseColor)
         .overlay(
-          RoundedRectangle(cornerRadius: 3, style: .continuous)
+          RoundedRectangle(cornerRadius: 8, style: .continuous)
             .fill(gradient)
             .opacity(gradientOpacity)
         )
     )
-    .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     .overlay(
-      RoundedRectangle(cornerRadius: 3, style: .continuous)
+      RoundedRectangle(cornerRadius: 8, style: .continuous)
         .inset(by: 0.375)
         .stroke(strokeColor, lineWidth: strokeWidth)
     )
@@ -546,12 +546,12 @@ struct CanvasTimelineDataView: View {
       NextCardGenerationStatusText()
     }
     .font(
-      Font.custom("Figtree", size: 12)
+      Font.system(size: 12)
         .weight(.semibold)
     )
     .lineSpacing(2.4)
     .tracking(0)
-    .foregroundColor(.white)
+    .foregroundColor(theme.accent)
     .lineLimit(1)
     .truncationMode(.tail)
   }
@@ -580,7 +580,7 @@ struct CanvasTimelineDataView: View {
       Text(message)
     }
     .font(
-      Font.custom("Figtree", size: 12)
+      Font.system(size: 12)
         .weight(.regular)
     )
     .lineSpacing(2.4)
@@ -965,7 +965,8 @@ private struct NextCardGenerationStatusText: View {
         Text("Generating your next card")
       }
     }
-    .help("Countdown until enough recording data is collected. AI analysis may take additional time.")
+    .help(
+      "Countdown until enough recording data is collected. AI analysis may take additional time.")
   }
 }
 

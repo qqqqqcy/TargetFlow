@@ -163,7 +163,7 @@ struct DaySummaryView: View {
 
           distractionsSection
         }
-        .frame(width: Design.contentWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, Design.topPadding)
         .padding(.bottom, Design.bottomPadding)
         .padding(.horizontal, Design.horizontalPadding)
@@ -466,7 +466,7 @@ struct DaySummaryView: View {
     VStack(alignment: .leading, spacing: Design.donutSectionSpacing) {
       VStack(alignment: .leading, spacing: Design.headerSpacing) {
         Text("Your day so far")
-          .font(.custom("InstrumentSerif-Regular", size: 24))
+          .font(.system(size: 24, weight: .semibold))
           .foregroundColor(theme.textPrimary)
       }
 
@@ -493,7 +493,7 @@ struct DaySummaryView: View {
         .frame(width: 140, height: 140)
 
       Text("No activity data yet")
-        .font(.custom("Figtree", size: 12))
+        .font(.system(size: 12))
         .foregroundColor(theme.textSecondary)
     }
     .padding(.vertical, 20)

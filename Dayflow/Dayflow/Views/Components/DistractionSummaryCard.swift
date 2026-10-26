@@ -31,25 +31,18 @@ struct DistractionSummaryCard: View {
   }
 
   private enum Design {
-    static let contentWidth: CGFloat = 293
     static let sectionSpacing: CGFloat = 16
-    static let rowSpacing: CGFloat = 27
+    static let rowSpacing: CGFloat = 16
     static let statsSpacing: CGFloat = 24
-    static let statsWidth: CGFloat = 130
 
-    static let donutSize: CGFloat = 136
-    static let donutInnerMaxSize: CGFloat = 136
+    static let donutSize: CGFloat = 120
+    static let donutInnerMaxSize: CGFloat = 120
     static let donutInnerBottomInset: CGFloat = 4.868
 
-    static let donutGradientStart = Color(hex: "FFE3DE")
-    static let donutGradientEnd = Color(hex: "FF694B")
-
-    static let distractedTextColor = Color(hex: "FF694B")
-
-    static let labelFont = Font.custom("InstrumentSerif-Regular", size: 14)
-    static let valueFont = Font.custom("InstrumentSerif-Regular", size: 20)
-    static let patternTitleFont = Font.custom("Figtree", size: 12).weight(.bold)
-    static let patternBodyFont = Font.custom("Figtree", size: 12)
+    static let labelFont = Font.system(size: 14, weight: .semibold)
+    static let valueFont = Font.system(size: 20, weight: .semibold)
+    static let patternTitleFont = Font.system(size: 12).weight(.bold)
+    static let patternBodyFont = Font.system(size: 12)
   }
 
   var body: some View {
@@ -65,7 +58,7 @@ struct DistractionSummaryCard: View {
         patternBlock
       }
     }
-    .frame(width: Design.contentWidth, alignment: .center)
+    .frame(maxWidth: .infinity, alignment: .center)
   }
 
   private var donut: some View {
@@ -88,9 +81,9 @@ struct DistractionSummaryCard: View {
           .fill(
             LinearGradient(
               stops: [
-                .init(color: Design.donutGradientStart, location: 0),
-                .init(color: Design.donutGradientEnd, location: 0.78306),
-                .init(color: Design.donutGradientEnd, location: 1),
+                .init(color: theme.statusDistracted.opacity(0.25), location: 0),
+                .init(color: theme.statusDistracted.opacity(0.75), location: 0.78306),
+                .init(color: theme.statusDistracted.opacity(0.75), location: 1),
               ],
               startPoint: .leading,
               endPoint: .trailing
@@ -115,10 +108,10 @@ struct DistractionSummaryCard: View {
       statText(
         title: String(localized: "Total time distracted"),
         value: totalDistracted,
-        color: Design.distractedTextColor
+        color: theme.statusDistracted
       )
     }
-    .frame(width: Design.statsWidth, alignment: .leading)
+    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
   }
 
   private func statText(title: String, value: String, color: Color) -> some View {
@@ -130,6 +123,7 @@ struct DistractionSummaryCard: View {
         .font(Design.valueFont)
         .foregroundColor(color)
     }
+    .fixedSize(horizontal: false, vertical: true)
     .lineSpacing(2)
   }
 
@@ -151,7 +145,7 @@ struct DistractionSummaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .fixedSize(horizontal: false, vertical: true)
     }
-    .frame(width: Design.contentWidth, alignment: .leading)
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 

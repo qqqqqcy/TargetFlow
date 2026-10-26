@@ -149,8 +149,7 @@ final class NotificationService: NSObject, ObservableObject {
         TargetPreferences.notificationStyle() == .notice, shouldSend()
       else { return false }
       let request = Self.targetNoticeRequest(
-        identifier: identifier, body: body, soundEnabled: TargetPreferences.soundEnabled(),
-        sound: TargetPreferences.reminderSound())
+        identifier: identifier, body: body)
       try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
         center.add(request) { error in
           if let error { continuation.resume(throwing: error) }
@@ -162,12 +161,13 @@ final class NotificationService: NSObject, ObservableObject {
   }
 
   static func targetNoticeRequest(
-    identifier: String, body: String, soundEnabled: Bool, sound: TargetReminderSound
+    identifier: String, body: String
   ) -> UNNotificationRequest {
     let content = UNMutableNotificationContent()
     content.title = "当前目标提醒"
     content.body = body
-    content.sound = soundEnabled ? UNNotificationSound(named: .init(sound.filename)) : nil
+    // System notices use macOS sound preferences independently of notch game audio.
+    content.sound = .default
     return UNNotificationRequest(
       identifier: targetNotificationPrefix + identifier, content: content, trigger: nil)
   }
@@ -516,7 +516,6 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
     let isTarget = notification.request.identifier.hasPrefix(Self.targetNotificationPrefix)
-    let sound: UNNotificationPresentationOptions = TargetPreferences.soundEnabled() ? [.sound] : []
-    completionHandler(isTarget ? sound.union([.banner]) : [])
+    completionHandler(isTarget ? [.banner, .sound] : [])
   }
 }

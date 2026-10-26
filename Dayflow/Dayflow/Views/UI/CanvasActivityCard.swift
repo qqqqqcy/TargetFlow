@@ -67,7 +67,7 @@ struct CanvasActivityCard: View {
 
   private var backupIndicator: some View {
     Text("!")
-      .font(Font.custom("Figtree", size: 9).weight(.semibold))
+      .font(Font.system(size: 9).weight(.semibold))
       .foregroundColor(theme.textSecondary)
       .frame(width: 14, height: 14)
       .background(
@@ -85,9 +85,9 @@ struct CanvasActivityCard: View {
 
   private var selectionStroke: Color {
     if isSystemCategory {
-      return Color(red: 1, green: 0.16, blue: 0.11)
+      return theme.statusDistracted
     }
-    return style.accent
+    return theme.accent
   }
 
   var body: some View {
@@ -103,7 +103,7 @@ struct CanvasActivityCard: View {
               HStack(alignment: .top, spacing: 8) {
                 Text(displayTitle)
                   .font(
-                    Font.custom("Figtree", size: fontSize)
+                    Font.system(size: fontSize)
                       .weight(fontWeight.fontWeight)
                   )
                   .foregroundColor(style.text)
@@ -112,7 +112,7 @@ struct CanvasActivityCard: View {
 
                 Text(time)
                   .font(
-                    Font.custom("Figtree", size: secondaryFontSize)
+                    Font.system(size: secondaryFontSize)
                       .weight(.medium)
                   )
                   .foregroundColor(style.time)
@@ -122,7 +122,7 @@ struct CanvasActivityCard: View {
 
               if let statusLine = statusLine {
                 Text(statusLine)
-                  .font(Font.custom("Figtree", size: secondaryFontSize))
+                  .font(Font.system(size: secondaryFontSize))
                   .foregroundColor(theme.textSecondary)
                   .lineLimit(1)
                   .truncationMode(.tail)
@@ -143,7 +143,7 @@ struct CanvasActivityCard: View {
 
             Text(title)
               .font(
-                Font.custom("Figtree", size: fontSize)
+                Font.system(size: fontSize)
                   .weight(fontWeight.fontWeight)
               )
               .foregroundColor(style.text)
@@ -157,7 +157,7 @@ struct CanvasActivityCard: View {
 
               Text(time)
                 .font(
-                  Font.custom("Figtree", size: secondaryFontSize)
+                  Font.system(size: secondaryFontSize)
                     .weight(.medium)
                 )
                 .foregroundColor(style.time)
@@ -176,48 +176,50 @@ struct CanvasActivityCard: View {
         maxHeight: height,
         alignment: isCompactCard ? .leading : .topLeading
       )
-      .background(isFailedCard ? theme.cardFailedFill : theme.cardFill)
+      .background(
+        isFailedCard ? theme.cardFailedFill : (isSelected ? theme.accentSoft : theme.cardFill)
+      )
       .background(theme.panelSolid)
-      .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+      .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
       .overlay {
         if !isFailedCard {
           InnerGlow(
-            shape: RoundedRectangle(cornerRadius: 2, style: .continuous),
+            shape: RoundedRectangle(cornerRadius: 8, style: .continuous),
             color: theme.cardInnerGlow,
             radius: 3
           )
         }
       }
       .overlay(
-        RoundedRectangle(cornerRadius: 2, style: .continuous)
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
           .inset(by: 0.25)
           .stroke(
-            isFailedCard ? Color(red: 1, green: 0.16, blue: 0.11) : theme.cardBorder,
+            isFailedCard ? theme.statusDistracted : theme.cardBorder,
             style: isFailedCard
-              ? StrokeStyle(lineWidth: 0.5, dash: [2.5, 2.5]) : StrokeStyle(lineWidth: 0.25)
+              ? StrokeStyle(lineWidth: 0.5, dash: [2.5, 2.5]) : StrokeStyle(lineWidth: 0.75)
           )
       )
       .overlay(alignment: .leading) {
         if !isFailedCard {
           UnevenRoundedRectangle(
-            topLeadingRadius: 2,
-            bottomLeadingRadius: 2,
+            topLeadingRadius: 8,
+            bottomLeadingRadius: 8,
             bottomTrailingRadius: 0,
             topTrailingRadius: 0,
             style: .continuous
           )
           .fill(style.accent)
-          .frame(width: 6)
+          .frame(width: 3)
         }
       }
       // Selection halo for the active activity
       .overlay(
-        RoundedRectangle(cornerRadius: 2, style: .continuous)
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
           .stroke(selectionStroke, lineWidth: 1.5)
           .opacity(isSelected ? 1 : 0)
       )
       .overlay(
-        RoundedRectangle(cornerRadius: 2, style: .continuous)
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
           .stroke(Color.black.opacity(isHovering ? 0.08 : 0), lineWidth: 1)
       )
       .shadow(

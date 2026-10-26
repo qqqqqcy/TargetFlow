@@ -1,83 +1,44 @@
 import SwiftUI
 
 // MARK: - Settings design system
-//
-// One visual language, enforced here. If you find yourself reaching outside
-// these tokens / components while building a settings screen, stop and ask
-// whether what you're about to build needs its own grammar or whether an
-// existing primitive can carry the weight. Almost always the latter.
-//
-// Principles:
-//   1. The warm paper background IS the surface. No cards on top.
-//   2. Hierarchy from typography + opacity, not borders + backgrounds.
-//   3. One accent color (ink brown) for everything that needs emphasis.
-//   4. Exactly three button treatments. No one-offs.
-//   5. Rows always read label-left, control-right. Always.
 
-// MARK: - Tokens
-
+// Shared blue accents, neutral surfaces, and readable light/dark text.
 enum SettingsStyle {
-  // Spacing
-  static let sectionSpacing: CGFloat = 44
-  static let rowVerticalPadding: CGFloat = 14
+  static let sectionSpacing: CGFloat = 16
+  static let rowVerticalPadding: CGFloat = 13
 
-  // Type colors (resolve per appearance; dark values mirror the timeline tokens)
-  static let text = Color.dayflowAdaptive(
-    light: NSColor.black.withAlphaComponent(0.9),
-    dark: NSColor.white.withAlphaComponent(0.92))
-  static let secondary = Color.dayflowAdaptive(
-    light: NSColor.black.withAlphaComponent(0.55),
-    dark: NSColor.white.withAlphaComponent(0.6))
-  static let meta = Color.dayflowAdaptive(
-    light: NSColor.black.withAlphaComponent(0.4),
-    dark: NSColor.white.withAlphaComponent(0.45))
+  private static func adaptive(_ light: UInt32, _ dark: UInt32) -> Color {
+    func color(_ hex: UInt32) -> NSColor {
+      NSColor(
+        red: CGFloat((hex >> 16) & 0xFF) / 255,
+        green: CGFloat((hex >> 8) & 0xFF) / 255,
+        blue: CGFloat(hex & 0xFF) / 255,
+        alpha: 1)
+    }
+    return Color.dayflowAdaptive(light: color(light), dark: color(dark))
+  }
 
-  // Structure
-  static let divider = Color.dayflowAdaptive(
-    light: NSColor.black.withAlphaComponent(0.08),
-    dark: NSColor.white.withAlphaComponent(0.1))
-
-  // Subtle fills (secondary buttons, active tab pill, neutral badges)
-  static let subtleFill = Color.dayflowAdaptive(
-    light: NSColor.black.withAlphaComponent(0.05),
-    dark: NSColor.white.withAlphaComponent(0.08))
-
-  static let editorFill = Color.dayflowAdaptive(
-    light: NSColor.white.withAlphaComponent(0.7),
-    dark: NSColor.black.withAlphaComponent(0.18))
-  static let editorBorder = Color.dayflowAdaptive(
-    light: NSColor.black.withAlphaComponent(0.12),
-    dark: NSColor.white.withAlphaComponent(0.12))
-
-  // The one accent — used for primary buttons, active tab pill, progress
-  // fills, inline links, focused states. Deliberately the only branded
-  // color on this surface. Ink brown in light; the Figma peach in dark.
-  static let ink = Color.dayflowAdaptive(
-    light: NSColor(red: 0.25, green: 0.17, blue: 0, alpha: 1),
-    dark: NSColor(red: 1, green: 0.64, blue: 0.47, alpha: 1))
-
-  // Filled primary button. Ink in light; the Figma confirm orange in dark so
-  // white label text stays readable.
-  static let primaryButtonFill = Color.dayflowAdaptive(
-    light: NSColor(red: 0.25, green: 0.17, blue: 0, alpha: 1),
-    dark: NSColor(red: 0.82, green: 0.4, blue: 0.24, alpha: 1))
-
-  // Destructive — only for red-stroked confirm buttons and error copy.
-  static let destructive = Color(red: 0.76, green: 0.19, blue: 0.19)
-
-  // Status dots (paired with 13pt labels — the dot carries the color, the
-  // label carries the word).
-  static let statusGood = Color(red: 0.25, green: 0.62, blue: 0.32)
-  static let statusIdle = Color.black.opacity(0.3)
-  static let statusWarn = Color(red: 0.86, green: 0.6, blue: 0.1)
-  static let statusBad = Color(red: 0.76, green: 0.19, blue: 0.19)
+  static let text = adaptive(0x202D43, 0xE7EDF8)
+  static let secondary = adaptive(0x62728C, 0xB1BDD1)
+  static let meta = adaptive(0x73839C, 0x94A3BB)
+  static let divider = adaptive(0xE5EBF4, 0x303F57)
+  static let subtleFill = adaptive(0xF1F5FB, 0x25334B)
+  static let surface = adaptive(0xFFFFFF, 0x1D293D)
+  static let canvas = adaptive(0xF6F8FB, 0x162235)
+  static let editorFill = adaptive(0xF6F8FB, 0x152136)
+  static let editorBorder = adaptive(0xDCE5F1, 0x3A4C69)
+  static let ink = adaptive(0x2869EF, 0x82ADFF)
+  static let primaryButtonFill = adaptive(0x2869EF, 0x2869EF)
+  static let destructive = adaptive(0xB85050, 0xED9999)
+  static let statusGood = adaptive(0x428471, 0x87C3AD)
+  static let statusIdle = secondary
+  static let statusWarn = adaptive(0x9A732D, 0xDBBB7B)
+  static let statusBad = destructive
 }
 
 // MARK: - SettingsSection
 //
-// A section is a title (with optional subtitle) and content beneath. No
-// container chrome — the paper is the container. Optional right-rail
-// trailing view for metadata ("Last updated 3m ago", totals, badges).
+// A section groups related preferences in a quiet, outlined surface.
 
 struct SettingsSection<Content: View, Trailing: View>: View {
   let title: String
@@ -102,12 +63,12 @@ struct SettingsSection<Content: View, Trailing: View>: View {
       HStack(alignment: .firstTextBaseline, spacing: 16) {
         VStack(alignment: .leading, spacing: 4) {
           Text(title)
-            .font(.custom("Figtree", size: 17))
+            .font(.system(size: 17))
             .fontWeight(.semibold)
             .foregroundColor(SettingsStyle.text)
           if let subtitle {
             Text(subtitle)
-              .font(.custom("Figtree", size: 12))
+              .font(.system(size: 12))
               .foregroundColor(SettingsStyle.secondary)
               .fixedSize(horizontal: false, vertical: true)
           }
@@ -118,6 +79,13 @@ struct SettingsSection<Content: View, Trailing: View>: View {
       .padding(.bottom, 14)
 
       content()
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(SettingsStyle.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 14, style: .continuous)
+        .strokeBorder(SettingsStyle.divider, lineWidth: 1)
     }
   }
 }
@@ -158,13 +126,13 @@ struct SettingsRow<Trailing: View>: View {
       HStack(alignment: .center, spacing: 16) {
         VStack(alignment: .leading, spacing: 3) {
           Text(label)
-            .font(.custom("Figtree", size: 14))
+            .font(.system(size: 14))
             .fontWeight(.semibold)
             .foregroundColor(SettingsStyle.text)
             .fixedSize(horizontal: false, vertical: true)
           if let subtitle {
             Text(subtitle)
-              .font(.custom("Figtree", size: 12))
+              .font(.system(size: 12))
               .foregroundColor(SettingsStyle.secondary)
               .fixedSize(horizontal: false, vertical: true)
           }
@@ -192,16 +160,8 @@ extension SettingsRow where Trailing == EmptyView {
 
 // MARK: - Buttons
 //
-// EXACTLY THREE BUTTON TREATMENTS. If you need a fourth, you're wrong.
-//
-//   SettingsPrimaryButton   — filled ink. One per section, for the action
-//                             that defines the section.
-//   SettingsSecondaryButton — subtle black.opacity(0.05) fill, ink text.
-//                             For alternative actions next to or beneath
-//                             a primary (Save/Reset, Open folder, Edit).
-//   SettingsLinkButton      — plain ink text + optional arrow glyph. For
-//                             navigation away from this surface (release
-//                             notes, external docs).
+// Primary actions use blue; secondary actions use an outlined surface;
+// inline links share the same accent.
 
 struct SettingsPrimaryButton: View {
   let title: String
@@ -222,7 +182,7 @@ struct SettingsPrimaryButton: View {
             .font(.system(size: 12, weight: .semibold))
         }
         Text(title)
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .fontWeight(.semibold)
       }
       .foregroundColor(.white)
@@ -253,16 +213,20 @@ struct SettingsSecondaryButton: View {
             .font(.system(size: 11, weight: .semibold))
         }
         Text(title)
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .fontWeight(.semibold)
       }
-      .foregroundColor(SettingsStyle.ink.opacity(isDisabled ? 0.4 : 1))
+      .foregroundColor(SettingsStyle.secondary.opacity(isDisabled ? 0.4 : 1))
       .padding(.horizontal, 12)
       .padding(.vertical, 7)
       .background(
         RoundedRectangle(cornerRadius: 7, style: .continuous)
-          .fill(SettingsStyle.subtleFill.opacity(isDisabled ? 0.4 : 1))
+          .fill(SettingsStyle.surface.opacity(isDisabled ? 0.4 : 1))
       )
+      .overlay {
+        RoundedRectangle(cornerRadius: 7, style: .continuous)
+          .strokeBorder(SettingsStyle.divider, lineWidth: 1)
+      }
     }
     .buttonStyle(SettingsButtonPressStyle())
     .disabled(isDisabled)
@@ -279,7 +243,7 @@ struct SettingsLinkButton: View {
     Button(action: action) {
       HStack(spacing: 5) {
         Text(title)
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .fontWeight(.semibold)
         if let systemImage {
           Image(systemName: systemImage)
@@ -325,17 +289,13 @@ struct SettingsStatusDot: View {
     }
   }
 
-  /// The dot color and the text color are the same. That redundancy is
-  /// the point — color is what your eye reads first on this surface,
-  /// not the word. Semibold weight ensures the colored text holds its
-  /// ground against the warm paper background without needing a pill.
   var body: some View {
     HStack(spacing: 7) {
       Circle()
         .fill(color)
         .frame(width: 8, height: 8)
       Text(label)
-        .font(.custom("Figtree", size: 13))
+        .font(.system(size: 13))
         .fontWeight(.semibold)
         .foregroundColor(color)
     }
@@ -355,7 +315,8 @@ struct SettingsToggle: View {
 
   var body: some View {
     Toggle("", isOn: $isOn)
-      .toggleStyle(.switch)
+      .toggleStyle(DayflowToggleStyle())
+      .tint(SettingsStyle.primaryButtonFill)
       .labelsHidden()
       .scaleEffect(0.72, anchor: .trailing)
       .pointingHandCursor()
@@ -364,12 +325,7 @@ struct SettingsToggle: View {
 
 // MARK: - SettingsBadge
 //
-// A flat, uppercase chip replacing the legacy `BadgeView` on settings
-// surfaces. Deliberately has only two tones: accent (ink-brown fill) for
-// the one-per-group "this is the active thing" signal, and neutral (gray
-// fill) for everything else. Multiple colored variants were a legacy
-// design choice that added noise without carrying semantic value — the
-// text already says what the status is; the chip just holds it.
+// Compact accent and neutral badges for provider roles and connection state.
 
 struct SettingsBadge: View {
   let text: String
@@ -377,7 +333,7 @@ struct SettingsBadge: View {
 
   var body: some View {
     Text(text)
-      .font(.custom("Figtree", size: 10))
+      .font(.system(size: 10))
       .fontWeight(.bold)
       .kerning(0.6)
       .foregroundColor(isAccent ? SettingsStyle.ink : SettingsStyle.secondary)
@@ -400,7 +356,7 @@ struct SettingsMetadata: View {
   let text: String
   var body: some View {
     Text(text)
-      .font(.custom("Figtree", size: 13))
+      .font(.system(size: 13))
       .foregroundColor(SettingsStyle.secondary)
   }
 }

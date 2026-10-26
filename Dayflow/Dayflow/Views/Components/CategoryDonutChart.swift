@@ -187,16 +187,16 @@ struct CategoryDonutChart: View {
   private var centerContent: some View {
     VStack(spacing: 4) {
       Text("TOTAL")
-        .font(.custom("Figtree", size: 12).weight(.bold))
+        .font(.system(size: 12).weight(.bold))
         .foregroundColor(Color(hex: "B1B1B1"))
 
       VStack(spacing: 0) {
         let total = formattedTotal
         Text("\(total.hours) hours")
-          .font(.custom("InstrumentSerif-Regular", size: 16))
+          .font(.system(size: 16, weight: .semibold))
           .foregroundColor(theme.textPrimary)
         Text("\(total.minutes) minutes")
-          .font(.custom("InstrumentSerif-Regular", size: 16))
+          .font(.system(size: 16, weight: .semibold))
           .foregroundColor(theme.textPrimary)
       }
     }
@@ -229,7 +229,7 @@ struct CategoryDonutChart: View {
 
         // Category name
         Text(item.name)
-          .font(.custom("Figtree", size: 10))
+          .font(.system(size: 10))
           .foregroundColor(theme.textSecondary)
           .lineLimit(1)
           .truncationMode(.tail)
@@ -238,7 +238,7 @@ struct CategoryDonutChart: View {
 
       // Duration
       Text(item.formattedDuration)
-        .font(.custom("Figtree", size: 12).weight(.semibold))
+        .font(.system(size: 12).weight(.semibold))
         .foregroundColor(theme.textPrimary)
         .padding(.leading, 14)  // Align with text above
     }

@@ -85,4 +85,7 @@ if ! /bin/mv "$stage_dir/TargetFlow.app" "$app_path"; then
   fi
   exit 1
 fi
+# Refresh the installed bundle's icon metadata after replacing it, even when the
+# development build keeps the same version number.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$app_path"
 /usr/bin/open "$app_path"

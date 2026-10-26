@@ -1,71 +1,122 @@
 import SwiftUI
 
-/// A compact entry point beside the event timeline; goals live in event settings.
+/// Goals remain event settings; this banner exposes the active set on the timeline.
 struct CurrentGoalsStatusView: View {
   @ObservedObject private var store = TargetStore.shared
   @EnvironmentObject private var categoryStore: CategoryStore
+  @Environment(\.dayflowTheme) private var theme
   let onManageEvents: () -> Void
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(spacing: 10) {
-        Button(action: onManageEvents) {
-          Label("事件与目标", systemImage: "slider.horizontal.3")
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-        .accessibilityHint("管理事件，并通过开关选择任意多个当前目标")
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 12) {
+        Image("TargetFlowLogo")
+          .renderingMode(.template)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 24, height: 24)
+          .foregroundStyle(theme.accent)
+          .frame(width: 38, height: 38)
+          .background(theme.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 11))
+          .accessibilityHidden(true)
 
-        Text(
-          categoryStore.currentTargets.isEmpty
-            ? "未开启当前目标"
-            : "当前目标：" + categoryStore.currentTargets.map(\.name).joined(separator: "、")
-        )
-        .foregroundStyle(SettingsStyle.secondary)
-        .lineLimit(2)
-        .help(categoryStore.currentTargets.map(\.name).joined(separator: "、"))
-        Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 5) {
+          Text(
+            categoryStore.currentTargets.isEmpty
+              ? "未开启当前目标"
+              : "当前目标：" + categoryStore.currentTargets.map(\.name).joined(separator: "、")
+          )
+          .font(.system(size: 13, weight: .semibold))
+          .foregroundStyle(theme.textPrimary)
+          .lineLimit(2)
+          .help(categoryStore.currentTargets.map(\.name).joined(separator: "、"))
+
+          Text(
+            categoryStore.currentTargets.isEmpty
+              ? "开启事件的目标开关，即可评估新记录的专注状态。"
+              : "推进任意一个已开启的目标，即为专注。"
+          )
+          .font(.system(size: 11))
+          .foregroundStyle(theme.textSecondary)
+          .fixedSize(horizontal: false, vertical: true)
+        }
+        Spacer(minLength: 8)
         if store.isEvaluating {
           ProgressView().controlSize(.small)
             .help("正在评估新事件")
         }
+        Button(action: onManageEvents) {
+          Label("事件与目标", systemImage: "slider.horizontal.3")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(theme.primaryButtonText)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(theme.primaryButtonFill, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.primaryButtonBorder))
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .accessibilityHint("管理事件，并通过开关选择任意多个当前目标")
+        .fixedSize()
       }
       if let error = store.lastError {
-        HStack {
-          Text(error).foregroundStyle(SettingsStyle.destructive)
+        HStack(alignment: .top, spacing: 10) {
+          Label(error, systemImage: "exclamationmark.circle")
+            .foregroundStyle(SettingsStyle.destructive)
           Button("重试评估") { store.retryPendingEvaluations() }
             .buttonStyle(.plain)
+            .foregroundStyle(theme.accent)
+            .fixedSize()
         }
+        .font(.system(size: 12))
       }
     }
-    .font(.custom("Figtree", size: 12))
-    .foregroundStyle(SettingsStyle.text)
+    .padding(14)
+    .background(theme.rightPanelFill, in: RoundedRectangle(cornerRadius: 12))
+    .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.rightPanelBorder, lineWidth: 1))
   }
 }
 
 struct TargetAssessmentView: View {
+  @Environment(\.dayflowTheme) private var theme
   let assessment: TargetAssessment
   var showsTarget = true
 
+  private var statusColor: Color {
+    switch assessment.alignment {
+    case .focused: return theme.accent
+    case .neutral: return theme.textSecondary
+    case .severe: return theme.isDark ? Color(hex: "E99C91") : Color(hex: "B95F54")
+    }
+  }
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Label(assessment.alignment.title, systemImage: assessment.alignment.symbol)
-        .font(.custom("Figtree", size: 13).weight(.semibold))
-      if showsTarget {
-        Text("评估时的目标：\(assessment.targetText)")
-          .font(.custom("Figtree", size: 12))
-          .foregroundStyle(SettingsStyle.secondary)
-      }
+    VStack(alignment: .leading, spacing: 9) {
+      Label("目标评估：" + assessment.alignment.title, systemImage: assessment.alignment.symbol)
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(statusColor)
       Text(assessment.reason)
-        .font(.custom("Figtree", size: 13))
+        .font(.system(size: 12))
+        .foregroundStyle(theme.textSecondary)
+        .lineSpacing(3)
       if assessment.alignment != .focused && !assessment.reminder.isEmpty {
         Text(assessment.reminder)
-          .font(.custom("Figtree", size: 13))
-          .foregroundStyle(SettingsStyle.ink)
+          .font(.system(size: 12))
+          .foregroundStyle(theme.textPrimary)
+          .lineSpacing(3)
+      }
+      if showsTarget {
+        Text("评估时的目标：\(assessment.targetText)")
+          .font(.system(size: 11))
+          .foregroundStyle(theme.textTertiary)
       }
     }
-    .foregroundStyle(SettingsStyle.text)
     .frame(maxWidth: .infinity, alignment: .leading)
     .fixedSize(horizontal: false, vertical: true)
+    .padding(12)
+    .background(
+      statusColor.opacity(theme.isDark ? 0.12 : 0.055), in: RoundedRectangle(cornerRadius: 10)
+    )
+    .overlay(RoundedRectangle(cornerRadius: 10).stroke(statusColor.opacity(0.15), lineWidth: 1))
   }
 }

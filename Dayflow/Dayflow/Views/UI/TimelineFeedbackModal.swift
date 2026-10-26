@@ -90,9 +90,9 @@ struct TimelineFeedbackModal: View {
       Button(action: onClose) {
         Image(systemName: "xmark")
           .font(.system(size: 12.5, weight: .semibold))
-          .foregroundColor(theme.isDark ? Color(hex: "C9CBD6") : Color(hex: "FF8046").opacity(0.7))
+          .foregroundColor(theme.textSecondary)
           .frame(width: 22, height: 22)
-          .background(theme.isDark ? Color.clear : Color.white.opacity(0.9))
+          .background(theme.surfaceFill)
           .clipShape(Circle())
       }
       .buttonStyle(.plain)
@@ -117,57 +117,33 @@ struct TimelineFeedbackModal: View {
     .padding(24)
     .frame(width: 286)
     .background(
-      RoundedRectangle(cornerRadius: 6)
+      RoundedRectangle(cornerRadius: 12)
         .fill(cardFill)
     )
     .overlay(
-      RoundedRectangle(cornerRadius: 6)
-        .stroke(theme.isDark ? Color(hex: "585858") : Color(hex: "ECECEC"), lineWidth: 1)
+      RoundedRectangle(cornerRadius: 12)
+        .stroke(theme.separator, lineWidth: 1)
     )
     .shadow(
       color: Color.black.opacity(theme.isDark ? 0.35 : 0.07), radius: 12, x: 0, y: 6)
   }
 
   private var cardFill: AnyShapeStyle {
-    if theme.isDark {
-      return AnyShapeStyle(
-        LinearGradient(
-          gradient: Gradient(stops: [
-            .init(color: Color(hex: "272F43"), location: 0),
-            .init(color: Color(hex: "272F43"), location: 0.3),
-            .init(color: Color(hex: "3F3D52"), location: 0.85),
-          ]),
-          startPoint: .bottom,
-          endPoint: .top
-        )
-      )
-    }
-    return AnyShapeStyle(
-      LinearGradient(
-        gradient: Gradient(stops: [
-          .init(color: Color(hex: "FFF4E9"), location: 0),
-          .init(color: Color.white, location: 0.85),
-        ]),
-        startPoint: .bottom,
-        endPoint: .top
-      )
-    )
+    AnyShapeStyle(theme.surfaceFill)
   }
 
-  private var primaryText: Color {
-    theme.isDark ? .white : Color(hex: "333333")
-  }
+  private var primaryText: Color { theme.textPrimary }
 
   private var formContent: some View {
     VStack(spacing: 16) {
       VStack(spacing: 12) {
         Text(content.formTitle)
-          .font(Font.custom("InstrumentSerif-Regular", size: 18))
+          .font(Font.system(size: 18, weight: .semibold))
           .foregroundColor(primaryText)
           .multilineTextAlignment(.center)
 
         Text(content.formSubtitle)
-          .font(Font.custom("Figtree", size: 14))
+          .font(Font.system(size: 14))
           .foregroundColor(primaryText)
           .multilineTextAlignment(.center)
       }
@@ -175,16 +151,16 @@ struct TimelineFeedbackModal: View {
       VStack(spacing: 8) {
         ZStack(alignment: .topLeading) {
           TextEditor(text: $message)
-            .font(Font.custom("Figtree", size: 12))
+            .font(Font.system(size: 12))
             .foregroundColor(primaryText)
             .padding(.horizontal, 6)
             .padding(.vertical, 8)
-            .background(theme.isDark ? Color.white.opacity(0.06) : Color.white)
+            .background(theme.inputFill)
             .frame(height: 90)
             .cornerRadius(4)
             .overlay(
               RoundedRectangle(cornerRadius: 4)
-                .stroke(theme.isDark ? Color(hex: "5C5F70") : Color(hex: "D9D9D9"), lineWidth: 1)
+                .stroke(theme.inputBorder, lineWidth: 1)
             )
             .background(ThinScrollerInstaller())
             .focused($isEditorFocused)
@@ -197,8 +173,8 @@ struct TimelineFeedbackModal: View {
 
           if message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Text(content.placeholder)
-              .font(Font.custom("Figtree", size: 12))
-              .foregroundColor(theme.isDark ? Color(hex: "9BA0B0") : Color(hex: "AAAAAA"))
+              .font(Font.system(size: 12))
+              .foregroundColor(theme.textMuted)
               .padding(.horizontal, 12)
               .padding(.vertical, 12)
           }
@@ -209,7 +185,7 @@ struct TimelineFeedbackModal: View {
         } label: {
           HStack(alignment: .top, spacing: 8) {
             RoundedRectangle(cornerRadius: 2)
-              .stroke(Color(hex: "AAAAAA"), lineWidth: shareLogs ? 0 : 1)
+              .stroke(theme.textMuted, lineWidth: shareLogs ? 0 : 1)
               .frame(width: 14, height: 14)
               .overlay(
                 Image(systemName: "checkmark")
@@ -221,13 +197,13 @@ struct TimelineFeedbackModal: View {
                 RoundedRectangle(cornerRadius: 2)
                   .fill(
                     shareLogs
-                      ? (theme.isDark ? Color(hex: "D1653E") : Color(hex: "FF8046"))
+                      ? theme.primaryButtonFill
                       : Color.clear)
               )
 
             Text(content.shareLogsLabel)
-              .font(Font.custom("Figtree", size: 12))
-              .foregroundColor(theme.isDark ? Color.white : Color.black)
+              .font(Font.system(size: 12))
+              .foregroundColor(theme.textPrimary)
               .fixedSize(horizontal: false, vertical: true)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -240,14 +216,14 @@ struct TimelineFeedbackModal: View {
       Button(action: onSubmit) {
         // Matches the paused pill's "Resume" button chrome.
         Text(content.submitButtonTitle)
-          .font(Font.custom("Figtree", size: 12))
+          .font(Font.system(size: 12))
           .foregroundColor(theme.primaryButtonText)
           .frame(maxWidth: .infinity)
           .frame(height: 32)
           .background(theme.primaryButtonFill)
-          .overlay(InnerGlow(shape: Capsule(), color: theme.primaryButtonInnerGlow, radius: 3))
-          .overlay(Capsule().strokeBorder(theme.primaryButtonBorder, lineWidth: 1))
-          .clipShape(Capsule())
+          .overlay(InnerGlow(shape: RoundedRectangle(cornerRadius: 8), color: theme.primaryButtonInnerGlow, radius: 3))
+          .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(theme.primaryButtonBorder, lineWidth: 1))
+          .clipShape(RoundedRectangle(cornerRadius: 8))
       }
       .buttonStyle(.plain)
       .pointingHandCursor()
@@ -257,7 +233,7 @@ struct TimelineFeedbackModal: View {
   private var thanksContent: some View {
     VStack(spacing: 20) {
       Text(content.thanksTitle)
-        .font(Font.custom("InstrumentSerif-Regular", size: 18))
+        .font(Font.system(size: 18, weight: .semibold))
         .foregroundColor(primaryText)
         .multilineTextAlignment(.center)
         .padding(.bottom, 4)
@@ -265,7 +241,7 @@ struct TimelineFeedbackModal: View {
       VStack(alignment: .leading, spacing: 12) {
         if let thanksBody = content.thanksBody {
           Text(thanksBody)
-            .font(Font.custom("Figtree", size: 12))
+            .font(Font.system(size: 12))
             .foregroundColor(primaryText)
             .multilineTextAlignment(.leading)
         }
@@ -290,8 +266,8 @@ extension TimelineFeedbackModal {
       .frame(height: 140)
       .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
       .overlay(
-        RoundedRectangle(cornerRadius: 6)
-          .stroke(Color.white.opacity(0.7), lineWidth: 0.5)
+        RoundedRectangle(cornerRadius: 12)
+          .stroke(theme.separator, lineWidth: 0.5)
       )
       .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
       .accessibilityLabel(Text(accessibilityLabel ?? String(localized: "Feedback illustration")))

@@ -10,21 +10,33 @@ struct TabFilterBar: View {
   let categories: [TimelineCategory]
   let idleCategory: TimelineCategory?
   @Binding var mutedCategoryKeys: Set<String>
-  let onManageCategories: () -> Void
   let onMoveCategory: (_ id: UUID, _ targetID: UUID) -> Void
+
+  var isVertical = false
 
   @Environment(\.dayflowTheme) private var theme
   @State private var chipRowWidth: CGFloat = 0
   @State private var draggedCategoryID: UUID?
 
-  private let editButtonSize: CGFloat = 24
-  private let chipButtonSpacing: CGFloat = 8
   private let chipRowHeight: CGFloat = 26
 
   var body: some View {
+    if isVertical {
+      VStack(alignment: .leading, spacing: 10) {
+        ForEach(categories) { category in
+          reorderableChip(for: category)
+        }
+        if let idleCategory { chip(for: idleCategory, isIdle: true) }
+      }
+    } else {
+      horizontalFilters
+    }
+  }
+
+  private var horizontalFilters: some View {
     GeometryReader { geometry in
       let availableWidth = max(0, geometry.size.width)
-      let maxChipRowWidth = max(0, availableWidth - editButtonSize - chipButtonSpacing)
+      let maxChipRowWidth = availableWidth
       let hasMeasuredChipRow = chipRowWidth > 0
       let isOverflowing = hasMeasuredChipRow && chipRowWidth > maxChipRowWidth
       let chipRowFrameWidth =
@@ -33,26 +45,22 @@ struct TabFilterBar: View {
         : maxChipRowWidth
 
       ZStack(alignment: .topLeading) {
-        HStack(spacing: chipButtonSpacing) {
-          visibleChipRow(width: chipRowFrameWidth)
-          editButton
-        }
-        .frame(width: availableWidth, height: editButtonSize, alignment: .leading)
-        .overlay(alignment: .trailing) {
-          if isOverflowing {
-            overflowGradient
-              .padding(.trailing, editButtonSize + chipButtonSpacing)
+        visibleChipRow(width: chipRowFrameWidth)
+          .frame(width: availableWidth, height: chipRowHeight, alignment: .leading)
+          .overlay(alignment: .trailing) {
+            if isOverflowing {
+              overflowGradient
+            }
           }
-        }
 
         measuredChipRow
           .opacity(0)
           .allowsHitTesting(false)
           .accessibilityHidden(true)
       }
-      .frame(width: availableWidth, height: editButtonSize, alignment: .leading)
+      .frame(width: availableWidth, height: chipRowHeight, alignment: .leading)
     }
-    .frame(height: editButtonSize)
+    .frame(height: chipRowHeight)
     .onPreferenceChange(ChipRowWidthPreferenceKey.self) { chipRowWidth = $0 }
   }
 
@@ -70,7 +78,7 @@ struct TabFilterBar: View {
       }
       .buttonStyle(.plain)
       .pointingHandCursor()
-      .opacity(isMuted ? 0.55 : 0.8)
+      .opacity(isMuted ? 0.55 : 1)
       .help(
         isMuted
           ? "已弱化此事件的时间线卡片，再次点击恢复"
@@ -81,9 +89,12 @@ struct TabFilterBar: View {
 
     private var chipLabel: some View {
       HStack(spacing: 10) {
+        Image(systemName: isMuted ? "square" : "checkmark.square.fill")
+          .font(.system(size: 12))
+          .foregroundStyle(isMuted ? theme.textMuted : theme.accent)
         Circle()
-          .fill(Color(hex: category.colorHex).opacity(0.65))
-          .frame(width: 7, height: 7)
+          .fill(Color(hex: category.colorHex).opacity(0.75))
+          .frame(width: 5, height: 5)
 
         if isMuted {
           Image(systemName: "eye.slash.fill")
@@ -92,7 +103,7 @@ struct TabFilterBar: View {
         }
 
         Text(category.name)
-          .font(Font.custom("Figtree", size: 12).weight(.regular))
+          .font(Font.system(size: 11).weight(.regular))
           .foregroundColor(theme.chipText)
           .lineLimit(1)
           .fixedSize()
@@ -181,13 +192,6 @@ struct TabFilterBar: View {
     } else {
       mutedCategoryKeys.insert(key)
     }
-  }
-
-  private var editButton: some View {
-    CategoryEditCircleButton(
-      action: onManageCategories,
-      diameter: editButtonSize
-    )
   }
 
   private var overflowGradient: some View {

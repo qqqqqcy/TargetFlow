@@ -7,8 +7,8 @@ struct ChatCLITestView: View {
   let onTestComplete: (Bool) -> Void
   var usesOnboardingStyle: Bool = false
 
-  let accentColor = Color(red: 0.25, green: 0.17, blue: 0)
-  let successAccentColor = Color(red: 0.34, green: 1, blue: 0.45)
+  let accentColor = SettingsStyle.ink
+  let successAccentColor = SettingsStyle.statusGood
 
   @State var isTesting = false
   @State var success = false
@@ -18,8 +18,8 @@ struct ChatCLITestView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       Text("We'll ask your CLI a simple question to verify it's working and signed in.")
-        .font(.custom("Figtree", size: usesOnboardingStyle ? 16 : 12))
-        .foregroundColor(usesOnboardingStyle ? Color(hex: "898989") : SettingsStyle.secondary)
+        .font(.system(size: usesOnboardingStyle ? 16 : 12))
+        .foregroundColor(usesOnboardingStyle ? SettingsStyle.secondary : SettingsStyle.secondary)
         .fixedSize(horizontal: false, vertical: true)
 
       if usesOnboardingStyle {
@@ -38,19 +38,19 @@ struct ChatCLITestView: View {
               }
               .frame(width: 16, height: 16)
               Text(isTesting ? String(localized: "Testing…") : String(localized: "Test CLI"))
-                .font(.custom("Figtree", size: 14))
+                .font(.system(size: 14))
                 .fontWeight(.medium)
             }
           },
-          background: Color(hex: "FDCEA4"),
-          foreground: Color(hex: "926244"),
-          borderColor: Color(hex: "F1CEBC"),
-          cornerRadius: 200,
+          background: SettingsStyle.primaryButtonFill,
+          foreground: Color.white,
+          borderColor: SettingsStyle.primaryButtonFill,
+          cornerRadius: 9,
           horizontalPadding: 24,
           verticalPadding: 8,
           fixedHeight: 41,
           showOverlayStroke: false,
-          innerGlowColor: Color(hex: "FFECE6")
+          innerGlowColor: Color.clear
         )
         .disabled(isTesting || selectedTool == nil)
         .opacity(selectedTool == nil ? 0.5 : 1)
@@ -66,7 +66,7 @@ struct ChatCLITestView: View {
 
       if selectedTool == nil {
         Text("Select ChatGPT or Claude above before running the test.")
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 12))
           .foregroundColor(SettingsStyle.secondary)
       }
 
@@ -97,7 +97,7 @@ struct ChatCLITestView: View {
             .padding(10)
             .background(
               RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Color.black.opacity(0.03))
+                .fill(SettingsStyle.canvas)
             )
           }
         }

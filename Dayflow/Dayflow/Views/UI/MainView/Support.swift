@@ -99,7 +99,7 @@ extension View {
 }
 
 extension MainView {
-  var weekInspectorWidth: CGFloat { 340 }
+  var weekInspectorWidth: CGFloat { 320 }
 
   var timelineWeekRange: TimelineWeekRange {
     cachedTimelineWeekRange
@@ -113,7 +113,7 @@ extension MainView {
     switch timelineMode {
     case .day:
       // 358pt of content plus the 5pt inset the panel card sits in.
-      return 363
+      return 320
     case .week:
       return isWeekTimelineInspectorVisible ? weekInspectorWidth : 0
     }

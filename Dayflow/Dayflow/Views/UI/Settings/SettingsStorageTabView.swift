@@ -167,7 +167,7 @@ struct SettingsStorageTabView: View {
     } label: {
       HStack(spacing: 5) {
         Text(selected)
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .fontWeight(.semibold)
         Image(systemName: "chevron.down")
           .font(.system(size: 10, weight: .semibold))
@@ -177,7 +177,7 @@ struct SettingsStorageTabView: View {
       .padding(.vertical, 7)
       .background(
         RoundedRectangle(cornerRadius: 7, style: .continuous)
-          .fill(Color.black.opacity(0.05))
+          .fill(SettingsStyle.subtleFill)
       )
     }
     .menuStyle(BorderlessButtonMenuStyle())
@@ -213,7 +213,7 @@ struct SettingsStorageTabView: View {
         )
 
         Text(viewModel.storageFooterText())
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 12))
           .foregroundColor(SettingsStyle.meta)
           .fixedSize(horizontal: false, vertical: true)
           .padding(.top, 18)
@@ -245,11 +245,11 @@ struct SettingsStorageTabView: View {
       HStack(alignment: .center, spacing: 16) {
         VStack(alignment: .leading, spacing: 3) {
           Text(label)
-            .font(.custom("Figtree", size: 14))
+            .font(.system(size: 14))
             .fontWeight(.semibold)
             .foregroundColor(SettingsStyle.text)
           Text(metadata)
-            .font(.custom("Figtree", size: 12))
+            .font(.system(size: 12))
             .foregroundColor(SettingsStyle.secondary)
         }
         Spacer(minLength: 12)
@@ -266,7 +266,7 @@ struct SettingsStorageTabView: View {
           } label: {
             HStack(spacing: 5) {
               Text(option.label)
-                .font(.custom("Figtree", size: 13))
+                .font(.system(size: 13))
                 .fontWeight(.semibold)
               Image(systemName: "chevron.down")
                 .font(.system(size: 10, weight: .semibold))
@@ -276,7 +276,7 @@ struct SettingsStorageTabView: View {
             .padding(.vertical, 7)
             .background(
               RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.black.opacity(0.05))
+                .fill(SettingsStyle.subtleFill)
             )
           }
           .menuStyle(BorderlessButtonMenuStyle())

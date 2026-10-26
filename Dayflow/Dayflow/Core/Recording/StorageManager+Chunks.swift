@@ -49,7 +49,9 @@ extension StorageManager {
         try db.execute(sql: "DELETE FROM chunks WHERE file_url = ?", arguments: [path])
       }
 
-      try? self.fileMgr.removeItem(at: url)
+      if !AppStoragePaths.isUIPreview {
+        try? self.fileMgr.removeItem(at: url)
+      }
     }
   }
 

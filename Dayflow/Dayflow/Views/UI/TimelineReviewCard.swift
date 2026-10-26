@@ -5,6 +5,7 @@ import QuartzCore
 import SwiftUI
 
 struct TimelineReviewCard: View {
+  @Environment(\.dayflowTheme) private var theme
   let activity: TimelineActivity
   let categoryColor: Color
   let progressText: String
@@ -48,9 +49,10 @@ struct TimelineReviewCard: View {
 
   var body: some View {
     ZStack(alignment: .top) {
-      RoundedRectangle(cornerRadius: 8)
-        .fill(Color.white)
-        .shadow(color: Color.black.opacity(0.18), radius: 14, x: 0, y: 8)
+      RoundedRectangle(cornerRadius: 12)
+        .fill(theme.surfaceFill)
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(theme.separator, lineWidth: 1))
+        .shadow(color: theme.rightPanelShadow, radius: 14, x: 0, y: 8)
 
       VStack(spacing: 0) {
         TimelineReviewCardMedia(
@@ -99,8 +101,8 @@ struct TimelineReviewCard: View {
 
         VStack(alignment: .leading, spacing: 12) {
           Text(activity.title)
-            .font(.custom("InstrumentSerif-Regular", size: 24))
-            .foregroundColor(Color.black)
+            .font(.system(size: 24, weight: .semibold))
+            .foregroundColor(theme.textPrimary)
             .lineLimit(2)
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -112,8 +114,8 @@ struct TimelineReviewCard: View {
 
           ScrollView(.vertical, showsIndicators: true) {
             Text(summaryText)
-              .font(.custom("Figtree", size: 14).weight(.medium))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 14).weight(.medium))
+              .foregroundColor(theme.textSecondary)
               .lineSpacing(3)
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding(.trailing, 4)
@@ -125,19 +127,19 @@ struct TimelineReviewCard: View {
           HStack {
             Spacer()
             Text(progressText)
-              .font(.custom("Figtree", size: 10).weight(.medium))
-              .foregroundColor(Color(hex: "AFAFAF"))
+              .font(.system(size: 10).weight(.medium))
+              .foregroundColor(theme.textMuted)
           }
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
       }
-      .clipShape(RoundedRectangle(cornerRadius: 8))
+      .clipShape(RoundedRectangle(cornerRadius: 12))
 
       if let overlayRating = overlayRating {
         TimelineReviewOverlayBadge(rating: overlayRating)
-          .clipShape(RoundedRectangle(cornerRadius: 8))
+          .clipShape(RoundedRectangle(cornerRadius: 12))
           .transition(.opacity)
       }
     }

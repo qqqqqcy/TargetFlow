@@ -11,10 +11,15 @@ struct DayflowSurfaceButton<Content: View>: View {
   let action: () -> Void
   @ViewBuilder let content: () -> Content
 
-  var background: Color = .white
-  var foreground: Color = .black
-  var borderColor: Color = .black.opacity(0.15)
-  var cornerRadius: CGFloat = 0
+  var background: Color = Color.dayflowAdaptive(
+    light: .white, dark: NSColor(red: 27 / 255, green: 40 / 255, blue: 61 / 255, alpha: 1))
+  var foreground: Color = Color.dayflowAdaptive(
+    light: NSColor(red: 32 / 255, green: 43 / 255, blue: 61 / 255, alpha: 1),
+    dark: NSColor(red: 237 / 255, green: 243 / 255, blue: 252 / 255, alpha: 1))
+  var borderColor: Color = Color.dayflowAdaptive(
+    light: NSColor(red: 233 / 255, green: 237 / 255, blue: 243 / 255, alpha: 1),
+    dark: NSColor(red: 49 / 255, green: 64 / 255, blue: 89 / 255, alpha: 1))
+  var cornerRadius: CGFloat = 8
   var horizontalPadding: CGFloat = 18
   var verticalPadding: CGFloat = 12
   var minWidth: CGFloat? = nil
@@ -41,7 +46,7 @@ struct DayflowSurfaceButton<Content: View>: View {
     }) {
       HStack(spacing: 10) {
         content()
-          .foregroundColor(foreground.opacity(0.85))
+          .foregroundColor(foreground)
       }
       .padding(.horizontal, horizontalPadding)
       .padding(.vertical, verticalPadding)
@@ -52,8 +57,8 @@ struct DayflowSurfaceButton<Content: View>: View {
         Group {
           if isSecondaryStyle {
             RoundedRectangle(cornerRadius: cornerRadius)
-              .inset(by: 0.75)
-              .stroke(Color(red: 0.25, green: 0.17, blue: 0), lineWidth: 1.5)
+              .inset(by: 0.5)
+              .stroke(borderColor, lineWidth: 1)
           } else if showOverlayStroke {
             RoundedRectangle(cornerRadius: cornerRadius)
               .inset(by: 0.75)
@@ -79,9 +84,7 @@ struct DayflowSurfaceButton<Content: View>: View {
       .cornerRadius(cornerRadius)
       .if(isSecondaryStyle) { view in
         view
-          .shadow(color: .black.opacity(0.25), radius: 0.25, x: 0, y: 0.5)
-          .shadow(color: .black.opacity(0.16), radius: 0.5, x: 0, y: 1)
-          .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 2)
+          .shadow(color: .black.opacity(showShadow ? 0.04 : 0), radius: 4, x: 0, y: 2)
       }
       .if(!isSecondaryStyle) { view in
         view

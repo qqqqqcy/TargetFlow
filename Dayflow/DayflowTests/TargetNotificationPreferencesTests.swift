@@ -30,32 +30,27 @@ final class TargetNotificationPreferencesTests: XCTestCase {
     XCTAssertFalse(TargetPreferences.soundEnabled(defaults: reloaded))
   }
 
-  func testEverySelectableSoundIsBundledDecodableAndShortEnoughForSystemNotices() throws {
+  func testEverySelectableNotchSoundIsBundledDecodableAndShort() throws {
     XCTAssertEqual(TargetReminderSound.allCases.count, 8)
     for sound in TargetReminderSound.allCases {
       let url = try XCTUnwrap(sound.url, "Missing bundled sound: \(sound.filename)")
       let player = try AVAudioPlayer(contentsOf: url)
       XCTAssertTrue(player.prepareToPlay(), sound.filename)
       XCTAssertGreaterThan(player.duration, 0, sound.filename)
-      // UNNotificationSound only accepts custom sounds shorter than 30 seconds.
+      // Reminder game audio should remain brief.
       XCTAssertLessThan(player.duration, 30, sound.filename)
       XCTAssertEqual(url.lastPathComponent, sound.filename)
     }
   }
 
   @MainActor
-  func testNoticeContainsSelectedSoundAndExistingClickRoutingIdentifier() throws {
-    for sound in TargetReminderSound.allCases {
-      let request = NotificationService.targetNoticeRequest(
-        identifier: "goal.card", body: "继续当前目标", soundEnabled: true, sound: sound)
-      XCTAssertEqual(request.identifier, "target.deviation.goal.card")
-      XCTAssertEqual(request.content.title, "当前目标提醒")
-      XCTAssertEqual(request.content.body, "继续当前目标")
-      XCTAssertNotNil(request.content.sound)
-      XCTAssertNil(request.trigger)
-    }
-    let silent = NotificationService.targetNoticeRequest(
-      identifier: "silent", body: "无声提醒", soundEnabled: false, sound: .gemCollect)
-    XCTAssertNil(silent.content.sound)
+  func testNoticeUsesSystemSoundAndExistingClickRoutingIdentifier() {
+    let request = NotificationService.targetNoticeRequest(
+      identifier: "goal.card", body: "继续当前目标")
+    XCTAssertEqual(request.identifier, "target.deviation.goal.card")
+    XCTAssertEqual(request.content.title, "当前目标提醒")
+    XCTAssertEqual(request.content.body, "继续当前目标")
+    XCTAssertEqual(request.content.sound, .default)
+    XCTAssertNil(request.trigger)
   }
 }

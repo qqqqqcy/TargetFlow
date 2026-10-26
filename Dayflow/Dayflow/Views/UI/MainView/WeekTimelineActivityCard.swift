@@ -142,7 +142,7 @@ struct WeekTimelineActivityCard: View {
 
       VStack(alignment: .leading, spacing: 2) {
         Text(displayTitle)
-          .font(.custom("Figtree", size: titleFontSize).weight(.semibold))
+          .font(.system(size: titleFontSize).weight(.semibold))
           .foregroundColor(palette.title)
           .multilineTextAlignment(.leading)
           .lineLimit(renderingExpanded ? nil : maxUnhoveredTitleLines)
@@ -167,13 +167,13 @@ struct WeekTimelineActivityCard: View {
     // special-cased.
     .background(isFailedCard ? theme.cardFailedFill : palette.fill)
     .background(theme.panelSolid)
-    .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
     .overlay(
-      RoundedRectangle(cornerRadius: 2, style: .continuous)
+      RoundedRectangle(cornerRadius: 5, style: .continuous)
         .stroke(
           isFailedCard
-            ? Color(red: 1, green: 0.16, blue: 0.11)
-            : (isSelected ? palette.accent : palette.border),
+            ? theme.statusDistracted
+            : (isSelected ? theme.accent : palette.border),
           style: isFailedCard
             ? StrokeStyle(lineWidth: 0.5, dash: [2.5, 2.5])
             : StrokeStyle(lineWidth: isSelected ? 1 : 0.5)
@@ -193,7 +193,7 @@ struct WeekTimelineActivityCard: View {
       }
     }
     .overlay(
-      RoundedRectangle(cornerRadius: 2, style: .continuous)
+      RoundedRectangle(cornerRadius: 5, style: .continuous)
         .stroke(theme.textPrimary.opacity(isHovered ? 0.10 : 0), lineWidth: 1)
     )
     // Shadow deepens when hovered — the "card lifts toward you" cue. Opacity
@@ -227,7 +227,7 @@ struct WeekTimelineActivityCard: View {
 
       VStack(alignment: .leading, spacing: 2) {
         Text(displayTitle)
-          .font(.custom("Figtree", size: titleFontSize).weight(.semibold))
+          .font(.system(size: titleFontSize).weight(.semibold))
           .multilineTextAlignment(.leading)
           .fixedSize(horizontal: false, vertical: true)
 
@@ -265,7 +265,7 @@ struct WeekTimelineActivityCard: View {
       }
 
       Text(statusLine)
-        .font(.custom("Figtree", size: 9))
+        .font(.system(size: 9))
         .foregroundColor(theme.cardTime)
         .lineLimit(renderingExpanded ? nil : 1)
         .truncationMode(.tail)

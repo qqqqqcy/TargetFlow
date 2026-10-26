@@ -26,8 +26,6 @@ struct DayDistractionSummarySection: View {
   private enum Design {
     static let sectionSpacing: CGFloat = 16
     static let editButtonSize: CGFloat = 20
-    static let editorWidth: CGFloat = 358
-    static let editorOffsetX: CGFloat = -18
     static let editorOffsetY: CGFloat = 28
   }
 
@@ -37,7 +35,7 @@ struct DayDistractionSummarySection: View {
 
       if isSelectionEmpty {
         Text("Edit categories to calculate distractions.")
-          .font(.custom("Figtree", size: 11))
+          .font(.system(size: 11))
           .foregroundColor(theme.textSecondary)
       }
 
@@ -60,8 +58,8 @@ struct DayDistractionSummarySection: View {
           onToggle: onToggleCategory,
           onDone: onDoneEditing
         )
-        .frame(width: Design.editorWidth, alignment: .leading)
-        .offset(x: Design.editorOffsetX, y: Design.editorOffsetY)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .offset(y: Design.editorOffsetY)
         .onTapGesture {}
       }
     }
@@ -70,14 +68,15 @@ struct DayDistractionSummarySection: View {
   private var header: some View {
     HStack(alignment: .center, spacing: 6) {
       Text("Distractions so far")
-        .font(.custom("InstrumentSerif-Regular", size: 22))
+        .font(.system(size: 22, weight: .semibold))
         .foregroundColor(theme.textPrimary)
 
       Spacer()
 
       CategoryEditCircleButton(
         action: onEditCategories,
-        diameter: Design.editButtonSize
+        diameter: Design.editButtonSize,
+        accessibilityLabel: "设置分心统计事件"
       )
     }
   }

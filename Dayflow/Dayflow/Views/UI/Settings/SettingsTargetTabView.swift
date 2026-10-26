@@ -34,27 +34,29 @@ struct TargetNotificationSettingsView: View {
         }
       }
 
-      SettingsSection(
-        title: "游戏提示音",
-        subtitle: "与 Cindy 相同的游戏音效。刘海通知和系统 Notice 都使用所选声音，音量跟随系统输出音量。"
-      ) {
-        SettingsRow(label: "播放提示音") {
-          SettingsToggle(isOn: $soundEnabled)
-            .accessibilityLabel("播放提示音")
-        }
-        SettingsRow(label: "选择声音") {
-          Picker("选择声音", selection: $sound) {
-            ForEach(TargetReminderSound.allCases) { sound in
-              Text(sound.title).tag(sound)
-            }
+      if style == .notch {
+        SettingsSection(
+          title: "游戏提示音",
+          subtitle: "仅用于刘海通知，音量跟随系统输出音量。"
+        ) {
+          SettingsRow(label: "播放提示音") {
+            SettingsToggle(isOn: $soundEnabled)
+              .accessibilityLabel("播放提示音")
           }
-          .labelsHidden()
-          .pickerStyle(.menu)
-        }
-        SettingsRow(label: "试听", subtitle: "只播放选中的声音，不显示提醒。", showsDivider: false) {
-          SettingsSecondaryButton(title: "试听声音", isDisabled: !soundEnabled) {
-            feedbackIsError = !NotificationService.shared.playTargetReminderSound()
-            feedback = feedbackIsError ? "无法播放所选音效，请重试。" : "正在试听：\(sound.title)"
+          SettingsRow(label: "选择声音") {
+            Picker("选择声音", selection: $sound) {
+              ForEach(TargetReminderSound.allCases) { sound in
+                Text(sound.title).tag(sound)
+              }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+          }
+          SettingsRow(label: "试听", subtitle: "只播放选中的声音，不显示提醒。", showsDivider: false) {
+            SettingsSecondaryButton(title: "试听声音", isDisabled: !soundEnabled) {
+              feedbackIsError = !NotificationService.shared.playTargetReminderSound()
+              feedback = feedbackIsError ? "无法播放所选音效，请重试。" : "正在试听：\(sound.title)"
+            }
           }
         }
       }
@@ -70,7 +72,7 @@ struct TargetNotificationSettingsView: View {
             showsDivider: false
           ) {
             Text("悬停保持展开")
-              .font(.custom("Figtree", size: 12))
+              .font(.system(size: 12))
               .foregroundColor(SettingsStyle.secondary)
           }
         }
@@ -86,7 +88,7 @@ struct TargetNotificationSettingsView: View {
         }
         if let feedback {
           Text(feedback)
-            .font(.custom("Figtree", size: 12))
+            .font(.system(size: 12))
             .foregroundColor(feedbackIsError ? SettingsStyle.destructive : SettingsStyle.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 8)
@@ -126,7 +128,7 @@ struct TargetNotificationSettingsView: View {
   private var styleDescription: String {
     style == .notch
       ? "在屏幕顶部刘海处展开，不需要系统通知权限。"
-      : "使用原先的 macOS 通知横幅；需要系统通知权限，受专注模式影响。"
+      : "使用 macOS 通知横幅和系统默认提示音，受通知权限与专注模式影响。"
   }
 
   private var systemNoticeSettings: some View {

@@ -17,9 +17,9 @@ enum TimelineCardLayout {
 }
 
 enum TimelineTypography {
-  static let cardTextFontSize: CGFloat = 16
-  static let cardTextFontWeight: TimelineCardTextWeight = .regular
-  static let timeLabelFontSize: CGFloat = 12
+  static let cardTextFontSize: CGFloat = 13
+  static let cardTextFontWeight: TimelineCardTextWeight = .medium
+  static let timeLabelFontSize: CGFloat = 10
 
   static func cardSecondaryTextFontSize(for cardTextFontSize: CGFloat) -> CGFloat {
     max(8, cardTextFontSize - 3)

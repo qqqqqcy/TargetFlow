@@ -126,115 +126,90 @@ struct ColorOrganizerRoot: View {
   private var contentCard: some View {
     GeometryReader { proxy in
       let isCompact = proxy.size.width < 960
-      let innerHorizontalPadding: CGFloat = isCompact ? 28 : 64
-      let outerHorizontalPadding: CGFloat = isCompact ? 16 : 40
-      let stackSpacing: CGFloat = isCompact ? 32 : 48
-      let columnSpacing: CGFloat = isCompact ? 24 : 56
-      let verticalSpacing = showsTitles ? stackSpacing / 2 : 24
+      let sideBySide = proxy.size.width >= 720
 
-      VStack(spacing: verticalSpacing) {
+      VStack(spacing: 0) {
         if showsTitles {
-          // Rendered in both stages (invisible in part 2) so the modal keeps
-          // the same height when moving between parts.
-          Text("事件与当前目标")
-            .font(
-              Font.custom(
-                "Instrument Serif", size: 36)
-            )
-            .foregroundColor(theme.isDark ? .white : .black)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .opacity(stage == .details ? 1 : 0)
-        }
-
-        // Both stages stay in the tree so the card's height is the larger of
-        // the two and does not change when switching parts.
-        ZStack {
-          HStack(alignment: .top, spacing: columnSpacing) {
-            instructionsPanel(isCompact: isCompact, showTitles: showsTitles)
-              .frame(minWidth: 200, maxWidth: isCompact ? 240 : 280, alignment: .leading)
-              .layoutPriority(1)
-
-            categoryEditorPanel(isCompact: isCompact)
-              .layoutPriority(0)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .opacity(stage == .details ? 1 : 0)
-          .allowsHitTesting(stage == .details)
-
-          HStack(alignment: .top, spacing: columnSpacing) {
-            colorPickerPanel(isCompact: isCompact, showTitles: showsTitles)
-              .frame(minWidth: 220, maxWidth: isCompact ? 260 : 320, alignment: .leading)
-              .layoutPriority(1)
-
-            colorAssignmentPanel(isCompact: isCompact)
-              .layoutPriority(0)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .opacity(stage == .colors ? 1 : 0)
-          .allowsHitTesting(stage == .colors)
-        }
-        .offset(x: 4)
-
-        if presentationStyle == .sheet {
-          bottomButtonBar
-            .padding(
-              .top,
-              70 - verticalSpacing)
-        }
-      }
-      .padding(
-        .horizontal,
-        isCompact ? innerHorizontalPadding : 62
-      )
-      .padding(.top, isCompact ? 32 : 58)
-      .padding(
-        .bottom,
-        CGFloat(isCompact ? 32 : 48)
-          // Embedded style pins Back/Next in a bottom-trailing overlay; keep
-          // room for them so centered content never sits underneath.
-          + (presentationStyle == .embedded ? 76 : 0)
-      )
-      .frame(maxWidth: 1180)
-      .background(
-        Group {
-          if presentationStyle == .sheet {
-            if theme.isDark {
-              RoundedRectangle(cornerRadius: 20)
-                .fill(Color(red: 62 / 255, green: 64 / 255, blue: 80 / 255).opacity(0.85))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-                .overlay(
-                  RoundedRectangle(cornerRadius: 20)
-                    .inset(by: 0.5)
-                    .stroke(Color(hex: "585858"), lineWidth: 1)
-                )
-                .shadow(color: Color.black.opacity(0.35), radius: 20, x: 0, y: 8)
-            } else {
-              RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 8)
+          HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 7) {
+              Text(stage == .details ? "事件与目标" : "事件颜色")
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundStyle(theme.textPrimary)
+              Text(stage == .details ? "管理具体事件，选择你现在想推进的目标。" : "用颜色辅助识别事件，不影响目标评估。")
+                .font(.system(size: 12))
+                .foregroundStyle(theme.textSecondary)
+            }
+            Spacer(minLength: 0)
+            if presentationStyle == .sheet {
+              Button {
+                commitPendingEditsIfNeeded()
+                categoryStore.persist()
+                onDismiss?()
+              } label: {
+                Image(systemName: "xmark")
+                  .font(.system(size: 11, weight: .semibold))
+                  .foregroundStyle(theme.textTertiary)
+                  .frame(width: 28, height: 28)
+                  .background(theme.panelSolid, in: RoundedRectangle(cornerRadius: 8))
+              }
+              .buttonStyle(.plain)
+              .pointingHandCursor()
+              .accessibilityLabel("关闭事件与目标")
             }
           }
+          .padding(24)
+          Rectangle().fill(theme.rightPanelDivider).frame(height: 1)
         }
-      )
-      .overlay(alignment: .topTrailing) {
-        if presentationStyle == .sheet {
-          Button {
-            commitPendingEditsIfNeeded()
-            categoryStore.persist()
-            onDismiss?()
-          } label: {
-            Image(systemName: "xmark")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundColor(theme.isDark ? Color(hex: "DDDDDD") : Color(hex: "606060"))
+
+        ScrollView {
+          Group {
+            if stage == .details {
+              if sideBySide {
+                HStack(alignment: .top, spacing: 28) {
+                  instructionsPanel(isCompact: isCompact, showTitles: showsTitles)
+                    .frame(width: isCompact ? 210 : 240, alignment: .leading)
+                  categoryEditorPanel(isCompact: isCompact)
+                }
+              } else {
+                VStack(alignment: .leading, spacing: 20) {
+                  instructionsPanel(isCompact: true, showTitles: showsTitles)
+                  categoryEditorPanel(isCompact: true)
+                }
+              }
+            } else {
+              if sideBySide {
+                HStack(alignment: .top, spacing: 28) {
+                  colorPickerPanel(isCompact: isCompact, showTitles: showsTitles)
+                    .frame(width: 240, alignment: .leading)
+                  colorAssignmentPanel(isCompact: isCompact)
+                }
+              } else {
+                VStack(alignment: .leading, spacing: 20) {
+                  colorPickerPanel(isCompact: true, showTitles: showsTitles)
+                  colorAssignmentPanel(isCompact: true)
+                }
+              }
+            }
           }
-          .buttonStyle(.plain)
-          .pointingHandCursor()
-          .padding(20)
+          .padding(24)
+          .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+
+        if presentationStyle == .sheet {
+          Rectangle().fill(theme.rightPanelDivider).frame(height: 1)
+          bottomButtonBar.padding(.horizontal, 24).padding(.vertical, 16)
         }
       }
+      .frame(maxWidth: 980)
+      .frame(height: max(240, min(proxy.size.height - 48, 680)))
+      .background(
+        RoundedRectangle(cornerRadius: 18)
+          .fill(theme.rightPanelFill)
+          .overlay(RoundedRectangle(cornerRadius: 18).stroke(theme.rightPanelBorder, lineWidth: 1))
+          .shadow(color: theme.panelShadow, radius: 22, x: 0, y: 8)
+      )
+      .padding(.horizontal, isCompact ? 20 : 40)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-      .padding(.horizontal, outerHorizontalPadding)
-      .padding(.vertical, presentationStyle == .sheet ? 24 : 0)
     }
   }
 
@@ -243,17 +218,17 @@ struct ColorOrganizerRoot: View {
       if showTitles {
         VStack(alignment: .leading, spacing: 6) {
           Text(presentationStyle == .sheet ? "当前目标可多选" : "Part 1 of 2")
-            .font(Font.custom("Figtree", size: 14).weight(.bold))
+            .font(Font.system(size: 14).weight(.bold))
             .foregroundColor(
-              theme.isDark ? Color(hex: "FF9A64") : Color(red: 0.98, green: 0.43, blue: 0)
+              theme.accent
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
           Text("描述具体事件")
             .font(
-              Font.custom("Instrument Serif", size: 30)
+              Font.system(size: 20, weight: .semibold)
             )
-            .foregroundColor(theme.isDark ? .white : .black)
+            .foregroundColor(theme.textPrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
       }
@@ -283,9 +258,9 @@ struct ColorOrganizerRoot: View {
       Text(
         "中性或分心事件会提醒，专注时不提醒。全部关闭即可暂停目标评估。"
       )
-      .font(Font.custom("Figtree", size: 12).weight(.medium))
+      .font(Font.system(size: 12).weight(.medium))
       .foregroundColor(
-        theme.isDark ? Color(hex: "BDBDBD") : Color(red: 0.48, green: 0.48, blue: 0.48)
+        theme.textSecondary
       )
       .frame(maxWidth: isCompact ? .infinity : 280, alignment: .leading)
     }
@@ -293,13 +268,15 @@ struct ColorOrganizerRoot: View {
 
   private func instructionRow(icon: String, text: String) -> some View {
     HStack(alignment: .top, spacing: 12) {
-      Image(icon)
-        .resizable()
+      Image(systemName: icon == "CategoriesOrganize" ? "text.alignleft" : "checkmark.circle")
+        .font(.system(size: 15, weight: .medium))
+        .foregroundStyle(theme.accent)
         .frame(width: 28, height: 28)
+        .background(theme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
 
       Text(text)
-        .font(Font.custom("Figtree", size: 14).weight(.medium))
-        .foregroundColor(theme.isDark ? .white : .black)
+        .font(Font.system(size: 14).weight(.medium))
+        .foregroundColor(theme.textPrimary)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
@@ -308,18 +285,18 @@ struct ColorOrganizerRoot: View {
     VStack(alignment: .leading, spacing: 24) {
       if showTitles {
         VStack(alignment: .leading, spacing: 6) {
-          Text("Part 2 of 2")
-            .font(Font.custom("Figtree", size: 14).weight(.bold))
+          Text("辅助识别")
+            .font(Font.system(size: 14).weight(.bold))
             .foregroundColor(
-              theme.isDark ? Color(hex: "FF9A64") : Color(red: 0.98, green: 0.43, blue: 0)
+              theme.accent
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
           Text("Edit colors")
             .font(
-              Font.custom("Instrument Serif", size: 30)
+              Font.system(size: 20, weight: .semibold)
             )
-            .foregroundColor(theme.isDark ? .white : .black)
+            .foregroundColor(theme.textPrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
       }
@@ -360,9 +337,9 @@ struct ColorOrganizerRoot: View {
                 "拖动上方色盘调整配色，再将颜色拖到事件上。颜色仅用于辅助识别。"
             )
         )
-        .font(Font.custom("Figtree", size: 13).weight(.medium))
+        .font(Font.system(size: 13).weight(.medium))
         .foregroundColor(
-          theme.isDark ? theme.textSecondary : Color(red: 0.3, green: 0.3, blue: 0.3))
+          theme.textSecondary)
 
         LazyVGrid(
           columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8
@@ -400,20 +377,21 @@ struct ColorOrganizerRoot: View {
           .foregroundColor(theme.controlText)
 
         Text("添加事件")
-          .font(Font.custom("Figtree", size: 14).weight(.regular))
+          .font(Font.system(size: 14).weight(.regular))
           .foregroundColor(theme.controlText)
       }
       .padding(.horizontal, 14)
       .padding(.vertical, 6)
       .background(theme.controlFill)
-      .cornerRadius(200)
+      .cornerRadius(9)
       .overlay(
-        Capsule()
+        RoundedRectangle(cornerRadius: 9)
           .inset(by: 0.5)
           .stroke(theme.controlBorder, lineWidth: 1)
       )
       .overlay(
-        InnerGlow(shape: Capsule(), color: theme.controlInnerGlow, radius: 3)
+        InnerGlow(
+          shape: RoundedRectangle(cornerRadius: 9), color: theme.controlInnerGlow, radius: 3)
       )
       .opacity(canAddMoreCategories ? 1 : 0.45)
     }
@@ -442,14 +420,13 @@ struct ColorOrganizerRoot: View {
       ZStack(alignment: .top) {
         RoundedRectangle(cornerRadius: 16)
           .fill(
-            theme.isDark
-              ? Color(hex: "7F7A94").opacity(0.1) : Color.white.opacity(0.2)
+            theme.panelSolid
           )
           .frame(maxWidth: .infinity, minHeight: containerHeight, maxHeight: containerHeight)
 
         RoundedRectangle(cornerRadius: 16)
           .stroke(
-            theme.isDark ? Color(hex: "4E4E4E") : Color(red: 0.94, green: 0.91, blue: 0.87),
+            theme.rightPanelBorder,
             lineWidth: theme.isDark ? 0.75 : 1
           )
           .frame(maxWidth: .infinity, minHeight: containerHeight, maxHeight: containerHeight)
@@ -477,9 +454,9 @@ struct ColorOrganizerRoot: View {
       .frame(height: containerHeight, alignment: .topLeading)
 
       Text("颜色可选，之后也可以随时修改。")
-        .font(Font.custom("Figtree", size: 12).weight(.medium))
+        .font(Font.system(size: 12).weight(.medium))
         .foregroundColor(
-          theme.isDark ? Color(hex: "BDBDBD") : Color(red: 0.48, green: 0.48, blue: 0.48)
+          theme.textSecondary
         )
         .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -489,7 +466,10 @@ struct ColorOrganizerRoot: View {
 
   private var bottomButtonBar: some View {
     HStack(spacing: 16) {
-      Spacer()
+      if presentationStyle == .sheet && stage == .details {
+        addCategoryButton
+      }
+      Spacer(minLength: 12)
 
       if stage == .details {
         if supportsDetailsStage == false, let onBack {
@@ -551,14 +531,13 @@ struct ColorOrganizerRoot: View {
         ZStack(alignment: .top) {
           RoundedRectangle(cornerRadius: 16)
             .fill(
-              theme.isDark
-                ? Color(hex: "7F7A94").opacity(0.1) : Color.white.opacity(0.2)
+              theme.panelSolid
             )
             .frame(maxWidth: .infinity, minHeight: containerHeight, maxHeight: containerHeight)
 
           RoundedRectangle(cornerRadius: 16)
             .stroke(
-              theme.isDark ? Color(hex: "4E4E4E") : Color(red: 0.94, green: 0.91, blue: 0.87),
+              theme.rightPanelBorder,
               lineWidth: theme.isDark ? 0.75 : 1
             )
             .frame(maxWidth: .infinity, minHeight: containerHeight, maxHeight: containerHeight)
@@ -600,8 +579,10 @@ struct ColorOrganizerRoot: View {
           DispatchQueue.main.async { pendingScrollTarget = nil }
         }
 
-        addCategoryButton
-          .frame(maxWidth: .infinity, alignment: .leading)
+        if presentationStyle == .embedded {
+          addCategoryButton
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
       }
       .frame(minWidth: 260, maxWidth: .infinity, alignment: .leading)
     }
@@ -609,16 +590,16 @@ struct ColorOrganizerRoot: View {
 
   private var emptyState: some View {
     Text("添加一件要做的事情。")
-      .font(Font.custom("Figtree", size: 13).weight(.medium))
+      .font(Font.system(size: 13).weight(.medium))
       .foregroundColor(
-        theme.isDark ? Color(hex: "BDBDBD") : Color(red: 0.35, green: 0.35, blue: 0.35)
+        theme.textSecondary
       )
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding()
       .background(
         RoundedRectangle(cornerRadius: 8)
           .stroke(
-            theme.isDark ? Color(hex: "4E4E4E") : Color(red: 0.89, green: 0.89, blue: 0.89),
+            theme.rightPanelBorder,
             lineWidth: 0.5)
       )
   }
@@ -629,7 +610,7 @@ struct ColorOrganizerRoot: View {
     case .embedded:
       Color.clear
     case .sheet:
-      (theme.isDark ? theme.sheetOverlay : Color.black.opacity(0.16))
+      theme.sheetOverlay
         .ignoresSafeArea()
     }
   }
@@ -652,21 +633,20 @@ struct ColorOrganizerRoot: View {
     var body: some View {
       Button(action: isEnabled ? action : {}) {
         Text(title)
-          .font(Font.custom("Figtree", size: 14).weight(.medium))
+          .font(Font.system(size: 14).weight(.medium))
           .tracking(-0.48)
           .foregroundColor(
-            theme.isDark ? theme.secondaryButtonText : Color(red: 0.26, green: 0.26, blue: 0.26)
+            theme.secondaryButtonText
           )
-          .padding(.horizontal, 32)
-          .frame(height: 44)
+          .padding(.horizontal, 20)
+          .frame(height: 36)
           .background(
-            Capsule()
-              .fill(theme.isDark ? theme.secondaryButtonFill : Color.white.opacity(0.85))
+            RoundedRectangle(cornerRadius: 9)
+              .fill(theme.secondaryButtonFill)
               .overlay(
-                Capsule()
+                RoundedRectangle(cornerRadius: 9)
                   .stroke(
-                    theme.isDark
-                      ? theme.secondaryButtonBorder : Color(red: 0.88, green: 0.88, blue: 0.88),
+                    theme.secondaryButtonBorder,
                     lineWidth: 1)
               )
           )

@@ -113,7 +113,7 @@ struct TimelineReviewOverlayBadge: View {
         VStack(spacing: 4) {
           TimelineReviewRatingIcon(rating: rating, size: 48)
           Text(rating.title)
-            .font(.custom("Figtree", size: 20).weight(.bold))
+            .font(.system(size: 20).weight(.bold))
             .foregroundColor(rating.overlayTextColor)
         }
         .frame(width: 140)
@@ -127,6 +127,7 @@ struct TimelineReviewOverlayBadge: View {
 }
 
 struct TimelineReviewCategoryPill: View {
+  @Environment(\.dayflowTheme) private var theme
   let name: String
   let color: Color
 
@@ -134,8 +135,8 @@ struct TimelineReviewCategoryPill: View {
     HStack(spacing: 4) {
       Circle().fill(color).frame(width: 8, height: 8)
       Text(name)
-        .font(.custom("Figtree", size: 10).weight(.bold))
-        .foregroundColor(Color(hex: "333333"))
+        .font(.system(size: 10).weight(.bold))
+        .foregroundColor(theme.textPrimary)
     }
     .padding(.horizontal, 6)
     .padding(.vertical, 4)
@@ -146,21 +147,23 @@ struct TimelineReviewCategoryPill: View {
 }
 
 struct TimelineReviewTimeRangePill: View {
+  @Environment(\.dayflowTheme) private var theme
   let timeRange: String
 
   var body: some View {
     Text(timeRange)
-      .font(.custom("Figtree", size: 10).weight(.bold))
-      .foregroundColor(Color(hex: "656565"))
+      .font(.system(size: 10).weight(.bold))
+      .foregroundColor(theme.textSecondary)
       .padding(.horizontal, 6)
       .padding(.vertical, 4)
-      .background(Color(hex: "F5F0E9").opacity(0.9))
+      .background(theme.surfaceMuted)
       .cornerRadius(6)
-      .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(hex: "E4E4E4"), lineWidth: 0.75))
+      .overlay(RoundedRectangle(cornerRadius: 6).stroke(theme.separator, lineWidth: 0.75))
   }
 }
 
 struct TimelineReviewRatingRow: View {
+  @Environment(\.dayflowTheme) private var theme
   let onUndo: () -> Void
   let onSelect: (TimelineReviewRating) -> Void
 
@@ -180,8 +183,8 @@ struct TimelineReviewRatingRow: View {
       VStack(spacing: 6) {
         ZUndoIcon(size: 16)
         Text("Undo")
-          .font(.custom("Figtree", size: 12).weight(.medium))
-          .foregroundColor(Color(hex: "98806D"))
+          .font(.system(size: 12).weight(.medium))
+          .foregroundColor(theme.textSecondary)
       }
     }
     .buttonStyle(.plain)
@@ -195,8 +198,8 @@ struct TimelineReviewRatingRow: View {
       VStack(spacing: 6) {
         TimelineReviewFooterIcon(rating: rating, size: 16)
         Text(rating.title)
-          .font(.custom("Figtree", size: 12).weight(.medium))
-          .foregroundColor(Color(hex: "98806D"))
+          .font(.system(size: 12).weight(.medium))
+          .foregroundColor(theme.textSecondary)
       }
     }
     .buttonStyle(.plain)
@@ -205,12 +208,13 @@ struct TimelineReviewRatingRow: View {
 }
 
 struct ZUndoIcon: View {
+  @Environment(\.dayflowTheme) private var theme
   let size: CGFloat
   var body: some View {
     ZStack {
-      RoundedRectangle(cornerRadius: 4).fill(Color(hex: "D6AB8A").opacity(0.7))
+      RoundedRectangle(cornerRadius: 4).fill(theme.primaryButtonFill)
       Text("Z")
-        .font(.custom("Figtree", size: size * 0.525).weight(.bold))
+        .font(.system(size: size * 0.525).weight(.bold))
         .foregroundColor(.white)
     }
     .frame(width: size, height: size)
@@ -250,7 +254,7 @@ struct TimelineReviewFooterIcon: View {
   }
   var body: some View {
     ZStack {
-      RoundedRectangle(cornerRadius: size * 0.25).fill(Color(hex: "D6AB8A").opacity(0.7))
+      RoundedRectangle(cornerRadius: size * 0.25).fill(rating.iconTint)
       Path { path in
         path.move(to: CGPoint(x: size * 0.3125, y: size * 0.5))
         path.addLine(to: CGPoint(x: size * 0.59375, y: size * 0.33762))
@@ -320,6 +324,7 @@ struct SummaryBarRow: View {
 }
 
 struct SummaryLabelRow: View {
+  @Environment(\.dayflowTheme) private var theme
   let summary: TimelineReviewSummary
   var body: some View {
     HStack(spacing: 28) {
@@ -329,12 +334,12 @@ struct SummaryLabelRow: View {
           HStack(spacing: 4) {
             TimelineReviewRatingIcon(rating: rating, size: 16)
             Text(rating.title)
-              .font(.custom("Figtree", size: 12).weight(.regular))
+              .font(.system(size: 12).weight(.regular))
               .foregroundColor(rating.labelColor)
           }
           Text(formatDuration(duration))
-            .font(.custom("Figtree", size: 16).weight(.semibold))
-            .foregroundColor(Color(hex: "333333"))
+            .font(.system(size: 16).weight(.semibold))
+            .foregroundColor(theme.textPrimary)
             .padding(.leading, 18)
         }
       }

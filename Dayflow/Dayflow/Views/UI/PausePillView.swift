@@ -9,7 +9,6 @@ import SwiftUI
 ///   Paused → Idle:  status out, pill 84→73 (bounce 0.35), content morph back
 struct PausePillView: View {
   @Environment(\.dayflowTheme) private var theme
-  @Environment(\.stylePreviewAfter) private var stylePreviewAfter
   @ObservedObject private var appState = AppState.shared
   @ObservedObject private var pauseManager = PauseManager.shared
 
@@ -64,7 +63,7 @@ struct PausePillView: View {
   }
 
   private var pillLabelFont: Font {
-    .custom("Figtree-Medium", size: 12)
+    .system(size: 12, weight: .medium)
   }
 
   private var statusSpacing: CGFloat { 10 }
@@ -127,16 +126,10 @@ struct PausePillView: View {
 
   private var pill: some View {
     ZStack(alignment: .leading) {
-      // Idle/menu use the Figma "glass" control fill; paused keeps its orange.
-      // "After" mode matches the primary "Set goals" button instead of
-      // the gradient.
+      // Shared blue controls keep all recording states legible in both appearances.
       ZStack {
         theme.controlFill.opacity(phase == .paused ? 0 : 1)
-        if stylePreviewAfter {
-          theme.primaryButtonFill.opacity(phase == .paused ? 1 : 0)
-        } else {
-          Grad.paused.opacity(phase == .paused ? 1 : 0)
-        }
+        theme.primaryButtonFill.opacity(phase == .paused ? 1 : 0)
       }
       .allowsHitTesting(false)
       .animation(.easeInOut(duration: 0.35), value: phase)
@@ -144,12 +137,8 @@ struct PausePillView: View {
       ZStack {
         InnerGlow(shape: Capsule(), color: theme.controlInnerGlow, radius: 3)
           .opacity(phase == .paused ? 0 : 1)
-        if stylePreviewAfter {
-          InnerGlow(shape: Capsule(), color: theme.primaryButtonInnerGlow, radius: 3)
-            .opacity(phase == .paused ? 1 : 0)
-        } else {
-          shineLayer(Col.shinePaused).opacity(phase == .paused ? 1 : 0)
-        }
+        InnerGlow(shape: Capsule(), color: theme.primaryButtonInnerGlow, radius: 3)
+          .opacity(phase == .paused ? 1 : 0)
       }
       .allowsHitTesting(false)
       .animation(.easeInOut(duration: 0.35), value: phase)
@@ -176,11 +165,8 @@ struct PausePillView: View {
 
       Capsule()
         .strokeBorder(
-          phase == .paused
-            ? (stylePreviewAfter
-              ? theme.primaryButtonBorder : Color(hex: "FFE1C9"))
-            : theme.controlBorder,
-          lineWidth: phase == .paused && stylePreviewAfter ? 1 : 0.75
+          phase == .paused ? theme.primaryButtonBorder : theme.controlBorder,
+          lineWidth: 1
         )
         .allowsHitTesting(false)
         .animation(.easeInOut(duration: 0.35), value: phase)
@@ -242,20 +228,6 @@ struct PausePillView: View {
     .allowsHitTesting(false)
   }
 
-  // MARK: - Shine
-
-  private func shineLayer(_ color: Color) -> some View {
-    // CSS: inset ±3px 0 5px — horizontal glow on left/right edges only
-    HStack(spacing: 0) {
-      LinearGradient(colors: [color, color.opacity(0)], startPoint: .leading, endPoint: .trailing)
-        .frame(width: 8)
-      Spacer(minLength: 0)
-      LinearGradient(colors: [color.opacity(0), color], startPoint: .leading, endPoint: .trailing)
-        .frame(width: 8)
-    }
-    .clipShape(Capsule())
-  }
-
   // MARK: - Chip Button
 
   private func chipButton(_ i: Int) -> some View {
@@ -267,16 +239,16 @@ struct PausePillView: View {
       startPause(chip.duration)
     } label: {
       ZStack {
-        Capsule().fill(theme.isDark ? AnyShapeStyle(theme.chipFill) : AnyShapeStyle(Grad.chip))
-        Capsule().fill(Grad.chipHover).opacity(hovered ? 1 : 0)
-        Capsule().strokeBorder(theme.chipBorder.opacity(0.8), lineWidth: 1)
+        Capsule().fill(theme.chipFill)
+        Capsule().fill(theme.primaryButtonFill).opacity(hovered ? 1 : 0)
+        Capsule().strokeBorder(hovered ? theme.primaryButtonBorder : theme.chipBorder, lineWidth: 1)
         Text(chip.label)
           .font(
             chip.isInf
               ? .system(size: 11, weight: .medium)
               : .system(size: 8, weight: .semibold)
           )
-          .foregroundColor(hovered ? .white : theme.textPrimary)
+          .foregroundColor(hovered ? theme.primaryButtonText : theme.textPrimary)
       }
       .frame(width: 42, height: 20)
       .contentShape(Capsule())
@@ -656,48 +628,6 @@ private struct PillChipButtonStyle: ButtonStyle {
   }
 }
 
-// MARK: - Gradients (exact from React CSS tokens)
-
-private enum Grad {
-  static let paused = LinearGradient(
-    stops: [
-      .init(color: Color(red: 1, green: 0.714, blue: 0.608), location: 0),
-      .init(color: Color(red: 1, green: 0.569, blue: 0.278), location: 0.495),
-      .init(color: Color(red: 1, green: 0.553, blue: 0.251), location: 0.760),
-      .init(color: Color(red: 1, green: 0.643, blue: 0.510), location: 1),
-    ],
-    startPoint: .top, endPoint: .bottom
-  )
-
-  // Chip default — 320deg CSS ≈ bottomTrailing→topLeading
-  static let chip = LinearGradient(
-    stops: [
-      .init(color: Color.white.opacity(0.72), location: 0),
-      .init(color: Color.white.opacity(0.56), location: 0.38),
-      .init(color: Color.white.opacity(0.44), location: 1),
-    ],
-    startPoint: UnitPoint(x: 0.91, y: 0.97),
-    endPoint: UnitPoint(x: 0.11, y: 0)
-  )
-
-  // Chip hover — orange gradient overlay
-  static let chipHover = LinearGradient(
-    stops: [
-      .init(color: Color(red: 1, green: 0.702, blue: 0.565).opacity(0.82), location: 0),
-      .init(color: Color(red: 1, green: 0.624, blue: 0.416).opacity(0.82), location: 0.42),
-      .init(color: Color(red: 1, green: 0.553, blue: 0.251).opacity(0.82), location: 1),
-    ],
-    startPoint: UnitPoint(x: 0.91, y: 0.97),
-    endPoint: UnitPoint(x: 0.11, y: 0)
-  )
-}
-
-// MARK: - Shine Colors (inset glow per state)
-
-private enum Col {
-  static let shinePaused = Color(red: 1, green: 0.894, blue: 0.761).opacity(0.5)
-}
-
 // MARK: - Preview
 
 #Preview("Pause Pill") {
@@ -705,5 +635,5 @@ private enum Col {
     PausePillView()
   }
   .frame(width: 400, height: 200)
-  .background(Color(red: 0.992, green: 0.973, blue: 0.945))  // #FDF8F1
+  .background(DayflowTheme.light.panelSolid)
 }

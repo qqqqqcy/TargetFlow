@@ -41,8 +41,6 @@ struct TimelineReviewSummaryCard: View {
     static let headerSpacing: CGFloat = 2
     static let contentSpacing: CGFloat = 16
 
-    static let linkColor = Color(hex: "F96E00")
-
     static let barHeight: CGFloat = 39
     static let barCornerRadius: CGFloat = 4
     static let barStrokeWidth: CGFloat = 1
@@ -89,11 +87,11 @@ struct TimelineReviewSummaryCard: View {
   private var header: some View {
     VStack(alignment: .leading, spacing: Design.headerSpacing) {
       Text("Your review")
-        .font(.custom("InstrumentSerif-Regular", size: 20))
+        .font(.system(size: 20, weight: .semibold))
         .foregroundColor(theme.textPrimary)
 
       subtitle
-        .font(.custom("Figtree", size: 11))
+        .font(.system(size: 11))
         .lineSpacing(2)
         .onTapGesture {
           guard cardsToReviewCount > 0 else { return }
@@ -126,7 +124,7 @@ struct TimelineReviewSummaryCard: View {
     composed =
       composed
       + Text(" Review \(cardsToReviewCount) cards to update your data.")
-      .foregroundColor(Design.linkColor)
+      .foregroundColor(theme.accent)
 
     return composed
   }
@@ -172,13 +170,13 @@ struct TimelineReviewSummaryCard: View {
               )
 
             Text(metric.label)
-              .font(.custom("Figtree", size: 10))
+              .font(.system(size: 10))
               .foregroundColor(theme.textSecondary)
           }
 
           if summary.hasData {
             Text(metric.durationText)
-              .font(.custom("Figtree", size: 12).weight(.semibold))
+              .font(.system(size: 12).weight(.semibold))
               .foregroundColor(theme.textPrimary)
               .padding(.leading, 14)
           }

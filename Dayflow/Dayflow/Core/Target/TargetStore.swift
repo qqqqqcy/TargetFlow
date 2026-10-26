@@ -92,6 +92,7 @@ final class TargetStore: ObservableObject {
 
   func enqueue(cardIDs: [Int64]) {
     refreshAssessments()
+    guard !AppStoragePaths.isUIPreview else { return }
     guard target != nil else { return }
     for id in cardIDs where !pending.contains(id) {
       pending.append(id)

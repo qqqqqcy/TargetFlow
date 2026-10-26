@@ -27,13 +27,13 @@ struct APIKeyInputView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       Text(title)
-        .font(.custom("Figtree", size: 16))
+        .font(.system(size: 16))
         .fontWeight(.semibold)
-        .foregroundColor(.black.opacity(0.9))
+        .foregroundColor(SettingsStyle.text)
 
       Text(subtitle)
-        .font(.custom("Figtree", size: 14))
-        .foregroundColor(.black.opacity(0.6))
+        .font(.system(size: 14))
+        .foregroundColor(SettingsStyle.secondary)
 
       // Input field container
       VStack(alignment: .leading, spacing: 8) {
@@ -47,7 +47,7 @@ struct APIKeyInputView: View {
                 .textFieldStyle(.plain)
             }
           }
-          .font(.custom("SF Mono", size: 13))
+          .font(.system(size: 13, design: .monospaced))
           .focused($isFocused)
           .onChange(of: apiKey) { _, newValue in
             let cleaned = cleanedAPIKey(newValue)
@@ -61,7 +61,7 @@ struct APIKeyInputView: View {
           Button(action: { showPassword.toggle() }) {
             Image(systemName: showPassword ? "eye.slash" : "eye")
               .font(.system(size: 14, weight: .medium))
-              .foregroundColor(.black.opacity(0.4))
+              .foregroundColor(SettingsStyle.secondary)
           }
           .buttonStyle(.plain)
           .pointingHandCursor()
@@ -74,14 +74,14 @@ struct APIKeyInputView: View {
             .font(.system(size: 16))
             .foregroundColor(
               validationState == .valid
-                ? Color(red: 0.34, green: 1, blue: 0.45) : Color(hex: "E91515")
+                ? SettingsStyle.statusGood : SettingsStyle.destructive
             )
             .transition(.scale.combined(with: .opacity))
           }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color.white.opacity(0.8))
+        .background(SettingsStyle.surface)
         .cornerRadius(8)
         .overlay(
           RoundedRectangle(cornerRadius: 8)
@@ -91,8 +91,8 @@ struct APIKeyInputView: View {
         // Validation message
         if validationState == .invalid {
           Text("API key should be more than 10 characters")
-            .font(.custom("Figtree", size: 12))
-            .foregroundColor(Color(hex: "E91515"))
+            .font(.system(size: 12))
+            .foregroundColor(SettingsStyle.destructive)
             .transition(.opacity)
         }
       }
@@ -102,13 +102,13 @@ struct APIKeyInputView: View {
       HStack(spacing: 4) {
         Image(systemName: "lock.shield.fill")
           .font(.system(size: 12))
-          .foregroundColor(Color(red: 0.34, green: 1, blue: 0.45).opacity(0.7))
+          .foregroundColor(SettingsStyle.statusGood.opacity(0.7))
 
         Text(
           "Your API key is encrypted and stored in your macOS Keychain - never uploaded anywhere"
         )
-        .font(.custom("Figtree", size: 12))
-        .foregroundColor(.black.opacity(0.5))
+        .font(.system(size: 12))
+        .foregroundColor(SettingsStyle.secondary)
       }
     }
   }
@@ -117,14 +117,14 @@ struct APIKeyInputView: View {
     if isFocused {
       switch validationState {
       case .valid:
-        return Color(red: 0.34, green: 1, blue: 0.45).opacity(0.6)
+        return SettingsStyle.statusGood.opacity(0.6)
       case .invalid:
-        return Color(hex: "E91515").opacity(0.6)
+        return SettingsStyle.destructive.opacity(0.6)
       case .none:
-        return Color(red: 1, green: 0.42, blue: 0.02).opacity(0.6)
+        return SettingsStyle.ink.opacity(0.6)
       }
     } else {
-      return Color.black.opacity(0.1)
+      return SettingsStyle.editorBorder
     }
   }
 

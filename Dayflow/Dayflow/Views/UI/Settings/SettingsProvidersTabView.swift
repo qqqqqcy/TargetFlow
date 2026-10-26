@@ -8,14 +8,14 @@ struct SettingsProvidersTabView: View {
     VStack(alignment: .leading, spacing: SettingsStyle.sectionSpacing) {
       if let status = viewModel.upgradeStatusMessage {
         Text(status)
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .foregroundColor(SettingsStyle.statusGood)
       }
 
       if let error = viewModel.providerRoutingErrorMessage {
         Text(error)
-          .font(.custom("Figtree", size: 13))
-          .foregroundColor(.red.opacity(0.8))
+          .font(.system(size: 13))
+          .foregroundColor(SettingsStyle.destructive)
       }
 
       currentConfigurationSection
@@ -158,7 +158,7 @@ struct SettingsProvidersTabView: View {
     ) {
       VStack(alignment: .leading, spacing: 14) {
         Text(viewModel.connectionHealthLabel)
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .fontWeight(.semibold)
           .foregroundColor(SettingsStyle.text)
 
@@ -194,7 +194,7 @@ struct SettingsProvidersTabView: View {
             Text(
               "The setup test sends a small image to verify multimodal support and may incur a provider charge."
             )
-            .font(.custom("Figtree", size: 12))
+            .font(.system(size: 12))
             .foregroundColor(SettingsStyle.secondary)
             .fixedSize(horizontal: false, vertical: true)
             SettingsSecondaryButton(title: String(localized: "Test connection")) {
@@ -203,7 +203,7 @@ struct SettingsProvidersTabView: View {
           }
         case .dayflow:
           Text("Hosted cards and transcription run through your Target Flow account.")
-            .font(.custom("Figtree", size: 13))
+            .font(.system(size: 13))
             .foregroundColor(SettingsStyle.secondary)
         }
       }
@@ -244,7 +244,7 @@ struct SettingsProvidersTabView: View {
     return VStack(alignment: .leading, spacing: 10) {
       HStack(alignment: .center, spacing: 10) {
         Text(provider.providerTableName)
-          .font(.custom("Figtree", size: 14))
+          .font(.system(size: 14))
           .fontWeight(.semibold)
           .foregroundColor(SettingsStyle.text)
 
@@ -270,7 +270,7 @@ struct SettingsProvidersTabView: View {
       }
 
       Text(provider.summary)
-        .font(.custom("Figtree", size: 12))
+        .font(.system(size: 12))
         .foregroundColor(SettingsStyle.secondary)
         .fixedSize(horizontal: false, vertical: true)
 
@@ -335,13 +335,13 @@ struct SettingsProvidersTabView: View {
         }
 
         Text(GeminiModelPreference(primary: viewModel.selectedGeminiModel).fallbackSummary)
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 12))
           .foregroundColor(SettingsStyle.secondary)
 
         Text(
           "Target Flow automatically downgrades if your chosen model is rate limited or unavailable."
         )
-        .font(.custom("Figtree", size: 11))
+        .font(.system(size: 11))
         .foregroundColor(SettingsStyle.meta)
       }
     }
@@ -513,7 +513,7 @@ struct SettingsProvidersTabView: View {
         }
 
         Text(intro)
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 12))
           .foregroundColor(SettingsStyle.secondary)
           .fixedSize(horizontal: false, vertical: true)
 
@@ -541,11 +541,11 @@ struct SettingsProvidersTabView: View {
       Toggle(isOn: config.isEnabled) {
         VStack(alignment: .leading, spacing: 3) {
           Text(config.heading)
-            .font(.custom("Figtree", size: 14))
+            .font(.system(size: 14))
             .fontWeight(.semibold)
             .foregroundColor(SettingsStyle.text)
           Text(config.description)
-            .font(.custom("Figtree", size: 12))
+            .font(.system(size: 12))
             .foregroundColor(SettingsStyle.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -556,7 +556,7 @@ struct SettingsProvidersTabView: View {
       ZStack(alignment: .topLeading) {
         if config.text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
           Text(config.defaultText)
-            .font(.custom("Figtree", size: 12))
+            .font(.system(size: 12))
             .foregroundColor(SettingsStyle.secondary)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -565,7 +565,7 @@ struct SettingsProvidersTabView: View {
         }
 
         TextEditor(text: config.text)
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 12))
           .foregroundColor(
             config.isEnabled.wrappedValue ? SettingsStyle.text : SettingsStyle.secondary
           )
@@ -636,12 +636,12 @@ struct LocalModelUpgradeSheet: View {
         HStack {
           VStack(alignment: .leading, spacing: 6) {
             Text("Upgrade to \(preset.displayName)")
-              .font(.custom("Figtree", size: 22))
+              .font(.system(size: 22))
               .fontWeight(.semibold)
             Text(
               "Follow the steps below, run a quick test, and Target Flow will switch you over automatically."
             )
-            .font(.custom("Figtree", size: 13))
+            .font(.system(size: 13))
             .foregroundColor(SettingsStyle.secondary)
           }
           Spacer()
@@ -661,7 +661,7 @@ struct LocalModelUpgradeSheet: View {
                 .font(.system(size: 12))
                 .foregroundColor(SettingsStyle.ink)
               Text(bullet)
-                .font(.custom("Figtree", size: 13))
+                .font(.system(size: 13))
                 .foregroundColor(SettingsStyle.text)
             }
           }
@@ -669,7 +669,7 @@ struct LocalModelUpgradeSheet: View {
 
         VStack(alignment: .leading, spacing: 12) {
           Text("Which local runtime are you using?")
-            .font(.custom("Figtree", size: 14))
+            .font(.system(size: 14))
             .foregroundColor(SettingsStyle.secondary)
           Picker("Engine", selection: $selectedEngine) {
             Text("Ollama").tag(LocalEngine.ollama)
@@ -703,7 +703,7 @@ struct LocalModelUpgradeSheet: View {
         Text(
           "Once the test succeeds, Target Flow updates your settings to \(preset.displayName) automatically."
         )
-        .font(.custom("Figtree", size: 12))
+        .font(.system(size: 12))
         .foregroundColor(SettingsStyle.secondary)
 
         HStack {
@@ -715,6 +715,8 @@ struct LocalModelUpgradeSheet: View {
       .padding(32)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .background(SettingsStyle.canvas)
+    .tint(SettingsStyle.primaryButtonFill)
     .onChange(of: selectedEngine) { _, newEngine in
       candidateModelId = preset.modelId(for: newEngine == .custom ? .ollama : newEngine)
       if newEngine != .custom {
@@ -729,20 +731,20 @@ struct LocalModelUpgradeSheet: View {
     let instruction = preset.instructions(for: engine == .custom ? .ollama : engine)
     VStack(alignment: .leading, spacing: 12) {
       Text(instruction.title)
-        .font(.custom("Figtree", size: 16))
+        .font(.system(size: 16))
         .fontWeight(.semibold)
       Text(instruction.subtitle)
-        .font(.custom("Figtree", size: 13))
+        .font(.system(size: 13))
         .foregroundColor(SettingsStyle.secondary)
       VStack(alignment: .leading, spacing: 6) {
         ForEach(Array(instruction.bullets.enumerated()), id: \.offset) { index, bullet in
           HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text("\(index + 1).")
-              .font(.custom("Figtree", size: 13))
+              .font(.system(size: 13))
               .foregroundColor(SettingsStyle.secondary)
               .frame(width: 18, alignment: .leading)
             Text(bullet)
-              .font(.custom("Figtree", size: 13))
+              .font(.system(size: 13))
               .foregroundColor(SettingsStyle.text)
           }
         }
@@ -771,17 +773,17 @@ struct LocalModelUpgradeSheet: View {
 
       if let note = instruction.note {
         Text(note)
-          .font(.custom("Figtree", size: 12))
+          .font(.system(size: 12))
           .foregroundColor(SettingsStyle.secondary)
       }
     }
     .padding(20)
     .background(
       RoundedRectangle(cornerRadius: 12, style: .continuous)
-        .fill(Color.white)
+        .fill(SettingsStyle.surface)
         .overlay(
           RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .stroke(Color.black.opacity(0.1), lineWidth: 1)
+            .stroke(SettingsStyle.divider, lineWidth: 1)
         )
     )
   }

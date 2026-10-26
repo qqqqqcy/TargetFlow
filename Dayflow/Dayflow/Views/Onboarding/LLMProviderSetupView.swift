@@ -32,96 +32,65 @@ struct LLMProviderSetupView: View {
     }
   }
 
-  // Layout constants (Figma "Edits after first implementation" LLM1–LLM4)
-  let sidebarWidth: CGFloat = 190
-  let fixedOffset: CGFloat = 42
-  let contentGap: CGFloat = 76
-
   @StateObject var setupState = ProviderSetupState()
   @State var sidebarOpacity: Double = 0
   @State var contentOpacity: Double = 0
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      // Header with Back button and Title on same line
-      HStack(alignment: .center, spacing: contentGap) {
-        // Back button container matching sidebar width
-        HStack {
-          Button(action: handleBack) {
-            HStack(spacing: 8) {
-              Image(systemName: "chevron.left")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(Color(hex: "634342"))
-                .frame(width: 20, height: 20, alignment: .center)
-
-              Text("Back")
-                .font(.custom("Figtree", size: 16))
-                .fontWeight(.medium)
-                .foregroundColor(Color(hex: "634342"))
-            }
-          }
-          .buttonStyle(DayflowPressScaleButtonStyle(pressedScale: 0.97))
-          .padding(.leading, 7)
-          .pointingHandCursor()
-
-          Spacer()
+    VStack(alignment: .leading, spacing: 22) {
+      HStack(spacing: 18) {
+        Button(action: handleBack) {
+          Label("Back", systemImage: "chevron.left")
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(SettingsStyle.secondary)
         }
-        .frame(width: sidebarWidth)
+        .buttonStyle(.plain)
+        .pointingHandCursor()
 
-        // Title in the content area
-        HStack {
-          Text(headerTitle)
-            .font(.custom("Figtree", size: 28))
-            .fontWeight(.semibold)
-            .foregroundColor(Color(hex: "333333"))
-
-          Spacer()
-        }
+        Text(headerTitle)
+          .font(.system(size: 24, weight: .bold))
+          .foregroundStyle(SettingsStyle.text)
+        Spacer()
       }
-      .padding(.leading, fixedOffset)
-      .padding(.top, 30)
-      .padding(.bottom, 24)
 
-      // Main content area with sidebar and content
-      HStack(alignment: .top, spacing: contentGap) {
-        // Sidebar - fixed width 250px
-        VStack(alignment: .leading, spacing: 0) {
-          SetupSidebarView(
-            steps: setupState.steps,
-            currentStepId: setupState.currentStep.id,
-            onStepSelected: { setupState.navigateToStep($0) }
-          )
-          Spacer()
-        }
-        .frame(width: sidebarWidth)
+      HStack(alignment: .top, spacing: 24) {
+        SetupSidebarView(
+          steps: setupState.steps,
+          currentStepId: setupState.currentStep.id,
+          onStepSelected: { setupState.navigateToStep($0) }
+        )
+        .frame(width: 170)
         .opacity(sidebarOpacity)
 
-        // Content area - wrapped in VStack to match sidebar alignment
-        VStack(alignment: .leading, spacing: 0) {
+        ScrollView(.vertical, showsIndicators: true) {
           currentStepContent
-            .frame(maxWidth: 638, alignment: .leading)
-          Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(22)
+            .background(SettingsStyle.surface, in: RoundedRectangle(cornerRadius: 14))
+            .overlay {
+              RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(SettingsStyle.divider, lineWidth: 1)
+            }
         }
         .opacity(contentOpacity)
         .textSelection(.enabled)
       }
-      .padding(.leading, fixedOffset)
+      .frame(maxHeight: .infinity, alignment: .top)
 
-      Spacer()  // Push everything to top
+      HStack {
+        Spacer()
+        nextButton
+          .opacity(contentOpacity)
+      }
     }
+    .padding(28)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    // Next / Complete setup always pinned to the bottom-right corner
-    .overlay(alignment: .bottomTrailing) {
-      nextButton
-        .padding(.trailing, 40)
-        .padding(.bottom, 38)
-        .opacity(contentOpacity)
-    }
     .onAppear {
       setupState.configureSteps(for: providerType)
       animateAppearance()
     }
-    .preferredColorScheme(.light)
+    .background(SettingsStyle.canvas)
+    .tint(SettingsStyle.primaryButtonFill)
     .alert(
       "Couldn't finish setup",
       isPresented: Binding(
@@ -154,23 +123,23 @@ struct LLMProviderSetupView: View {
       DayflowSurfaceButton(
         action: completeSetup,
         content: {
-          Text("Complete setup").font(.custom("Figtree", size: 16)).fontWeight(.medium)
+          Text("Complete setup").font(.system(size: 16)).fontWeight(.medium)
         },
-        background: Color(hex: "FF9F6F"),
+        background: SettingsStyle.primaryButtonFill,
         foreground: .white,
-        borderColor: Color(hex: "F4C8B1"),
-        cornerRadius: 200,
-        horizontalPadding: 40,
-        verticalPadding: 16,
+        borderColor: SettingsStyle.primaryButtonFill,
+        cornerRadius: 9,
+        horizontalPadding: 24,
+        verticalPadding: 11,
         showOverlayStroke: false,
-        innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
+        innerGlowColor: Color.clear
       )
     } else {
       DayflowSurfaceButton(
         action: handleContinue,
         content: {
           HStack(spacing: 4) {
-            Text(nextButtonText).font(.custom("Figtree", size: 16)).fontWeight(.medium)
+            Text(nextButtonText).font(.system(size: 16)).fontWeight(.medium)
             if !["verify", "test"].contains(setupState.currentStep.id) || setupState.testSuccessful
             {
               Image(systemName: "chevron.right")
@@ -180,14 +149,14 @@ struct LLMProviderSetupView: View {
           }
           .padding(.leading, 6)
         },
-        background: Color(hex: "FF9F6F"),
+        background: SettingsStyle.primaryButtonFill,
         foreground: .white,
-        borderColor: Color(hex: "F4C8B1"),
-        cornerRadius: 200,
-        horizontalPadding: 40,
-        verticalPadding: 16,
+        borderColor: SettingsStyle.primaryButtonFill,
+        cornerRadius: 9,
+        horizontalPadding: 24,
+        verticalPadding: 11,
         showOverlayStroke: false,
-        innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
+        innerGlowColor: Color.clear
       )
       .disabled(!setupState.canContinue)
       .opacity(!setupState.canContinue ? 0.5 : 1.0)
@@ -203,14 +172,14 @@ struct LLMProviderSetupView: View {
       VStack(alignment: .leading, spacing: 20) {
         VStack(alignment: .leading, spacing: 8) {
           Text("Choose your local AI engine")
-            .font(.custom("Figtree", size: 24))
+            .font(.system(size: 24))
             .fontWeight(.semibold)
-            .foregroundColor(Color(hex: "333333"))
+            .foregroundColor(SettingsStyle.text)
           Text(
             "For local use, LM Studio is the most reliable; Ollama has a known thinking bug in onboarding (can't turn thinking off) and performance is unreliable."
           )
-          .font(.custom("Figtree", size: 14))
-          .foregroundColor(Color(hex: "333333"))
+          .font(.system(size: 14))
+          .foregroundColor(SettingsStyle.text)
         }
         HStack(alignment: .center, spacing: 12) {
           DayflowSurfaceButton(
@@ -236,33 +205,33 @@ struct LLMProviderSetupView: View {
               }
               .frame(width: 18, height: 18)
               Text("Download LM Studio")
-                .font(.custom("Figtree", size: 14))
+                .font(.system(size: 14))
                 .fontWeight(.semibold)
             },
-            background: Color(hex: "FF9F6F"),
+            background: SettingsStyle.primaryButtonFill,
             foreground: .white,
-            borderColor: Color(hex: "F4C8B1"),
-            cornerRadius: 200,
+            borderColor: SettingsStyle.primaryButtonFill,
+            cornerRadius: 9,
             showOverlayStroke: false,
-            innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
+            innerGlowColor: Color.clear
           )
         }
         Text(
           "Already have a local server? Make sure it’s OpenAI-compatible. You can set a custom base URL in the next step."
         )
-        .font(.custom("Figtree", size: 13))
-        .foregroundColor(Color(hex: "333333"))
+        .font(.system(size: 13))
+        .foregroundColor(SettingsStyle.text)
       }
     case .localModelInstall:
       VStack(alignment: .leading, spacing: 16) {
         Text("Install Qwen3-VL 4B")
-          .font(.custom("Figtree", size: 24))
+          .font(.system(size: 24))
           .fontWeight(.semibold)
-          .foregroundColor(Color(hex: "333333"))
+          .foregroundColor(SettingsStyle.text)
         if setupState.localEngine == .ollama {
           Text("After installing Ollama, run this in your terminal to download the model (≈5GB):")
-            .font(.custom("Figtree", size: 14))
-            .foregroundColor(Color(hex: "333333"))
+            .font(.system(size: 14))
+            .foregroundColor(SettingsStyle.text)
           TerminalCommandView(
             title: String(localized: "Run this command:"),
             subtitle: String(localized: "Downloads Qwen3 Vision 4B for Ollama"),
@@ -271,67 +240,67 @@ struct LLMProviderSetupView: View {
         } else if setupState.localEngine == .lmstudio {
           VStack(alignment: .leading, spacing: 16) {
             Text("After installing LM Studio, download the recommended model:")
-              .font(.custom("Figtree", size: 14))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 14))
+              .foregroundColor(SettingsStyle.text)
 
             DayflowSurfaceButton(
               action: openLMStudioModelDownload,
               content: {
                 HStack(spacing: 8) {
                   Image(systemName: "arrow.down.circle.fill").font(.system(size: 14))
-                  Text("Download Qwen3-VL 4B in LM Studio").font(.custom("Figtree", size: 14))
+                  Text("Download Qwen3-VL 4B in LM Studio").font(.system(size: 14))
                     .fontWeight(.semibold)
                 }
               },
-              background: Color(hex: "FF9F6F"),
+              background: SettingsStyle.primaryButtonFill,
               foreground: .white,
-              borderColor: Color(hex: "F4C8B1"),
-              cornerRadius: 200,
+              borderColor: SettingsStyle.primaryButtonFill,
+              cornerRadius: 9,
               horizontalPadding: 24,
               verticalPadding: 12,
               showOverlayStroke: false,
-              innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
+              innerGlowColor: Color.clear
             )
 
             VStack(alignment: .leading, spacing: 6) {
               Text("This will open LM Studio and prompt you to download the model (≈3GB).")
-                .font(.custom("Figtree", size: 13))
-                .foregroundColor(Color(hex: "333333"))
+                .font(.system(size: 13))
+                .foregroundColor(SettingsStyle.text)
 
               Text(
                 "Once downloaded, turn on 'Local Server' in LM Studio (default http://localhost:1234)"
               )
-              .font(.custom("Figtree", size: 13))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 13))
+              .foregroundColor(SettingsStyle.text)
             }
             .padding(.top, 4)
 
             // Fallback manual instructions
             VStack(alignment: .leading, spacing: 4) {
               Text("Manual setup:")
-                .font(.custom("Figtree", size: 12))
+                .font(.system(size: 12))
                 .fontWeight(.semibold)
-                .foregroundColor(Color(hex: "727272"))
+                .foregroundColor(SettingsStyle.secondary)
               Text("1. Open LM Studio → Models tab")
-                .font(.custom("Figtree", size: 12))
-                .foregroundColor(Color(hex: "727272"))
+                .font(.system(size: 12))
+                .foregroundColor(SettingsStyle.secondary)
               Text("2. Search for 'Qwen3-VL-4B' and install the Instruct variant")
-                .font(.custom("Figtree", size: 12))
-                .foregroundColor(Color(hex: "727272"))
+                .font(.system(size: 12))
+                .foregroundColor(SettingsStyle.secondary)
             }
             .padding(.top, 8)
           }
         } else {
           VStack(alignment: .leading, spacing: 8) {
             Text("Use any OpenAI-compatible VLM")
-              .font(.custom("Figtree", size: 16))
+              .font(.system(size: 16))
               .fontWeight(.semibold)
-              .foregroundColor(Color(hex: "333333"))
+              .foregroundColor(SettingsStyle.text)
             Text(
               "Make sure your server exposes the OpenAI Chat Completions API and has Qwen3-VL 4B (or Qwen2.5-VL 3B if you need the legacy model) installed."
             )
-            .font(.custom("Figtree", size: 14))
-            .foregroundColor(Color(hex: "333333"))
+            .font(.system(size: 14))
+            .foregroundColor(SettingsStyle.text)
           }
         }
       }
@@ -366,21 +335,21 @@ struct LLMProviderSetupView: View {
           HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
               .font(.system(size: 12))
-              .foregroundColor(Color(hex: "E91515"))
+              .foregroundColor(SettingsStyle.destructive)
 
             Text(message)
-              .font(.custom("Figtree", size: 13))
-              .foregroundColor(Color(hex: "E91515"))
+              .font(.system(size: 13))
+              .foregroundColor(SettingsStyle.destructive)
           }
           .padding(.horizontal, 16)
           .padding(.vertical, 10)
           .background(
             RoundedRectangle(cornerRadius: 4)
-              .fill(Color(hex: "E91515").opacity(0.1))
+              .fill(SettingsStyle.destructive.opacity(0.1))
           )
           .overlay(
             RoundedRectangle(cornerRadius: 4)
-              .stroke(Color(hex: "E91515").opacity(0.3), lineWidth: 1)
+              .stroke(SettingsStyle.destructive.opacity(0.3), lineWidth: 1)
           )
         }
 
@@ -388,9 +357,9 @@ struct LLMProviderSetupView: View {
           Text(
             "Choose your Gemini model. We recommend 3.5 Flash, with 3.1 Flash-Lite available as a fallback."
           )
-          .font(.custom("Figtree", size: 16))
+          .font(.system(size: 16))
           .fontWeight(.semibold)
-          .foregroundColor(Color(hex: "333333"))
+          .foregroundColor(SettingsStyle.text)
 
           Picker("Gemini model", selection: $setupState.geminiModel) {
             ForEach(GeminiModel.allCases, id: \.self) { model in
@@ -400,8 +369,8 @@ struct LLMProviderSetupView: View {
           .pickerStyle(.segmented)
 
           Text(GeminiModelPreference(primary: setupState.geminiModel).fallbackSummary)
-            .font(.custom("Figtree", size: 13))
-            .foregroundColor(Color(hex: "727272"))
+            .font(.system(size: 13))
+            .foregroundColor(SettingsStyle.secondary)
         }
         .onChange(of: setupState.geminiModel) {
           setupState.persistGeminiModelSelection(source: "onboarding_picker")
@@ -413,13 +382,13 @@ struct LLMProviderSetupView: View {
       VStack(alignment: .leading, spacing: 24) {
         VStack(alignment: .leading, spacing: 8) {
           Text("Download the AI model")
-            .font(.custom("Figtree", size: 24))
+            .font(.system(size: 24))
             .fontWeight(.semibold)
-            .foregroundColor(Color(hex: "333333"))
+            .foregroundColor(SettingsStyle.text)
 
           Text("This model enables Target Flow to understand what's on your screen")
-            .font(.custom("Figtree", size: 14))
-            .foregroundColor(Color(hex: "333333"))
+            .font(.system(size: 14))
+            .foregroundColor(SettingsStyle.text)
         }
 
         TerminalCommandView(
@@ -439,14 +408,14 @@ struct LLMProviderSetupView: View {
         VStack(alignment: .leading, spacing: 12) {
           if !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Text(title)
-              .font(.custom("Figtree", size: 24))
+              .font(.system(size: 24))
               .fontWeight(.semibold)
-              .foregroundColor(Color(hex: "333333"))
+              .foregroundColor(SettingsStyle.text)
           }
           if !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Text(description)
-              .font(.custom("Figtree", size: 16))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 16))
+              .foregroundColor(SettingsStyle.text)
               .fixedSize(horizontal: false, vertical: true)
               .multilineTextAlignment(.leading)
               .lineLimit(nil)
@@ -456,8 +425,8 @@ struct LLMProviderSetupView: View {
               Text(
                 "Advanced users can pick any **vision-capable** LLM, but we strongly recommend using Qwen3-VL 4B based on our internal benchmarks."
               )
-              .font(.custom("Figtree", size: 16))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 16))
+              .foregroundColor(SettingsStyle.text)
               .fixedSize(horizontal: false, vertical: true)
               .multilineTextAlignment(.leading)
               .frame(maxWidth: 500, alignment: .leading)
@@ -465,8 +434,7 @@ struct LLMProviderSetupView: View {
           }
         }
 
-        // Content area scrolls if needed; Next stays visible below
-        ScrollView(.vertical, showsIndicators: true) {
+        Group {
           VStack(alignment: .leading, spacing: 16) {
             if ["verify", "test"].contains(step.id) {
               if providerType == .gemini {
@@ -541,8 +509,8 @@ struct LLMProviderSetupView: View {
                 // Engine selection: LM Studio or Custom
                 VStack(alignment: .leading, spacing: 12) {
                   Text("Which tool are you using?")
-                    .font(.custom("Figtree", size: 14))
-                    .foregroundColor(Color(hex: "333333"))
+                    .font(.system(size: 14))
+                    .foregroundColor(SettingsStyle.text)
                   Picker("Engine", selection: $setupState.localEngine) {
                     Text("LM Studio").tag(LocalEngine.lmstudio)
                     Text("Custom model").tag(LocalEngine.custom)
@@ -583,7 +551,6 @@ struct LLMProviderSetupView: View {
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(6)
         }
-        .frame(maxHeight: 420)
 
       }
 
@@ -607,31 +574,31 @@ struct LLMProviderSetupView: View {
       VStack(alignment: .leading, spacing: 24) {
         VStack(alignment: .leading, spacing: 8) {
           Text("Get your Gemini API key")
-            .font(.custom("Figtree", size: 24))
+            .font(.system(size: 24))
             .fontWeight(.semibold)
-            .foregroundColor(Color(hex: "333333"))
+            .foregroundColor(SettingsStyle.text)
 
           Text(
             "allows you to run Target Flow for free. All you need is a Google account - no credit card required."
           )
-          .font(.custom("Figtree", size: 14))
-          .foregroundColor(Color(hex: "333333"))
+          .font(.system(size: 14))
+          .foregroundColor(SettingsStyle.text)
         }
 
         VStack(alignment: .leading, spacing: 16) {
           HStack(alignment: .top, spacing: 12) {
             Text("1.")
-              .font(.custom("Figtree", size: 14))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 14))
+              .foregroundColor(SettingsStyle.text)
               .frame(width: 20, alignment: .leading)
 
             Button(action: openGoogleAIStudio) {
               Text("Visit Google AI Studio ")
-                .font(.custom("Figtree", size: 14))
-                .foregroundColor(Color(hex: "333333"))
+                .font(.system(size: 14))
+                .foregroundColor(SettingsStyle.text)
                 + Text("(aistudio.google.com)")
-                .font(.custom("Figtree", size: 14))
-                .foregroundColor(Color(red: 1, green: 0.42, blue: 0.02))
+                .font(.system(size: 14))
+                .foregroundColor(SettingsStyle.ink)
                 .underline()
             }
             .buttonStyle(.plain)
@@ -640,24 +607,24 @@ struct LLMProviderSetupView: View {
 
           HStack(alignment: .top, spacing: 12) {
             Text("2.")
-              .font(.custom("Figtree", size: 14))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 14))
+              .foregroundColor(SettingsStyle.text)
               .frame(width: 20, alignment: .leading)
 
             Text("Click \"Create API key\" in the top right")
-              .font(.custom("Figtree", size: 14))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 14))
+              .foregroundColor(SettingsStyle.text)
           }
 
           HStack(alignment: .top, spacing: 12) {
             Text("3.")
-              .font(.custom("Figtree", size: 14))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 14))
+              .foregroundColor(SettingsStyle.text)
               .frame(width: 20, alignment: .leading)
 
             Text("Create a new API key and copy it")
-              .font(.custom("Figtree", size: 14))
-              .foregroundColor(Color(hex: "333333"))
+              .font(.system(size: 14))
+              .foregroundColor(SettingsStyle.text)
           }
         }
         .padding(.vertical, 12)
@@ -668,18 +635,18 @@ struct LLMProviderSetupView: View {
             content: {
               HStack(spacing: 8) {
                 Image(systemName: "safari").font(.system(size: 14))
-                Text("Open Google AI Studio").font(.custom("Figtree", size: 14)).fontWeight(
+                Text("Open Google AI Studio").font(.system(size: 14)).fontWeight(
                   .semibold)
               }
             },
-            background: Color(hex: "FF9F6F"),
+            background: SettingsStyle.primaryButtonFill,
             foreground: .white,
-            borderColor: Color(hex: "F4C8B1"),
-            cornerRadius: 200,
+            borderColor: SettingsStyle.primaryButtonFill,
+            cornerRadius: 9,
             horizontalPadding: 24,
             verticalPadding: 12,
             showOverlayStroke: false,
-            innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
+            innerGlowColor: Color.clear
           )
           Spacer()
         }

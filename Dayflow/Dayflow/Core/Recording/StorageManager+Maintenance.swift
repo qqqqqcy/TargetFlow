@@ -428,6 +428,7 @@ extension StorageManager {
   }
 
   func performPurgeIfNeeded() {
+    guard !AppStoragePaths.isUIPreview else { return }
     do {
       let limit = StoragePreferences.recordingsLimitBytes
 

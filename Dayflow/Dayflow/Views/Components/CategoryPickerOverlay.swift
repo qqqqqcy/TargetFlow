@@ -52,7 +52,7 @@ struct CategoryPickerOverlay: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       Rectangle()
-        .fill(theme.isDark ? Color.white.opacity(0.14) : Color(red: 0.91, green: 0.89, blue: 0.86))
+        .fill(theme.rightPanelDivider)
         .frame(height: 1)
 
       helperContent
@@ -63,12 +63,12 @@ struct CategoryPickerOverlay: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(backgroundView)
     .clipShape(
-      RoundedRectangle(cornerRadius: 6)
+      RoundedRectangle(cornerRadius: 9)
     )
     .overlay(
-      RoundedRectangle(cornerRadius: 6)
+      RoundedRectangle(cornerRadius: 9)
         .stroke(
-          theme.isDark ? theme.popoverBorder : Color(red: 0.91, green: 0.88, blue: 0.87),
+          theme.popoverBorder,
           lineWidth: 1
         )
     )
@@ -81,10 +81,10 @@ struct CategoryPickerOverlay: View {
     Button(action: onDismiss) {
       Image(systemName: "checkmark")
         .font(.system(size: 11, weight: .bold))
-        .foregroundColor(theme.isDark ? .white : Color(red: 0.39, green: 0.35, blue: 0.33))
+        .foregroundColor(theme.accent)
         .frame(width: 26, height: 26)
         .background(
-          theme.isDark ? Color.white.opacity(0.28) : Color.white.opacity(0.9)
+          theme.accent.opacity(0.08)
         )
         .clipShape(
           UnevenRoundedRectangle(
@@ -103,21 +103,13 @@ struct CategoryPickerOverlay: View {
   }
 
   private var backgroundView: some View {
-    Group {
-      if theme.isDark {
-        Color(hex: "424755")
-          .background(.ultraThinMaterial)
-      } else {
-        Color(red: 0.98, green: 0.96, blue: 0.95).opacity(0.86)
-          .background(.ultraThinMaterial)
-      }
-    }
+    theme.popoverFill
   }
 
   private var helperContent: some View {
-    let baseFont = Font.custom("Figtree", size: 12)
-    let baseColor = theme.isDark ? theme.textTertiary : Color(red: 0.39, green: 0.35, blue: 0.33)
-    let linkColor = theme.isDark ? theme.accentText : Color(red: 1.0, green: 0.4, blue: 0.0)
+    let baseFont = Font.system(size: 12)
+    let baseColor = theme.textSecondary
+    let linkColor = theme.accent
     let linkURL = URL(string: "dayflow://category-editor")!
 
     var intro = AttributedString(
@@ -129,13 +121,13 @@ struct CategoryPickerOverlay: View {
     intro.font = baseFont
     intro.foregroundColor = baseColor
 
-    var link = AttributedString("here")
+    var link = AttributedString("管理事件")
     link.font = baseFont
     link.foregroundColor = linkColor
     link.underlineStyle = .single
     link.link = linkURL
 
-    var period = AttributedString(".")
+    var period = AttributedString("。")
     period.font = baseFont
     period.foregroundColor = baseColor
 
@@ -161,6 +153,7 @@ struct CategoryPickerOverlay: View {
 }
 
 private struct CategoryPickerPill: View {
+  @Environment(\.dayflowTheme) private var theme
   let category: TimelineCategory
   let isSelected: Bool
   var isDark: Bool = false
@@ -172,41 +165,16 @@ private struct CategoryPickerPill: View {
     return Color.gray
   }
 
-  private var background: some View {
-    Group {
-      if isDark {
-        if isSelected {
-          Color(red: 226 / 255, green: 160 / 255, blue: 121 / 255).opacity(0.4)
-        } else {
-          Color.white.opacity(0.14)
-        }
-      } else if isSelected {
-        LinearGradient(
-          colors: [
-            Color(red: 1.0, green: 0.99, blue: 0.97),
-            Color(red: 1.0, green: 0.91, blue: 0.83),
-          ],
-          startPoint: .leading,
-          endPoint: .trailing
-        )
-      } else {
-        Color.white.opacity(0.76)
-      }
-    }
+  private var background: Color {
+    isSelected ? theme.accent.opacity(0.1) : theme.cardFill
   }
 
   private var borderColor: Color {
-    if isDark {
-      return isSelected ? Color(hex: "875C46") : Color.white.opacity(0.18)
-    }
-    if isSelected {
-      return Color(red: 0.98, green: 0.73, blue: 0.50)
-    }
-    return Color(red: 0.88, green: 0.88, blue: 0.88)
+    isSelected ? theme.accent.opacity(0.4) : theme.cardBorder
   }
 
   private var textColor: Color {
-    isDark ? .white : Color(red: 0.2, green: 0.2, blue: 0.2)
+    isSelected ? theme.accent : theme.textPrimary
   }
 
   var body: some View {
@@ -217,7 +185,7 @@ private struct CategoryPickerPill: View {
 
       Text(category.name)
         .font(
-          Font.custom("Figtree", size: 13)
+          Font.system(size: 13)
             .weight(.medium)
         )
         .foregroundColor(textColor)
@@ -227,12 +195,12 @@ private struct CategoryPickerPill: View {
     .padding(.vertical, 5)
     .background(background)
     .overlay(
-      RoundedRectangle(cornerRadius: 6)
+      RoundedRectangle(cornerRadius: 9)
         .inset(by: 0.25)
         .stroke(style: strokeStyle)
         .foregroundColor(borderColor)
     )
-    .cornerRadius(6)
+    .cornerRadius(9)
   }
 
   private var strokeStyle: StrokeStyle {
@@ -261,7 +229,9 @@ private struct FlowLayout: Layout {
     var maxRowWidth: CGFloat = 0
 
     for subview in subviews {
-      let size = subview.sizeThatFits(.unspecified)
+      let idealSize = subview.sizeThatFits(.unspecified)
+      let size = subview.sizeThatFits(
+        ProposedViewSize(width: min(idealSize.width, maxWidth), height: nil))
       let proposedWidth = size.width
 
       if rowWidth > 0 && rowWidth + spacing + proposedWidth > maxWidth {
@@ -288,7 +258,9 @@ private struct FlowLayout: Layout {
     var currentRowHeight: CGFloat = 0
 
     for subview in subviews {
-      let size = subview.sizeThatFits(.unspecified)
+      let idealSize = subview.sizeThatFits(.unspecified)
+      let size = subview.sizeThatFits(
+        ProposedViewSize(width: min(idealSize.width, bounds.width), height: nil))
       if origin.x > bounds.minX && origin.x + size.width > bounds.maxX {
         origin.x = bounds.minX
         origin.y += currentRowHeight + rowSpacing

@@ -60,6 +60,7 @@ final class TimelapseStorageManager {
   }
 
   private func performPurge(limitBytes: Int64) {
+    guard !AppStoragePaths.isUIPreview else { return }
     guard limitBytes < Int64.max else { return }
 
     do {

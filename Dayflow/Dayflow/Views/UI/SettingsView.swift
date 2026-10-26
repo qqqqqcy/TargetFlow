@@ -2,7 +2,7 @@
 //  SettingsView.swift
 //  Dayflow
 //
-//  Settings screen with onboarding-inspired styling and split layout
+//  Settings groups on the shared modern canvas
 //
 
 import Foundation
@@ -23,8 +23,17 @@ struct SettingsView: View {
       case .providers: return String(localized: "Providers")
       }
     }
+
+    var symbol: String {
+      switch self {
+      case .storage: return "record.circle"
+      case .privacy: return "lock.shield"
+      case .providers: return "server.rack"
+      }
+    }
   }
 
+  @AppStorage(DayflowAppearance.storageKey) private var appearance: DayflowAppearance = .system
   @State private var selectedTab: SettingsTab = .storage
 
   @Namespace private var sidebarSelectionNamespace
@@ -111,107 +120,112 @@ struct SettingsView: View {
   }
 
   private var mainContent: some View {
-    HStack(alignment: .top, spacing: 32) {
-      sidebar
-        .frame(maxHeight: .infinity, alignment: .topLeading)
-
+    VStack(alignment: .leading, spacing: 18) {
+      pageHeader
+      navigationTabs
       settingsContent
+    }
+    .padding(.horizontal, 24)
+    .padding(.top, 24)
+    .padding(.bottom, 16)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    .tint(SettingsStyle.primaryButtonFill)
+  }
 
+  private var pageHeader: some View {
+    HStack(alignment: .center, spacing: 16) {
+      VStack(alignment: .leading, spacing: 7) {
+        Text("Settings")
+          .font(.system(size: 25, weight: .bold))
+          .foregroundStyle(SettingsStyle.text)
+        Text("按你的节奏记录，掌控数据与提醒。")
+          .font(.system(size: 12))
+          .foregroundStyle(SettingsStyle.secondary)
+      }
+
+      Spacer(minLength: 16)
+
+      Menu {
+        Picker("Light/Dark mode", selection: $appearance) {
+          ForEach(DayflowAppearance.allCases) { option in
+            Text(option.title).tag(option)
+          }
+        }
+      } label: {
+        Label(appearance.title, systemImage: "circle.lefthalf.filled")
+          .font(.system(size: 12, weight: .medium))
+          .foregroundStyle(SettingsStyle.secondary)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 8)
+          .background(SettingsStyle.surface, in: RoundedRectangle(cornerRadius: 8))
+          .overlay {
+            RoundedRectangle(cornerRadius: 8)
+              .strokeBorder(SettingsStyle.divider, lineWidth: 1)
+          }
+      }
+      .menuStyle(.borderlessButton)
+      .menuIndicator(.hidden)
+      .fixedSize()
+      .accessibilityLabel("Light/Dark mode")
+      .help("跟随系统，或选择浅色与深色外观")
+    }
+  }
+
+  private var navigationTabs: some View {
+    HStack(spacing: 6) {
+      ForEach(SettingsTab.allCases) { tab in
+        Button {
+          withAnimation(.easeOut(duration: 0.18)) {
+            selectedTab = tab
+          }
+        } label: {
+          Label(tab.title, systemImage: tab.symbol)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(selectedTab == tab ? SettingsStyle.ink : SettingsStyle.secondary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            .background {
+              if selectedTab == tab {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                  .fill(SettingsStyle.surface)
+                  .overlay {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                      .strokeBorder(SettingsStyle.divider, lineWidth: 1)
+                  }
+                  .matchedGeometryEffect(id: "sidebarSelection", in: sidebarSelectionNamespace)
+              }
+            }
+        }
+        .buttonStyle(SettingsSidebarButtonStyle())
+        .pointingHandCursor()
+        .accessibilityAddTraits(selectedTab == tab ? [.isSelected] : [])
+      }
       Spacer(minLength: 0)
     }
-    .padding(.trailing, 40)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    .padding(4)
+    .background(SettingsStyle.subtleFill, in: RoundedRectangle(cornerRadius: 12))
   }
 
   @ViewBuilder
   private var settingsContent: some View {
     if selectedTab == .privacy {
-      VStack(alignment: .leading, spacing: 24) {
-        tabContent
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-      .padding(.top, 24)
-      .padding(.trailing, 16)
-      .padding(.bottom, 24)
-      .frame(maxWidth: 760, maxHeight: .infinity, alignment: .topLeading)
+      tabContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     } else {
-      ScrollView(.vertical, showsIndicators: false) {
-        VStack(alignment: .leading, spacing: 24) {
+      ScrollView(.vertical, showsIndicators: true) {
+        VStack(alignment: .leading, spacing: SettingsStyle.sectionSpacing) {
           tabContent
         }
+        .frame(maxWidth: 920, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 24)
-        .padding(.trailing, 16)
-        .padding(.bottom, 24)
-        .frame(maxWidth: .infinity, minHeight: 0, alignment: .topLeading)
+        .padding(.bottom, 8)
       }
-      .frame(maxWidth: 600, maxHeight: .infinity, alignment: .topLeading)
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
-  }
-
-  private var sidebar: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Text("Settings")
-        .font(.custom("InstrumentSerif-Regular", size: 22))
-        .foregroundColor(SettingsStyle.text)
-        .padding(.leading, 10)
-        .padding(.bottom, 18)
-
-      VStack(alignment: .leading, spacing: 2) {
-        ForEach(SettingsTab.allCases) { tab in
-          sidebarButton(for: tab)
-        }
-      }
-
-      Spacer()
-
-      sidebarFooter
-        .padding(.leading, 10)
-    }
-    .padding(.top, 0)
-    .padding(.bottom, 16)
-    .padding(.horizontal, 4)
-    .frame(width: 160, alignment: .topLeading)
-  }
-
-  private var sidebarFooter: some View {
-    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-    return Text("Target Flow v\(version)")
-      .font(.custom("Figtree", size: 11))
-      .foregroundColor(SettingsStyle.meta)
-  }
-
-  private func sidebarButton(for tab: SettingsTab) -> some View {
-    Button {
-      withAnimation(.easeOut(duration: 0.18)) {
-        selectedTab = tab
-      }
-    } label: {
-      Text(tab.title)
-        .font(.custom("Figtree", size: 13))
-        .fontWeight(.semibold)
-        .foregroundColor(selectedTab == tab ? SettingsStyle.text : SettingsStyle.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 8)
-        .padding(.horizontal, 10)
-        .background {
-          if selectedTab == tab {
-            RoundedRectangle(cornerRadius: 7)
-              .fill(SettingsStyle.subtleFill)
-              .matchedGeometryEffect(id: "sidebarSelection", in: sidebarSelectionNamespace)
-          }
-        }
-    }
-    .buttonStyle(SettingsSidebarButtonStyle())
-    .pointingHandCursor()
   }
 
   @ViewBuilder
   private var tabContent: some View {
-    // Content swap is a pure fade. The sidebar pill's matchedGeometryEffect
-    // carries the "where you went" signal — the content doesn't need to
-    // redundantly slide horizontally, which implied a carousel that doesn't
-    // actually exist (the sidebar is vertical, not left/right tabs).
     Group {
       switch selectedTab {
       case .storage:

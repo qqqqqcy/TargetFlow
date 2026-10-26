@@ -37,14 +37,14 @@ struct SettingsRecordingPrivacyTabView: View {
 
       TextField("Search installed apps", text: $viewModel.searchText)
         .textFieldStyle(.plain)
-        .font(.custom("Figtree", size: 13))
+        .font(.system(size: 13))
         .foregroundColor(SettingsStyle.text)
     }
     .padding(.horizontal, 12)
     .padding(.vertical, 9)
     .background(
       RoundedRectangle(cornerRadius: 8, style: .continuous)
-        .fill(Color.black.opacity(0.04))
+        .fill(SettingsStyle.editorFill)
     )
     .overlay(
       RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -56,7 +56,7 @@ struct SettingsRecordingPrivacyTabView: View {
     VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .firstTextBaseline) {
         Text("Installed apps")
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .fontWeight(.semibold)
           .foregroundColor(SettingsStyle.text)
 
@@ -76,7 +76,7 @@ struct SettingsRecordingPrivacyTabView: View {
           .frame(maxWidth: .infinity, alignment: .center)
       } else if viewModel.filteredApplications.isEmpty {
         Text("No apps match your search.")
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .foregroundColor(SettingsStyle.secondary)
           .padding(.vertical, 20)
           .frame(maxWidth: .infinity, alignment: .center)
@@ -100,7 +100,7 @@ struct SettingsRecordingPrivacyTabView: View {
         .frame(maxHeight: .infinity)
         .background(
           RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .fill(Color.black.opacity(0.025))
+            .fill(SettingsStyle.canvas)
         )
         .overlay(
           RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -119,7 +119,7 @@ struct SettingsRecordingPrivacyTabView: View {
 
       HStack(alignment: .firstTextBaseline, spacing: 10) {
         Text("Blocked apps")
-          .font(.custom("Figtree", size: 13))
+          .font(.system(size: 13))
           .fontWeight(.semibold)
           .foregroundColor(SettingsStyle.text)
 
@@ -138,7 +138,7 @@ struct SettingsRecordingPrivacyTabView: View {
         HStack(spacing: 12) {
           if viewModel.blockedApplications.isEmpty {
             Text("Drag apps here to hide them from recording")
-              .font(.custom("Figtree", size: 13))
+              .font(.system(size: 13))
               .foregroundColor(SettingsStyle.meta)
               .frame(height: 58)
               .padding(.horizontal, 12)
@@ -159,7 +159,7 @@ struct SettingsRecordingPrivacyTabView: View {
       .padding(8)
       .background(
         RoundedRectangle(cornerRadius: 8, style: .continuous)
-          .fill(Color.black.opacity(isBlockedTrayTargeted ? 0.08 : 0.035))
+          .fill(isBlockedTrayTargeted ? SettingsStyle.ink.opacity(0.1) : SettingsStyle.canvas)
       )
       .overlay(
         RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -200,7 +200,7 @@ private struct RecordingPrivacyGridAppButton: View {
         }
 
         Text(app.name)
-          .font(.custom("Figtree", size: 11))
+          .font(.system(size: 11))
           .fontWeight(.semibold)
           .foregroundColor(isBlocked ? SettingsStyle.ink : SettingsStyle.text)
           .lineLimit(2)

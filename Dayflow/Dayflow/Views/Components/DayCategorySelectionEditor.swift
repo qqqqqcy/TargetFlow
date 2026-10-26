@@ -87,7 +87,7 @@ struct DayCategorySelectionEditor: View {
         .foregroundColor(theme.textSecondary.opacity(0.7))
 
       Text(helperText)
-        .font(.custom("Figtree", size: Design.helperTextSize))
+        .font(.system(size: Design.helperTextSize))
         .foregroundColor(theme.textSecondary)
     }
   }
@@ -116,8 +116,8 @@ private struct DayCategoryFlowLayout: Layout {
     var maxRowWidth: CGFloat = 0
 
     for subview in subviews {
-      let size = subview.sizeThatFits(.unspecified)
-      let proposedWidth = size.width
+      let size = subview.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+      let proposedWidth = min(size.width, maxWidth)
 
       if rowWidth > 0 && rowWidth + spacing + proposedWidth > maxWidth {
         totalHeight += rowHeight + rowSpacing
@@ -143,8 +143,9 @@ private struct DayCategoryFlowLayout: Layout {
     var currentRowHeight: CGFloat = 0
 
     for subview in subviews {
-      let size = subview.sizeThatFits(.unspecified)
-      if origin.x > bounds.minX && origin.x + size.width > bounds.maxX {
+      let size = subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+      let itemWidth = min(size.width, bounds.width)
+      if origin.x > bounds.minX && origin.x + itemWidth > bounds.maxX {
         origin.x = bounds.minX
         origin.y += currentRowHeight + rowSpacing
         currentRowHeight = 0
@@ -152,10 +153,10 @@ private struct DayCategoryFlowLayout: Layout {
 
       subview.place(
         at: CGPoint(x: origin.x, y: origin.y),
-        proposal: ProposedViewSize(width: size.width, height: size.height)
+        proposal: ProposedViewSize(width: itemWidth, height: size.height)
       )
 
-      origin.x += size.width + spacing
+      origin.x += itemWidth + spacing
       currentRowHeight = max(currentRowHeight, size.height)
     }
   }

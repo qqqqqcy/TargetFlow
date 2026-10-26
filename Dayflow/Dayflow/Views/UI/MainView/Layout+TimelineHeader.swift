@@ -66,7 +66,7 @@ private struct TimelineNavigationButton: View {
     }) {
       ZStack {
         Circle()
-          .fill(theme.controlFill)
+          .fill(theme.accentSoft)
           .frame(width: hoverCircleSize, height: hoverCircleSize)
           .opacity(isHovering && isEnabled ? 1 : 0)
 
@@ -140,8 +140,7 @@ extension MainView {
   // used in `DateNavigationControls.swift:calculateOptimalPillWidth()`.
   private var measuredDateLabelWidth: CGFloat {
     let font =
-      NSFont(name: "InstrumentSerif-Regular", size: 26)
-      ?? NSFont.systemFont(ofSize: 26)
+      NSFont.systemFont(ofSize: 14, weight: .semibold)
     return timelineTitleText.size(withAttributes: [.font: font]).width
   }
 
@@ -156,7 +155,7 @@ extension MainView {
     let usable = max(0, availableWidth - reservation)
 
     // Matches the pinned widths of each control (Figma-spec accurate).
-    let chevronsWidth = (TimelineNavigationLayout.arrowSize * 2) + 2
+    let chevronsWidth = (TimelineNavigationLayout.hoverCircleSize * 2) + 2
     let calendarWidth: CGFloat = 36
     let dayWeekWidth: CGFloat = 104
     let todayWidth: CGFloat = 56
@@ -187,7 +186,7 @@ extension MainView {
     // text. Threshold of 100pt safely partitions compact (idle 73, paused
     // 84) from expanded (menu 250+, paused+status 290).
     let trailingIsCompact = timelineHeaderTrailingWidth < 100
-    let dateLiberalAllowance: CGFloat = trailingIsCompact ? 55 : 0
+    let dateLiberalAllowance: CGFloat = 0
     if used + datePad + measuredDateLabelWidth <= usable + dateLiberalAllowance {
       vis.showInlineDate = true
     }
@@ -224,17 +223,16 @@ extension MainView {
       }
     }
     .frame(height: 30)
-    .offset(x: timelineOffset + TimelineAlignment.pickerRowOffset)
+    .offset(x: timelineOffset)
     .opacity(timelineOpacity)
   }
 
   private var timelineTrailingControls: some View {
-    PausePillView()
+    EmptyView()
   }
 
   private var timelineHeaderTrailingReservation: CGFloat {
-    let measuredWidth = max(timelineHeaderTrailingWidth, 120)
-    return measuredWidth + 18
+    0
   }
 
   private var timelineNavigationButtons: some View {
@@ -398,7 +396,7 @@ extension MainView {
             }
           }
         )
-        .offset(x: cardX, y: timelineCalendarButtonFrame.maxY + 55)
+        .offset(x: cardX, y: timelineCalendarButtonFrame.maxY + 8)
         .transition(timelineCalendarPopoverTransition)
         .zIndex(1)
       }
@@ -425,7 +423,7 @@ extension MainView {
             }
 
             Text(mode.title)
-              .font(.custom("Figtree", size: 12).weight(.medium))
+              .font(.system(size: 12).weight(.medium))
               .foregroundColor(isSelected ? theme.controlText : theme.segmentInactiveText)
               // Concrete width (52pt × 2 = 104pt container) instead of
               // `.frame(maxWidth: .infinity)`. The infinity was being fought
@@ -463,7 +461,7 @@ extension MainView {
       navigateTimeline(to: timelineDisplayDate(from: Date()), method: "today")
     }) {
       Text("Today")
-        .font(.custom("Figtree", size: 12).weight(.medium))
+        .font(.system(size: 12).weight(.medium))
         .foregroundColor(theme.segmentInactiveText)
         .padding(.horizontal, 10)
         // Explicit width pinned (natural ~52pt + 4pt safety margin). Same
@@ -486,7 +484,7 @@ extension MainView {
 
   private var timelineHeaderDateLabel: some View {
     Text(timelineTitleText)
-      .font(.custom("InstrumentSerif-Regular", size: 26))
+      .font(.system(size: 14, weight: .semibold))
       .foregroundColor(theme.textPrimary)
       .lineLimit(1)
       .fixedSize(horizontal: true, vertical: false)

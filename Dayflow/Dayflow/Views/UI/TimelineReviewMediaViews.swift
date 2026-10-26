@@ -5,16 +5,13 @@ import QuartzCore
 import SwiftUI
 
 struct TimelineReviewCardMedia: View {
+  @Environment(\.dayflowTheme) private var theme
   let previewImage: CGImage?
   @ObservedObject var playbackState: TimelineReviewPlaybackMediaState
   let player: AVPlayer?
   let onTogglePlayback: () -> Void
 
   @State private var isPlayerReady = false
-
-  private enum Design {
-    static let mediaBorderColor = Color.white.opacity(0.2)
-  }
 
   var body: some View {
     ZStack {
@@ -40,7 +37,7 @@ struct TimelineReviewCardMedia: View {
           .clipped()
       } else {
         LinearGradient(
-          colors: [Color.black.opacity(0.25), Color.black.opacity(0.05)],
+          colors: [theme.accentSoft, theme.surfaceMuted],
           startPoint: .topLeading,
           endPoint: .bottomTrailing
         )
@@ -51,7 +48,7 @@ struct TimelineReviewCardMedia: View {
     .onTapGesture { onTogglePlayback() }
     .pointingHandCursor()
     .overlay(
-      Rectangle().stroke(Design.mediaBorderColor, lineWidth: 1)
+      Rectangle().stroke(theme.separator, lineWidth: 1)
     )
     .onChange(of: player) {
       isPlayerReady = false

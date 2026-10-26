@@ -43,20 +43,46 @@ extension MainView {
   }
 
   private var leftColumn: some View {
-    // Left column: sidebar centered vertically in the gutter. The logo badge
-    // that used to sit above it is hidden for now.
-    VStack {
-      Spacer()
+    VStack(alignment: .leading, spacing: 28) {
+      Text("targetflow")
+        .font(.system(size: 24, weight: .bold, design: .rounded))
+        .tracking(-1)
+        .foregroundStyle(.white)
+        .padding(.leading, 22)
+        .padding(.top, 54)
+
       SidebarView(selectedIcon: $selectedIcon)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .offset(y: sidebarOffset)
         .opacity(sidebarOpacity)
-      Spacer()
+
+      Spacer(minLength: 16)
+
+      VStack(alignment: .leading, spacing: 8) {
+        Label(
+          appState.isRecording ? "正在记录屏幕" : "录制已暂停",
+          systemImage: appState.isRecording ? "record.circle" : "pause.circle"
+        )
+        .font(.system(size: 11, weight: .semibold))
+        Text("记录时间，专注目标")
+          .font(.system(size: 10))
+          .foregroundStyle(.white.opacity(0.78))
+      }
+      .foregroundStyle(.white)
+      .padding(12)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+      .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.18)))
+      .padding(.horizontal, 16)
+
+      Text(
+        "Target Flow · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")"
+      )
+      .font(.system(size: 10))
+      .foregroundStyle(.white.opacity(0.8))
+      .padding(.horizontal, 22)
+      .padding(.bottom, 18)
     }
-    .frame(width: 80)
-    .fixedSize(horizontal: true, vertical: false)
+    .frame(width: 166)
     .frame(maxHeight: .infinity)
-    .layoutPriority(1)
   }
 
   @ViewBuilder
@@ -66,7 +92,7 @@ extension MainView {
       switch selectedIcon {
       case .settings:
         SettingsView()
-          .padding(15)
+          .padding(20)
       case .timeline:
         GeometryReader { geo in
           timelinePanel(geo: geo)
@@ -75,12 +101,12 @@ extension MainView {
     }
     .padding(0)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     .background { mainPanelBackground }
   }
 
   private var mainPanelBackground: some View {
-    let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+    let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
     return
       shape
       .fill(theme.panelFill)
@@ -94,16 +120,37 @@ extension MainView {
   }
 
   private func timelinePanel(geo: GeometryProxy) -> some View {
-    ZStack(alignment: .topLeading) {
-      HStack(alignment: .top, spacing: 0) {
-        timelineLeftColumn
-          .zIndex(1)
-        Color.clear
-          .frame(width: timelineInspectorDividerWidth)
-          .frame(maxHeight: .infinity)
-        timelineRightColumn(geo: geo)
+    let showsCalendar = geo.size.width >= 1020 && timelineMode == .day
+    return VStack(alignment: .leading, spacing: 16) {
+      HStack(alignment: .center) {
+        VStack(alignment: .leading, spacing: 5) {
+          Text("时间线")
+            .font(.system(size: 25, weight: .bold))
+            .foregroundStyle(theme.textPrimary)
+          Text("看见时间的去向，专注当下的目标。")
+            .font(.system(size: 12))
+            .foregroundStyle(theme.textSecondary)
+        }
+        Spacer()
+        PausePillView()
       }
+
+      CurrentGoalsStatusView(onManageEvents: { showCategoryEditor = true })
+
+      HStack(alignment: .top, spacing: 12) {
+        if showsCalendar {
+          timelineCalendarRail
+        }
+        timelineLeftColumn(showsFilters: !showsCalendar)
+          .zIndex(1)
+        if timelineInspectorWidth > 0 {
+          timelineRightColumn(geo: geo)
+        }
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+    .padding(18)
+    .padding(.top, 12)
     .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
     .coordinateSpace(name: "TimelinePanel")
     .overlay(alignment: .topLeading) {
@@ -114,50 +161,70 @@ extension MainView {
     }
   }
 
-  private var timelineLeftColumn: some View {
-    VStack(alignment: .leading, spacing: TimelineAlignment.headerContentGap) {
-      timelineHeader
-      timelineContent
+  private var timelineCalendarRail: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 20) {
+        TimelineCalendarPopover(
+          isPresented: .constant(true),
+          selectedDate: selectedDate,
+          canSelectFutureDates: false,
+          highlightsSelectedWeek: false,
+          onSelect: { navigateTimeline(to: $0, method: "picker") },
+          isEmbedded: true
+        )
+        Rectangle().fill(theme.separator).frame(height: 1)
+        Text("事件筛选")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(theme.textPrimary)
+        categoryFilters(isVertical: true)
+        Text("点击事件可弱化对应卡片。\n拖动事件可调整排列顺序。")
+          .font(.system(size: 10))
+          .foregroundStyle(theme.textMuted)
+          .lineSpacing(4)
+      }
+      .padding(14)
     }
-    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .padding(.top, TimelineAlignment.topInset)
-    .padding(.bottom, 15)
-    .padding(.leading, 15)
-    .padding(.trailing, 5)
-    .overlay(alignment: .bottom) {
+    .scrollIndicators(.never)
+    .frame(width: 216)
+    .dayflowPanel()
+  }
+
+  private func timelineLeftColumn(showsFilters: Bool) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      timelineHeader
+      if showsFilters {
+        categoryFilters(isVertical: false)
+          .padding(.horizontal, 12)
+      }
+      timelineContent
       timelineFooter
     }
+    .padding(.top, 12)
+    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    .dayflowPanel()
     .coordinateSpace(name: "TimelinePane")
     .onPreferenceChange(TimelineTimeLabelFramesPreferenceKey.self) { frames in
       timelineTimeLabelFrames = frames
     }
     .onPreferenceChange(WeeklyHoursFramePreferenceKey.self) { frame in
-      // Deferred for the same reason as the cards-layer frame in
-      // CanvasTimelineDataView: avoid state writes during the layout pass.
-      DispatchQueue.main.async {
-        weeklyHoursFrame = frame
-      }
+      DispatchQueue.main.async { weeklyHoursFrame = frame }
     }
   }
 
+  private func categoryFilters(isVertical: Bool) -> some View {
+    TabFilterBar(
+      categories: categoryStore.editableCategories,
+      idleCategory: categoryStore.idleCategory,
+      mutedCategoryKeys: $mutedCategoryKeys,
+      onMoveCategory: { id, targetID in
+        categoryStore.moveCategory(id: id, toPositionOf: targetID)
+      },
+      isVertical: isVertical
+    )
+  }
+
   private var timelineContent: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      CurrentGoalsStatusView(onManageEvents: { showCategoryEditor = true })
-        .padding(.leading, 10 + TimelineAlignment.categoryRowInset)
-        .opacity(contentOpacity)
-
-      TabFilterBar(
-        categories: categoryStore.editableCategories,
-        idleCategory: categoryStore.idleCategory,
-        mutedCategoryKeys: $mutedCategoryKeys,
-        onManageCategories: { showCategoryEditor = true },
-        onMoveCategory: { id, targetID in
-          categoryStore.moveCategory(id: id, toPositionOf: targetID)
-        }
-      )
-      .padding(.leading, 10 + TimelineAlignment.categoryRowInset)
-      .opacity(contentOpacity)
-
+    VStack(alignment: .leading, spacing: 0) {
       ZStack(alignment: .topLeading) {
         switch timelineMode {
         case .day:
@@ -193,19 +260,27 @@ extension MainView {
           .zIndex(timelineMode == .day ? 1 : 0)
 
         case .week:
-          WeekTimelineGridView(
-            selectedDate: $selectedDate,
-            selectedActivity: $selectedActivity,
-            hasAnyActivities: $hasAnyActivities,
-            refreshTrigger: $refreshActivitiesTrigger,
-            weekRange: timelineWeekRange,
-            onSelectActivity: selectTimelineActivity,
-            onClearSelection: { clearTimelineSelection() },
-            weeklyHoursFrame: weeklyHoursFrame,
-            weeklyHoursIntersectsCard: $weeklyHoursIntersectsCard,
-            hideCardsForModeSwitch: hideWeekCardsDuringModeSwitch,
-            mutedCategoryKeys: mutedCategoryKeys
-          )
+          GeometryReader { gridGeometry in
+            ScrollView(.horizontal) {
+              WeekTimelineGridView(
+                selectedDate: $selectedDate,
+                selectedActivity: $selectedActivity,
+                hasAnyActivities: $hasAnyActivities,
+                refreshTrigger: $refreshActivitiesTrigger,
+                weekRange: timelineWeekRange,
+                onSelectActivity: selectTimelineActivity,
+                onClearSelection: { clearTimelineSelection() },
+                weeklyHoursFrame: weeklyHoursFrame,
+                weeklyHoursIntersectsCard: $weeklyHoursIntersectsCard,
+                hideCardsForModeSwitch: hideWeekCardsDuringModeSwitch,
+                mutedCategoryKeys: mutedCategoryKeys
+              )
+              .frame(
+                width: max(700, gridGeometry.size.width),
+                height: gridGeometry.size.height
+              )
+            }
+          }
           // Week is the zoomed-OUT view (7 days). Entering Week from Day
           // feels like pulling back: start at 1.05 (slightly too large) and
           // settle to 1 + fade in. Exiting Week grows to 1.05 + fade out,
@@ -231,12 +306,11 @@ extension MainView {
   }
 
   private var timelineFooter: some View {
-    let weeklyHoursOpacity =
-      weeklyHoursFadeOpacity * (weeklyHoursIntersectsCard ? 0 : 1)
+    let weeklyHoursOpacity = 1.0
     let reviewPromptCount = cardsToReviewPromptCount
 
-    return ZStack(alignment: .bottom) {
-      HStack(alignment: .bottom) {
+    return VStack(spacing: 8) {
+      HStack(alignment: .center) {
         weeklyHoursText
           .opacity(contentOpacity * weeklyHoursOpacity)
 
@@ -245,7 +319,7 @@ extension MainView {
         copyTimelineButton
           .opacity(contentOpacity)
       }
-      .padding(.horizontal, 24)
+      .padding(.horizontal, 12)
 
       if timelineMode == .day, reviewPromptCount > 0 {
         CardsToReviewButton(count: reviewPromptCount) {
@@ -256,15 +330,17 @@ extension MainView {
         .opacity(contentOpacity)
       }
     }
-    .padding(.bottom, 17)
+    .padding(.vertical, 10)
+    .background(theme.surfaceFill)
+    .overlay(alignment: .top) { Rectangle().fill(theme.separator).frame(height: 1) }
     .allowsHitTesting(true)
   }
 
   // Figma: the right panel is its own inset card (5pt from the panel edges,
   // 6pt radius, hairline border) rather than a flush column.
   private func timelineRightColumn(geo: GeometryProxy) -> some View {
-    let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
-    let inset: CGFloat = 5
+    let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+    let inset: CGFloat = 0
 
     return ZStack(alignment: .topLeading) {
       switch timelineMode {
@@ -343,41 +419,59 @@ extension MainView {
   private func timelineActivityInspector(activity: TimelineActivity, geo: GeometryProxy)
     -> some View
   {
-    ZStack(alignment: .bottom) {
-      ActivityCard(
-        activity: activity,
-        maxHeight: geo.size.height,
-        scrollSummary: true,
-        hasAnyActivities: hasAnyActivities,
-        onCategoryChange: { category, activity in
-          handleCategoryChange(to: category, for: activity)
-        },
-        onTitleChange: { newTitle, activity in
-          handleTitleChange(to: newTitle, for: activity)
-        },
-        onNavigateToCategoryEditor: {
-          showCategoryEditor = true
-        },
-        onRetryBatchCompleted: { batchId in
-          refreshActivitiesTrigger &+= 1
-          if selectedActivity?.batchId == batchId {
-            clearTimelineSelection()
-          }
+    VStack(spacing: 0) {
+      HStack {
+        Text("事件详情").font(.system(size: 12, weight: .semibold))
+        Spacer()
+        Button {
+          clearTimelineSelection()
+        } label: {
+          Image(systemName: "xmark").font(.system(size: 11, weight: .semibold))
+            .frame(width: 24, height: 24)
         }
-      )
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .allowsHitTesting(!feedbackModalVisible)
-      .padding(.bottom, rateSummaryFooterHeight)
-
-      if !feedbackModalVisible {
-        TimelineRateSummaryView(
-          activityID: activity.id,
-          onRate: handleTimelineRating,
-          onDelete: handleTimelineDelete
+        .buttonStyle(.plain)
+        .help("关闭事件详情")
+        .pointingHandCursor()
+      }
+      .foregroundStyle(theme.textSecondary)
+      .padding(.horizontal, 16)
+      .padding(.top, 12)
+      ZStack(alignment: .bottom) {
+        ActivityCard(
+          activity: activity,
+          maxHeight: geo.size.height,
+          scrollSummary: true,
+          hasAnyActivities: hasAnyActivities,
+          onCategoryChange: { category, activity in
+            handleCategoryChange(to: category, for: activity)
+          },
+          onTitleChange: { newTitle, activity in
+            handleTitleChange(to: newTitle, for: activity)
+          },
+          onNavigateToCategoryEditor: {
+            showCategoryEditor = true
+          },
+          onRetryBatchCompleted: { batchId in
+            refreshActivitiesTrigger &+= 1
+            if selectedActivity?.batchId == batchId {
+              clearTimelineSelection()
+            }
+          }
         )
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(!feedbackModalVisible)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .padding(.bottom, rateSummaryFooterHeight)
+
+        if !feedbackModalVisible {
+          TimelineRateSummaryView(
+            activityID: activity.id,
+            onRate: handleTimelineRating,
+            onDelete: handleTimelineDelete
+          )
+          .frame(maxWidth: .infinity)
+          .allowsHitTesting(!feedbackModalVisible)
+          .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -418,21 +512,21 @@ extension MainView {
 
     return HStack(spacing: 6) {
       (Text(parts.bold)
-        .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.bold))
+        .font(Font.custom("Figtree", size: 11).weight(.bold))
         + Text(parts.rest)
-        .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.regular)))
+        .font(Font.custom("Figtree", size: 11).weight(.regular)))
       TimelineUsageCostView()
-        .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.regular))
+        .font(Font.custom("Figtree", size: 11).weight(.regular))
     }
-      .foregroundColor(textColor)
-      .background(
-        GeometryReader { proxy in
-          Color.clear.preference(
-            key: WeeklyHoursFramePreferenceKey.self,
-            value: proxy.frame(in: .named("TimelinePane"))
-          )
-        }
-      )
+    .foregroundColor(textColor)
+    .background(
+      GeometryReader { proxy in
+        Color.clear.preference(
+          key: WeeklyHoursFramePreferenceKey.self,
+          value: proxy.frame(in: .named("TimelinePane"))
+        )
+      }
+    )
   }
 
   private var copyTimelineButton: some View {

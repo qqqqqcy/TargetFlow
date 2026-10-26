@@ -14,7 +14,6 @@ struct ActivityCard: View {
   var onNavigateToCategoryEditor: (() -> Void)? = nil
   var onRetryBatchCompleted: ((Int64) -> Void)? = nil
   @Environment(\.dayflowTheme) private var theme
-  @Environment(\.stylePreviewAfter) private var stylePreviewAfter
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var categoryStore: CategoryStore
   @EnvironmentObject private var retryCoordinator: RetryCoordinator
@@ -45,13 +44,10 @@ struct ActivityCard: View {
     return formatter
   }()
 
-  private var usesDarkChrome: Bool { stylePreviewAfter && theme.isDark }
-
   var body: some View {
     if let activity = activity {
       ZStack(alignment: .top) {
-        activityDetails(for: activity)
-          .padding(16)
+        activityContent(for: activity)
           .allowsHitTesting(!showCategoryPicker)
           .id(activity.id)
           .transition(
@@ -132,20 +128,20 @@ struct ActivityCard: View {
         Spacer()
         if hasAnyActivities {
           Text("Select an activity to view details")
-            .font(.custom("Figtree", size: 15))
+            .font(.system(size: 15))
             .fontWeight(.regular)
-            .foregroundColor(.gray.opacity(0.5))
+            .foregroundColor(theme.textSecondary)
         } else {
           if appState.isRecording {
             VStack(spacing: 6) {
               Text("No cards yet")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.gray.opacity(0.7))
+                .foregroundColor(theme.textPrimary)
               Text(
-                "卡片会按设置中的生成间隔自动更新，AI 处理还需要一些时间。可在‘设置 → 存储空间’选择 1、5 或 15 分钟。"
+                "卡片会按设置中的生成间隔自动更新，AI 处理还需要一些时间。可在“设置 → 记录与提醒”选择 5、10 或 15 分钟。"
               )
-              .font(.custom("Figtree", size: 13))
-              .foregroundColor(.gray.opacity(0.6))
+              .font(.system(size: 13))
+              .foregroundColor(theme.textSecondary)
               .multilineTextAlignment(.center)
               .padding(.horizontal, 16)
             }
@@ -153,10 +149,10 @@ struct ActivityCard: View {
             VStack(spacing: 6) {
               Text("Recording is off")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.gray.opacity(0.7))
+                .foregroundColor(theme.textPrimary)
               Text("Target Flow recording is currently turned off, so cards aren’t being produced.")
-                .font(.custom("Figtree", size: 13))
-                .foregroundColor(.gray.opacity(0.6))
+                .font(.system(size: 13))
+                .foregroundColor(theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
             }
@@ -173,78 +169,63 @@ struct ActivityCard: View {
   }
 
   @ViewBuilder
+  private func activityContent(for activity: TimelineActivity) -> some View {
+    if scrollSummary {
+      ScrollView(.vertical) {
+        activityDetails(for: activity)
+          .padding(16)
+          .frame(maxWidth: .infinity, alignment: .topLeading)
+          .onScrollStart(panelName: "activity_card") { direction in
+            AnalyticsService.shared.capture(
+              "right_panel_scrolled", ["panel": "activity_card", "direction": direction])
+          }
+      }
+      .id(activity.id)
+    } else {
+      activityDetails(for: activity).padding(16)
+    }
+  }
+
+  @ViewBuilder
   private func activityDetails(for activity: TimelineActivity) -> some View {
     VStack(alignment: .leading, spacing: 16) {
-      // Header
-      HStack(alignment: .center) {
-        VStack(alignment: .leading, spacing: 6) {
-          titleView(for: activity)
+      VStack(alignment: .leading, spacing: 10) {
+        titleView(for: activity)
 
-          HStack(alignment: .center, spacing: 6) {
-            Text(
-              "\(timeFormatter.string(from: activity.startTime)) - \(timeFormatter.string(from: activity.endTime))"
-            )
-            .font(
-              Font.custom("Figtree", size: 12)
-            )
-            .foregroundColor(
-              usesDarkChrome ? theme.textSecondary : Color(red: 0.2, green: 0.2, blue: 0.2)
-            )
-            .lineLimit(1)
-            .padding(.horizontal, usesDarkChrome ? 6 : 8)
-            .padding(.vertical, 4)
-            .background(
-              usesDarkChrome
-                ? Color(hex: "494B5B")
-                : Color.white.opacity(0.76)
-            )
-            .cornerRadius(6)
-            .overlay(
-              RoundedRectangle(cornerRadius: 6)
-                .inset(by: usesDarkChrome ? 0.38 : 0.25)
-                .stroke(
-                  usesDarkChrome ? Color(hex: "888888") : Color(red: 0.88, green: 0.88, blue: 0.88),
-                  lineWidth: usesDarkChrome ? 0.75 : 0.5
-                )
-            )
+        HStack(spacing: 6) {
+          Text(
+            "\(timeFormatter.string(from: activity.startTime)) – \(timeFormatter.string(from: activity.endTime))"
+          )
+          .font(.system(size: 11))
+          .monospacedDigit()
+          .lineLimit(1)
+          .fixedSize(horizontal: true, vertical: false)
+          .foregroundStyle(theme.textTertiary)
 
-            Spacer(minLength: 6)
-
-            HStack(spacing: 6) {
-              if let badge = categoryBadge(for: activity.category) {
-                HStack(spacing: 4) {
-                  Circle()
-                    .fill(badge.indicator.opacity(0.65))
-                    .frame(width: 6, height: 6)
-
-                  Text(badge.name)
-                    .font(Font.custom("Figtree", size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                }
-                .help("事件标签，仅用于辅助归纳")
+          Spacer(minLength: 4)
+          if isFailedCard(activity) {
+            retryButtonInline(for: activity)
+          } else {
+            if let badge = categoryBadge(for: activity.category) {
+              HStack(spacing: 4) {
+                Circle().fill(badge.indicator.opacity(0.65)).frame(width: 5, height: 5)
+                Text(badge.name)
+                  .font(.system(size: 11))
+                  .foregroundStyle(theme.textSecondary)
+                  .lineLimit(1)
               }
-
-              if !isFailedCard(activity) {
-                CategoryEditCircleButton(
-                  action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                      showCategoryPicker.toggle()
-                    }
-                  },
-                  diameter: 24,
-                  accessibilityLabel: String(localized: "调整事件标签")
-                )
-              }
+              .help("事件标签，仅用于辅助归纳")
             }
+            CategoryEditCircleButton(
+              action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                  showCategoryPicker.toggle()
+                }
+              },
+              diameter: 24,
+              accessibilityLabel: String(localized: "调整事件标签")
+            )
           }
-        }
-
-        Spacer()
-
-        // Retry button centered between title and time (only for failed cards)
-        if isFailedCard(activity) {
-          retryButtonInline(for: activity)
         }
       }
 
@@ -252,8 +233,8 @@ struct ActivityCard: View {
       if isFailedCard(activity), let statusLine = retryCoordinator.statusLine(for: activity.batchId)
       {
         Text(statusLine)
-          .font(.custom("Figtree", size: 11))
-          .foregroundColor(Color(red: 0.5, green: 0.5, blue: 0.5))
+          .font(.system(size: 11))
+          .foregroundColor(theme.textSecondary)
           .lineLimit(1)
       }
 
@@ -266,7 +247,7 @@ struct ActivityCard: View {
             endTime: activity.endTime
           )
           .id(videoURL)
-          .frame(height: 200)
+          .frame(height: 160)
         } else {
           // Timelapse thumbnail (slideshow pipeline)
           timelapsePreviewView(for: activity)
@@ -277,28 +258,7 @@ struct ActivityCard: View {
         TargetAssessmentView(assessment: assessment)
       }
 
-      // Summary section (scrolls internally when constrained)
-      Group {
-        if scrollSummary {
-          ScrollView(.vertical, showsIndicators: false) {
-            summaryContent(for: activity)
-              .frame(maxWidth: .infinity, alignment: .topLeading)
-              .onScrollStart(panelName: "activity_card") { direction in
-                AnalyticsService.shared.capture(
-                  "right_panel_scrolled",
-                  [
-                    "panel": "activity_card",
-                    "direction": direction,
-                  ])
-              }
-          }
-          .id(activity.id)  // Reset scroll position whenever the selected activity changes
-          .frame(maxWidth: .infinity)
-          .frame(maxHeight: .infinity, alignment: .topLeading)
-        } else {
-          summaryContent(for: activity)
-        }
-      }
+      summaryContent(for: activity)
     }
   }
 
@@ -308,10 +268,10 @@ struct ActivityCard: View {
       TextField("Title", text: $draftTitle)
         .textFieldStyle(.plain)
         .font(
-          Font.custom("Figtree", size: 16)
+          Font.system(size: 16)
             .weight(.semibold)
         )
-        .foregroundColor(stylePreviewAfter && theme.isDark ? .white : .black)
+        .foregroundColor(theme.textPrimary)
         .focused($titleFieldFocused)
         .onSubmit { commitTitleEdit(for: activity) }
         .onExitCommand { isEditingTitle = false }
@@ -325,10 +285,11 @@ struct ActivityCard: View {
       HStack(alignment: .center, spacing: 6) {
         Text(isFailedCard(activity) ? String(localized: "Processing failed") : activity.title)
           .font(
-            Font.custom("Figtree", size: 16)
+            Font.system(size: 16)
               .weight(.semibold)
           )
-          .foregroundColor(stylePreviewAfter && theme.isDark ? .white : .black)
+          .foregroundColor(theme.textPrimary)
+          .fixedSize(horizontal: false, vertical: true)
           .onTapGesture { startTitleEdit(for: activity) }
 
         if isHoveringTitle && !isFailedCard(activity) {
@@ -362,42 +323,44 @@ struct ActivityCard: View {
   @ViewBuilder
   private func summaryContent(for activity: TimelineActivity) -> some View {
     VStack(alignment: .leading, spacing: 8) {
-      VStack(alignment: .leading, spacing: 3) {
-        Text("SUMMARY")
+      VStack(alignment: .leading, spacing: 8) {
+        Text("事件摘要")
           .font(
-            Font.custom("Figtree", size: 12)
+            Font.system(size: 12)
               .weight(.semibold)
           )
-          .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.55))
+          .foregroundColor(theme.textTertiary)
 
         renderMarkdownText(summaryText(for: activity))
           .font(
-            Font.custom("Figtree", size: 12)
+            Font.system(size: 12)
           )
-          .foregroundColor(stylePreviewAfter && theme.isDark ? .white : .black)
+          .foregroundColor(theme.textPrimary)
           .lineLimit(nil)
           .fixedSize(horizontal: false, vertical: true)
+          .lineSpacing(4)
           .textSelection(.enabled)
       }
 
       if !isFailedCard(activity) && !activity.detailedSummary.isEmpty
         && activity.detailedSummary != activity.summary
       {
-        VStack(alignment: .leading, spacing: 3) {
-          Text("DETAILED SUMMARY")
+        VStack(alignment: .leading, spacing: 8) {
+          Text("详细记录")
             .font(
-              Font.custom("Figtree", size: 12)
+              Font.system(size: 12)
                 .weight(.semibold)
             )
-            .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.55))
+            .foregroundColor(theme.textTertiary)
 
           renderMarkdownText(formattedDetailedSummary(activity.detailedSummary))
             .font(
-              Font.custom("Figtree", size: 12)
+              Font.system(size: 12)
             )
-            .foregroundColor(stylePreviewAfter && theme.isDark ? .white : .black)
+            .foregroundColor(theme.textPrimary)
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
+            .lineSpacing(4)
             .textSelection(.enabled)
         }
       }
@@ -484,27 +447,27 @@ struct ActivityCard: View {
     let isDisabled = retryCoordinator.isRunning
 
     if isProcessing {
-      // Processing state - beige pill with spinner
+      // Processing state
       HStack(alignment: .center, spacing: 4) {
         ProgressView()
           .scaleEffect(0.7)
           .frame(width: 16, height: 16)
 
         Text("Processing")
-          .font(.custom("Figtree", size: 13))
-          .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
+          .font(.system(size: 13))
+          .foregroundColor(theme.textSecondary)
           .lineLimit(1)
       }
       .padding(.horizontal, 12)
       .padding(.vertical, 8)
-      .background(Color(red: 0.91, green: 0.85, blue: 0.8))
+      .background(theme.panelSolid)
       .cornerRadius(200)
     } else {
-      // Retry button - orange pill matching the primary "Resume" button
+      // Retry uses the shared primary action color.
       Button(action: { handleRetry(for: activity) }) {
         HStack(alignment: .center, spacing: 4) {
           Text("Retry")
-            .font(.custom("Figtree", size: 13).weight(.medium))
+            .font(.system(size: 13).weight(.medium))
           Image(systemName: "arrow.clockwise")
             .font(.system(size: 13, weight: .medium))
         }
@@ -561,17 +524,16 @@ struct ActivityCard: View {
             Image(nsImage: thumbnail)
               .resizable()
               .aspectRatio(contentMode: .fill)
-              .scaleEffect(1.3)
               .frame(width: geometry.size.width, height: geometry.size.height)
               .clipped()
               .cornerRadius(12)
           } else {
             RoundedRectangle(cornerRadius: 12)
-              .fill(Color.gray.opacity(0.3))
+              .fill(theme.panelSolid)
               .overlay(
                 Image(systemName: "photo")
                   .font(.system(size: 18, weight: .medium))
-                  .foregroundColor(Color.white.opacity(0.9))
+                  .foregroundColor(theme.textTertiary)
               )
           }
 
@@ -584,7 +546,7 @@ struct ActivityCard: View {
                 ProgressView()
                   .scaleEffect(0.8)
                 Text("Preparing timelapse...")
-                  .font(.custom("Figtree", size: 12).weight(.semibold))
+                  .font(.system(size: 12).weight(.semibold))
                   .foregroundColor(.white)
               }
             }
@@ -592,11 +554,11 @@ struct ActivityCard: View {
             ZStack {
               Circle()
                 .strokeBorder(Color.white.opacity(0.9), lineWidth: 2)
-                .frame(width: 64, height: 64)
+                .frame(width: 46, height: 46)
                 .background(Circle().fill(Color.black.opacity(0.35)))
               Image(systemName: "play.fill")
                 .foregroundColor(.white)
-                .font(.system(size: 24, weight: .bold))
+                .font(.system(size: 18, weight: .semibold))
             }
             .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 2)
           }
@@ -619,11 +581,11 @@ struct ActivityCard: View {
           loadTimelapsePreviewThumbnail(for: activity, size: geometry.size)
         }
       }
-      .frame(height: 200)
+      .frame(height: 160)
 
       if let errorMessage = slideshowError {
         Text(errorMessage)
-          .font(Font.custom("Figtree", size: 11))
+          .font(Font.system(size: 11))
           .foregroundColor(Color(red: 0.76, green: 0.16, blue: 0.2))
       }
     }

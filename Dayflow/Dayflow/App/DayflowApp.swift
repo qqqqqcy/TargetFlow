@@ -79,7 +79,7 @@ struct DayflowApp: App {
     }
     .windowStyle(.hiddenTitleBar)
     .windowResizability(.contentMinSize)
-    .defaultSize(width: 1195, height: 675)
+    .defaultSize(width: 1320, height: 800)
     .commands {
       CommandGroup(replacing: .newItem) {}
     }
@@ -136,19 +136,7 @@ private struct DayflowWindowBackground: View {
   @Environment(\.dayflowTheme) private var theme
 
   var body: some View {
-    GeometryReader { proxy in
-      if theme.isDark {
-        Image("DarkWindowBackground")
-          .resizable()
-          .interpolation(.high)
-          .scaledToFill()
-          .frame(width: proxy.size.width, height: proxy.size.height)
-          .clipped()
-      } else {
-        LightWindowGradient()
-          .frame(width: proxy.size.width, height: proxy.size.height)
-      }
-    }
+    theme.sidebarBackground
   }
 }
 

@@ -35,12 +35,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private var pendingDeepLinkURLs: [URL] = []
 
   override init() {
+    AppStoragePaths.prepareUIPreviewPreferences()
     // Install before SwiftUI creates any text layers.
     FlippedTextLayerWorkaround.install()
     super.init()
   }
 
   func applicationDidFinishLaunching(_ note: Notification) {
+    if AppStoragePaths.isUIPreview {
+      Self.allowTermination = true
+      NSApp.setActivationPolicy(.regular)
+      AppState.shared.isRecording = false
+      return
+    }
     Self.allowTermination = false
     applySavedDockIconPreference()
     statusBar = StatusBarController()

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Figma: 20pt circle, 0.75pt border, soft inner glow, 12pt pencil.
+// Compact action used next to event categories.
 struct CategoryEditCircleButton: View {
   @Environment(\.dayflowTheme) private var theme
 
@@ -17,7 +17,7 @@ struct CategoryEditCircleButton: View {
         .resizable()
         .renderingMode(.template)
         .scaledToFit()
-        .foregroundColor(theme.isDark ? theme.controlText : .white)
+        .foregroundColor(theme.primaryButtonText)
         .frame(width: resolvedIconSize, height: resolvedIconSize)
         .frame(width: diameter, height: diameter)
         .background(Circle().fill(theme.editButtonFill))

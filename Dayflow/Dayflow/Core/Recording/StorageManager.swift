@@ -251,6 +251,9 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
     performIntegrityCheck()
 
     migrate()
+    // Snapshot records may contain absolute paths to production media. Preview
+    // can read that media for playback, but must never migrate or purge it.
+    guard !AppStoragePaths.isUIPreview else { return }
     migrateLegacyChunkPathsIfNeeded()
     truncateOversizedLLMCallBodiesIfNeeded()
 
