@@ -66,13 +66,13 @@ struct OnboardingPrototypeFlow: View {
       switch currentStep {
       case .introVideo:
         OnboardingPrototypeVideoIntroStep(
-          videoName: "DayflowOnboarding",
+          videoName: "TargetFlowOnboarding",
           onPlaybackStarted: {
             OnboardingPrototypeAnalytics.trackVideoStarted(
               step: .introVideo,
               flowID: flowID,
               flowVariant: flowVariant,
-              assetName: "DayflowOnboarding.mp4"
+              assetName: "TargetFlowOnboarding.mp4"
             )
           },
           onPlaybackCompleted: { reason in
@@ -80,7 +80,7 @@ struct OnboardingPrototypeFlow: View {
               step: .introVideo,
               flowID: flowID,
               flowVariant: flowVariant,
-              assetName: "DayflowOnboarding.mp4",
+              assetName: "TargetFlowOnboarding.mp4",
               completionReason: reason
             )
             advance(from: .introVideo, method: "video_\(reason)")

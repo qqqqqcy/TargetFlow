@@ -175,7 +175,7 @@ struct DailyBriefPageView: View {
       DailyBriefStateMessage(
         title: "Your brief will appear here tomorrow morning",
         detail:
-          "Dayflow puts it together from yesterday's Timeline once you've recorded for a while.")
+          "Target Flow puts it together from yesterday's Timeline once you've recorded for a while.")
     }
   }
 }

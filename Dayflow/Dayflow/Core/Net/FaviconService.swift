@@ -17,8 +17,9 @@ final class FaviconService {
   // Pattern-based matching (uses contains) - checked before network fetch
   // Order matters: first match wins (more specific patterns go first)
   private let faviconPatterns: [(pattern: String, asset: String)] = [
-    // Dayflow
-    ("dayflow", "DayflowFavicon"),
+    // Target Flow
+    ("targetflow", "TargetFlowFavicon"),
+    ("target flow", "TargetFlowFavicon"),
 
     // AI/tools
     ("chat.openai", "ChatGPTLogo"),

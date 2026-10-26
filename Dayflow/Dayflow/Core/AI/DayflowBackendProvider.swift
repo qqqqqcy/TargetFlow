@@ -260,7 +260,7 @@ final class DayflowBackendProvider {
         throw NSError(
           domain: "DayflowBackend",
           code: -10,
-          userInfo: [NSLocalizedDescriptionKey: "Invalid Dayflow backend endpoint: \(endpoint)"]
+          userInfo: [NSLocalizedDescriptionKey: "Invalid Target Flow backend endpoint: \(endpoint)"]
         )
       }
 
@@ -387,7 +387,7 @@ final class DayflowBackendProvider {
       throw NSError(
         domain: "DayflowBackend",
         code: -30,
-        userInfo: [NSLocalizedDescriptionKey: "Invalid Dayflow backend endpoint: \(endpoint)"]
+        userInfo: [NSLocalizedDescriptionKey: "Invalid Target Flow backend endpoint: \(endpoint)"]
       )
     }
 
@@ -567,7 +567,7 @@ final class DayflowBackendProvider {
       throw NSError(
         domain: "DayflowBackend",
         code: -40,
-        userInfo: [NSLocalizedDescriptionKey: "Invalid Dayflow backend endpoint: \(endpoint)"]
+        userInfo: [NSLocalizedDescriptionKey: "Invalid Target Flow backend endpoint: \(endpoint)"]
       )
     }
 
@@ -761,7 +761,7 @@ final class DayflowBackendProvider {
       throw NSError(
         domain: "DayflowBackend",
         code: -20,
-        userInfo: [NSLocalizedDescriptionKey: "Invalid Dayflow backend endpoint: \(endpoint)"]
+        userInfo: [NSLocalizedDescriptionKey: "Invalid Target Flow backend endpoint: \(endpoint)"]
       )
     }
 
@@ -905,7 +905,7 @@ final class DayflowBackendProvider {
       code: -1,
       userInfo: [
         NSLocalizedDescriptionKey:
-          "Text generation is not yet supported with Dayflow Backend. Please configure Gemini, ChatGPT, Claude, an OpenAI-compatible endpoint, or Local in Settings."
+          "Text generation is not yet supported with Target Flow Backend. Please configure Gemini, ChatGPT, Claude, an OpenAI-compatible endpoint, or Local in Settings."
       ]
     )
   }

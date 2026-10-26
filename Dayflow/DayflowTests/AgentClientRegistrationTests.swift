@@ -88,7 +88,7 @@ final class AgentClientRegistrationTests: XCTestCase {
 
     XCTAssertEqual(
       registration.connect(),
-      .failed("Codex already has a custom MCP server named dayflow. Dayflow left it unchanged.")
+      .failed("Codex already has a custom MCP server named dayflow. Target Flow left it unchanged.")
     )
     XCTAssertEqual(commands, [["mcp", "get", "dayflow", "--json"]])
   }
@@ -170,7 +170,7 @@ final class AgentClientRegistrationTests: XCTestCase {
 
     XCTAssertEqual(
       registration.connect(),
-      .failed("Codex couldn't connect the Dayflow connection: permission denied")
+      .failed("Codex couldn't connect the Target Flow connection: permission denied")
     )
   }
 

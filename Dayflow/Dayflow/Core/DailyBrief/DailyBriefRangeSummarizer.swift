@@ -49,7 +49,7 @@ enum DailyBriefRangeSummarizer {
       options: options,
       workingDirectory: FileManager.default.temporaryDirectory,
       timeoutSeconds: timeoutSeconds,
-      tooLongMessage: "Claude took too long on the summary, so Dayflow stopped it. Try again."
+      tooLongMessage: "Claude took too long on the summary, so Target Flow stopped it. Try again."
     )
 
     let output: Output
@@ -121,7 +121,7 @@ enum DailyBriefRangeSummarizer {
     }
 
     return """
-      Here is everything a Dayflow user completed from \(startDay) to \(endDay) \
+      Here is everything a Target Flow user completed from \(startDay) to \(endDay) \
       (\(range.label.lowercased())), one line per accomplishment: [index] day · project · what they did · apps.
 
       \(lines.joined(separator: "\n"))

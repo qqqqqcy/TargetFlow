@@ -144,6 +144,7 @@ struct LLMCallDBRecord: Sendable {
   let errorDomain: String?
   let errorCode: Int?
   let errorMessage: String?
+  let usageReceipt: LLMUsageReceipt
 }
 
 struct TimelineCardDebugEntry: Sendable {

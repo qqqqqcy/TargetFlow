@@ -123,7 +123,7 @@ struct CategoryPickerOverlay: View {
     var intro = AttributedString(
       String(
         localized:
-          "To help Dayflow organize your activities more accurately, try adding more details to the descriptions in your categories "
+          "补充事件的具体内容和范围，帮助识别实际发生的事情。 "
       )
     )
     intro.font = baseFont

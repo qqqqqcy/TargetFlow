@@ -102,10 +102,10 @@ struct TimelineClipboardFormatter {
     return ([header, ""] + entries).joined(separator: "\n\n")
   }
 
-  /// "Dayflow timeline · <day or week>" in the current language.
+  /// "Target Flow timeline · <day or week>" in the current language.
   private static func exportHeader(_ period: String) -> String {
     String(
-      localized: "Dayflow timeline · \(period)",
+      localized: "Target Flow timeline · \(period)",
       comment:
         "First line of the copied/exported timeline. The argument is a formatted day or week range."
     )

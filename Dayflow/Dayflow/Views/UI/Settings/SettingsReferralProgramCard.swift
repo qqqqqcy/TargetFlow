@@ -11,7 +11,7 @@ struct ReferralPassCard: View {
 
   private let cardSize = CGSize(width: 283, height: 161)
 
-  init(message: String = String(localized: "Enjoy a free month of Dayflow Pro on us.")) {
+  init(message: String = String(localized: "Enjoy a free month of Target Flow Pro on us.")) {
     self.message = message
   }
 
@@ -25,14 +25,14 @@ struct ReferralPassCard: View {
 
       VStack(spacing: 8) {
         HStack(alignment: .center, spacing: 4) {
-          Image("DayflowLogo")
+          Image("TargetFlowLogo")
             .resizable()
             .renderingMode(.template)
             .foregroundColor(.white)
             .scaledToFit()
             .frame(width: 24, height: 24)
 
-          Text("Dayflow")
+          Text("Target Flow")
             .font(.custom("InstrumentSerif-Regular", size: 28))
             .foregroundColor(.white)
             .lineLimit(1)

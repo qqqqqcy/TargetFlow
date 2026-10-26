@@ -9,7 +9,7 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
   enum PendingNotificationNavigationDestination: Equatable {
     case timeline
-    case target
+    case events
   }
 
   static let notificationNavigationRequested = Notification.Name("notificationNavigationRequested")
@@ -59,6 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       }
     }
     NotificationService.shared.start()
+    TargetStore.shared.synchronize(events: CategoryStore.shared.categories)
     TargetStore.shared.retryPendingEvaluations()
 
     deepLinkRouter = AppDeepLinkRouter()

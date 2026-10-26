@@ -39,7 +39,7 @@ enum DailyRecapGeneratorError: LocalizedError {
             "No Daily provider is selected. Choose one from the gear button above to turn Daily generation back on."
         )
     case .missingDayflowAuthToken:
-      return String(localized: "Dayflow backend auth token is unavailable.")
+      return String(localized: "Target Flow backend auth token is unavailable.")
     case .missingLocalConfiguration:
       return
         String(

@@ -74,12 +74,19 @@ struct TokenUsage: Sendable {
   let cachedInput: Int
   let cacheCreationInput: Int
   let output: Int
+  let costUSD: Decimal?
+  let inputIncludesCachedTokens: Bool
 
-  init(input: Int, cachedInput: Int, cacheCreationInput: Int = 0, output: Int) {
+  init(
+    input: Int, cachedInput: Int, cacheCreationInput: Int = 0, output: Int,
+    costUSD: Decimal? = nil, inputIncludesCachedTokens: Bool = false
+  ) {
     self.input = input
     self.cachedInput = cachedInput
     self.cacheCreationInput = cacheCreationInput
     self.output = output
+    self.costUSD = costUSD
+    self.inputIncludesCachedTokens = inputIncludesCachedTokens
   }
 
   static var zero: TokenUsage {

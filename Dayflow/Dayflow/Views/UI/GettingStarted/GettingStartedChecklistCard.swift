@@ -100,7 +100,7 @@ struct GettingStartedChecklistCard: View {
   private var header: some View {
     VStack(alignment: .leading, spacing: 8) {
       HStack(spacing: 8) {
-        Text("Your first day with Dayflow")
+        Text("Your first day with Target Flow")
           .font(.custom("Figtree", size: 13))
           .fontWeight(.semibold)
           .foregroundColor(theme.textPrimary)
@@ -151,7 +151,7 @@ struct GettingStartedChecklistCard: View {
   private var firstCardsRow: some View {
     let subtitle: String
     if hasFirstCards {
-      subtitle = String(localized: "Dayflow is turning your screen time into cards")
+      subtitle = String(localized: "Target Flow is turning your screen time into cards")
     } else if appState.isRecording {
       subtitle = String(localized: "Usually ready about 15 minutes after recording starts")
     } else {
@@ -189,7 +189,7 @@ struct GettingStartedChecklistCard: View {
     ChecklistRow(
       status: .done,
       title: String(localized: "You're all set"),
-      subtitle: String(localized: "You've unlocked everything Dayflow does. Enjoy your timeline.")
+      subtitle: String(localized: "You've unlocked everything Target Flow does. Enjoy your timeline.")
     ) {
       rowButton(title: String(localized: "Done")) {
         AnalyticsService.shared.capture(

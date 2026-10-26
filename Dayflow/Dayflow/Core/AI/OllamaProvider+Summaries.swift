@@ -112,7 +112,9 @@ extension OllamaProvider {
       .map { "\n\n\($0)" } ?? ""
 
     let basePrompt = """
-      You are analyzing someone's computer activity from the last 15 minutes.
+      You are reconstructing concrete events from the supplied computer activity records.
+
+      \(EventPromptGuidance.instructions)
 
       Activity periods:
       \(observationsText)
@@ -121,8 +123,8 @@ extension OllamaProvider {
 
       \(promptSections.summary)
 
-      CATEGORIES:
-      Choose exactly one:
+      EVENT DEFINITIONS (secondary labels):
+      Choose the closest label after describing what happened:
       \(categoriesSection)
 
       APP SITES (Website Logos)
@@ -137,8 +139,8 @@ extension OllamaProvider {
         REASONING:
         Explain your thinking process:
         1. What were the main activities and how much time was spent on each?
-        2. Was this primarily work-related, personal, or brief distractions?
-        3. Which category best fits based on the MAJORITY of time and focus?
+        2. What concrete subject and purpose connect these actions?
+        3. Which event definition best fits the observed event, without inferring goal alignment?
         4. How did you structure the summary to capture the most important activities?
 
       \(languageBlock)
@@ -428,7 +430,7 @@ extension OllamaProvider {
         Merged Summary: Ran through the iOS smoke checklist in TestFlight. Hopped into Help Scout to close the urgent tickets.
 
         BAD EXAMPLES:
-        ✗ Title: Coding, gaming, and Swift fixes with AI tools and Dayflow (comma list trying to cover everything)
+        ✗ Title: Coding, gaming, and Swift fixes with AI tools and Target Flow (comma list trying to cover everything)
         ✗ Title: Busy afternoon session (too vague)
         ✗ Summary: Worked on several things across platforms (generic, missing specifics)
         ✗ Summary that omits a named site/app/topic from the inputs

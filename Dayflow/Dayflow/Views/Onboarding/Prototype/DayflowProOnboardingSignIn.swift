@@ -74,7 +74,7 @@ struct DayflowProOnboardingSignInPanel: View {
   var body: some View {
     VStack(alignment: .leading, spacing: scaled(18)) {
       HStack(alignment: .center, spacing: scaled(14)) {
-        Image("DayflowLogo")
+        Image("TargetFlowLogo")
           .resizable()
           .renderingMode(.original)
           .interpolation(.high)
@@ -83,7 +83,7 @@ struct DayflowProOnboardingSignInPanel: View {
           .frame(width: scaled(40), height: scaled(40))
 
         VStack(alignment: .leading, spacing: scaled(4)) {
-          Text("Sign up / Sign in to Dayflow")
+          Text("Sign up / Sign in to Target Flow")
             .font(.custom("Figtree", size: scaledText(20)))
             .fontWeight(.semibold)
             .foregroundColor(Color(hex: "492304"))
@@ -233,7 +233,7 @@ struct DayflowProOnboardingSignInPanel: View {
           .foregroundColor(Color(hex: "492304"))
 
         Text(
-          "If someone gave you a code, enter it here. Don't worry if you don't have a code, we'll gift you a free week of Dayflow Pro!"
+          "If someone gave you a code, enter it here. Don't worry if you don't have a code, we'll gift you a free week of Target Flow Pro!"
         )
         .font(.custom("Figtree", size: scaledText(13)))
         .foregroundColor(Color(hex: "89380E").opacity(0.75))
@@ -261,10 +261,10 @@ struct DayflowProOnboardingSignInPanel: View {
 
   private var dayflowProRewardActiveForm: some View {
     VStack(alignment: .center, spacing: scaled(16)) {
-      ReferralPassCard(message: String(localized: "Your free month of Dayflow Pro is ready."))
+      ReferralPassCard(message: String(localized: "Your free month of Target Flow Pro is ready."))
 
       VStack(spacing: scaled(6)) {
-        Text("Congrats, enjoy a free month of Dayflow Pro on us!")
+        Text("Congrats, enjoy a free month of Target Flow Pro on us!")
           .font(.custom("Figtree", size: scaledText(16)))
           .fontWeight(.semibold)
           .foregroundColor(Color(hex: "492304"))
@@ -277,7 +277,7 @@ struct DayflowProOnboardingSignInPanel: View {
       }
 
       dayflowProPrimaryButton(
-        title: String(localized: "Continue with Dayflow Pro"),
+        title: String(localized: "Continue with Target Flow Pro"),
         enabled: !authManager.isBusy,
         action: continueWithDayflowPro
       )
@@ -290,14 +290,14 @@ struct DayflowProOnboardingSignInPanel: View {
       ReferralPassCard(message: String(localized: "7 days free. No credit card required."))
 
       VStack(spacing: scaled(6)) {
-        Text("Try Dayflow Pro free for 7 days.")
+        Text("Try Target Flow Pro free for 7 days.")
           .font(.custom("Figtree", size: scaledText(16)))
           .fontWeight(.semibold)
           .foregroundColor(Color(hex: "492304"))
           .multilineTextAlignment(.center)
 
         Text(
-          "We want you to be able to try Dayflow for free, no credit card and no strings attached!"
+          "We want you to be able to try Target Flow for free, no credit card and no strings attached!"
         )
         .font(.custom("Figtree", size: scaledText(13)))
         .foregroundColor(Color(hex: "89380E").opacity(0.75))
@@ -327,20 +327,20 @@ struct DayflowProOnboardingSignInPanel: View {
       ReferralPassCard(message: String(localized: "7 days free. No credit card required."))
 
       VStack(spacing: scaled(6)) {
-        Text("Your Dayflow Pro trial is active.")
+        Text("Your Target Flow Pro trial is active.")
           .font(.custom("Figtree", size: scaledText(16)))
           .fontWeight(.semibold)
           .foregroundColor(Color(hex: "492304"))
           .multilineTextAlignment(.center)
 
-        Text("No credit card needed. You can set up billing later if Dayflow is useful.")
+        Text("No credit card needed. You can set up billing later if Target Flow is useful.")
           .font(.custom("Figtree", size: scaledText(13)))
           .foregroundColor(Color(hex: "89380E").opacity(0.75))
           .multilineTextAlignment(.center)
       }
 
       dayflowProPrimaryButton(
-        title: String(localized: "Continue with Dayflow Pro"),
+        title: String(localized: "Continue with Target Flow Pro"),
         enabled: !authManager.isBusy,
         action: continueWithDayflowPro
       )

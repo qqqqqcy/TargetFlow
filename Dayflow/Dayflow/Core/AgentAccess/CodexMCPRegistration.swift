@@ -85,7 +85,7 @@ struct CodexMCPRegistration: @unchecked Sendable {
       return .failed(
         String(
           localized:
-            "Codex updated its configuration, but Dayflow couldn't verify the connection."))
+            "Codex updated its configuration, but Target Flow couldn't verify the connection."))
     }
     return .connected
   }
@@ -113,7 +113,7 @@ struct CodexMCPRegistration: @unchecked Sendable {
 
     guard status(using: executableURL) == .available else {
       return .failed(
-        String(localized: "Codex removed the connection, but Dayflow couldn't verify the change."))
+        String(localized: "Codex removed the connection, but Target Flow couldn't verify the change."))
     }
     return .disconnected
   }
@@ -128,7 +128,7 @@ struct CodexMCPRegistration: @unchecked Sendable {
       ["mcp", "add", "dayflow", "--", cliPath, "mcp"]
     )
     if result.exitCode == 0, status(using: executableURL) == .connected {
-      print("AgentAccess: repaired stale Dayflow path in Codex")
+      print("AgentAccess: repaired stale Target Flow path in Codex")
     }
   }
 
@@ -144,7 +144,7 @@ struct CodexMCPRegistration: @unchecked Sendable {
     guard let data = result.stdout.data(using: .utf8),
       let configuration = try? JSONDecoder().decode(ServerConfiguration.self, from: data)
     else {
-      return .failed("Codex returned an unreadable Dayflow MCP configuration.")
+      return .failed("Codex returned an unreadable Target Flow MCP configuration.")
     }
 
     let transport = configuration.transport
@@ -200,21 +200,21 @@ struct CodexMCPRegistration: @unchecked Sendable {
     switch action {
     case .connect:
       return detail.isEmpty
-        ? String(localized: "Codex couldn't connect to Dayflow.")
-        : String(localized: "Codex couldn't connect to Dayflow: \(detail)")
+        ? String(localized: "Codex couldn't connect to Target Flow.")
+        : String(localized: "Codex couldn't connect to Target Flow: \(detail)")
     case .disconnect:
       return detail.isEmpty
-        ? String(localized: "Codex couldn't disconnect from Dayflow.")
-        : String(localized: "Codex couldn't disconnect from Dayflow: \(detail)")
+        ? String(localized: "Codex couldn't disconnect from Target Flow.")
+        : String(localized: "Codex couldn't disconnect from Target Flow: \(detail)")
     case .check:
       return detail.isEmpty
-        ? String(localized: "Codex couldn't check the Dayflow connection.")
-        : String(localized: "Codex couldn't check the Dayflow connection: \(detail)")
+        ? String(localized: "Codex couldn't check the Target Flow connection.")
+        : String(localized: "Codex couldn't check the Target Flow connection: \(detail)")
     }
   }
 
   private var conflictingRegistrationMessage: String {
-    "Codex already has a custom MCP server named dayflow. Dayflow left it unchanged."
+    "Codex already has a custom MCP server named dayflow. Target Flow left it unchanged."
   }
 }
 

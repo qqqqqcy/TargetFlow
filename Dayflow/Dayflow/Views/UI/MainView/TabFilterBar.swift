@@ -70,18 +70,29 @@ struct TabFilterBar: View {
       }
       .buttonStyle(.plain)
       .pointingHandCursor()
-      .opacity(isMuted ? 0.4 : 1)
+      .opacity(isMuted ? 0.55 : 0.8)
+      .help(
+        isMuted
+          ? "已弱化此事件的时间线卡片，再次点击恢复"
+          : "点击弱化此事件的时间线卡片"
+      )
       .animation(.easeOut(duration: 0.15), value: isMuted)
     }
 
     private var chipLabel: some View {
       HStack(spacing: 10) {
         Circle()
-          .fill(Color(hex: category.colorHex))
-          .frame(width: 10, height: 10)
+          .fill(Color(hex: category.colorHex).opacity(0.65))
+          .frame(width: 7, height: 7)
+
+        if isMuted {
+          Image(systemName: "eye.slash.fill")
+            .font(.system(size: 8, weight: .semibold))
+            .foregroundColor(theme.chipText.opacity(0.7))
+        }
 
         Text(category.name)
-          .font(Font.custom("Figtree", size: 13).weight(.medium))
+          .font(Font.custom("Figtree", size: 12).weight(.regular))
           .foregroundColor(theme.chipText)
           .lineLimit(1)
           .fixedSize()

@@ -27,7 +27,7 @@ struct SettingsAgentAccessTabView: View {
       subtitle:
         String(
           localized:
-            "Let Codex, Claude, Cursor, and other AI tools read your Dayflow timeline. Connections are saved to each tool's user configuration, so Dayflow is available across projects on this Mac. Nothing leaves your Mac except what you send in your own conversations."
+            "Let Codex, Claude, Cursor, and other AI tools read your Target Flow timeline. Connections are saved to each tool's user configuration, so Target Flow is available across projects on this Mac. Nothing leaves your Mac except what you send in your own conversations."
         )
     ) {
       VStack(alignment: .leading, spacing: 0) {
@@ -124,7 +124,7 @@ struct SettingsAgentAccessTabView: View {
           label: viewModel.editsEnabled
             ? String(localized: "Edits are on") : String(localized: "Edits are off"),
           subtitle: viewModel.editsEnabled
-            ? String(localized: "AI tools can make changes through Dayflow while it's running.")
+            ? String(localized: "AI tools can make changes through Target Flow while it's running.")
             : nil,
           showsDivider: false
         ) {
@@ -140,7 +140,7 @@ struct SettingsAgentAccessTabView: View {
       subtitle:
         String(
           localized:
-            "Adds a `dayflow` command so you can see your timeline from any terminal. This isn't a separate package like an npm install: it links to the CLI already inside Dayflow, so the CLI always stays in sync with the app and can't break when the app updates. Nothing is downloaded and your shell configuration isn't touched."
+            "Adds a `dayflow` command so you can see your timeline from any terminal. This isn't a separate package like an npm install: it links to the CLI already inside Target Flow, so the CLI always stays in sync with the app and can't break when the app updates. Nothing is downloaded and your shell configuration isn't touched."
         )
     ) {
       VStack(alignment: .leading, spacing: 12) {

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Reusable "Where did you find Dayflow?" survey component.
+/// Reusable "Where did you find Target Flow?" survey component.
 struct ReferralSurveyView: View {
   let prompt: String
   let submitLabel: String
@@ -270,9 +270,9 @@ enum ReferralOption: CaseIterable, Identifiable, Hashable {
     case .youtube:
       return String(localized: "Which channel?")
     case .chatGPTClaudeAI:
-      return String(localized: "What did you ask ChatGPT or Claude that led you to Dayflow?")
+      return String(localized: "What did you ask ChatGPT or Claude that led you to Target Flow?")
     case .other:
-      return String(localized: "Where did you hear about Dayflow?")
+      return String(localized: "Where did you hear about Target Flow?")
     default:
       return ""
     }

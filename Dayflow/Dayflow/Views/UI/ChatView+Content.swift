@@ -414,7 +414,7 @@ extension ChatView {
             .frame(width: 42, height: 42)
 
             VStack(alignment: .leading, spacing: 2) {
-              Text("Ask about your Dayflow data")
+              Text("Ask about your Target Flow data")
                 .font(.custom("InstrumentSerif-Regular", size: 30))
                 .foregroundColor(theme.textPrimary)
 
@@ -494,7 +494,7 @@ extension ChatView {
       // Feature description (below title)
       VStack(spacing: 6) {
         Text(
-          "Chat lets you ask questions about your Dayflow activity and get summaries, comparisons, and insights."
+          "Chat lets you ask questions about your Target Flow activity and get summaries, comparisons, and insights."
         )
         .font(.custom("Figtree-Regular", size: 14))
         .foregroundColor(theme.textSecondary)
@@ -531,7 +531,7 @@ extension ChatView {
               .foregroundColor(theme.textPrimary)
 
             Text(
-              "Chat unlocks after Dayflow has analyzed enough activity. \(chatAccessProgressText)"
+              "Chat unlocks after Target Flow has analyzed enough activity. \(chatAccessProgressText)"
             )
             .font(.custom("Figtree-Regular", size: 13))
             .foregroundColor(theme.textSecondary)
@@ -653,7 +653,7 @@ extension ChatView {
         text: $inputText,
         isFocused: $isInputFocused,
         focusToken: composerFocusToken,
-        placeholder: String(localized: "Ask about your Dayflow data..."),
+        placeholder: String(localized: "Ask about your Target Flow data..."),
         onSubmit: submitCurrentInputIfAllowed
       )
       .frame(maxWidth: .infinity, alignment: .leading)

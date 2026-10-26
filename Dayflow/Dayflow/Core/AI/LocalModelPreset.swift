@@ -35,7 +35,7 @@ enum LocalModelPreset: String, CaseIterable, Codable {
       ]
     case .qwen25VL3B:
       return [
-        "Legacy default for Dayflow local mode",
+        "Legacy default for Target Flow local mode",
         "Lower VRAM footprint but weaker perception",
       ]
     }
@@ -88,7 +88,7 @@ enum LocalModelPreset: String, CaseIterable, Codable {
         buttonTitle: "Open download in LM Studio",
         buttonURL: lmStudioDownloadURL,
         note:
-          "Tip: enable \"Launch local server\" so Dayflow can talk to LM Studio at \(LocalEngine.lmstudio.defaultBaseURL)."
+          "Tip: enable \"Launch local server\" so Target Flow can talk to LM Studio at \(LocalEngine.lmstudio.defaultBaseURL)."
       )
     }
   }

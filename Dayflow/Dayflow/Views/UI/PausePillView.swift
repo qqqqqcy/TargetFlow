@@ -57,10 +57,10 @@ struct PausePillView: View {
 
   private var statusText: String {
     if pauseManager.isPausedIndefinitely {
-      return String(localized: "Dayflow paused indefinitely")
+      return String(localized: "Target Flow paused indefinitely")
     }
 
-    return String(localized: "Dayflow paused for \(formattedRemaining)")
+    return String(localized: "Target Flow paused for \(formattedRemaining)")
   }
 
   private var pillLabelFont: Font {

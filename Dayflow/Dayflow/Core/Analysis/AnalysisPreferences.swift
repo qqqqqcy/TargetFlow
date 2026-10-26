@@ -3,7 +3,7 @@ import Foundation
 /// How much new recording data to collect before updating timeline cards.
 enum AnalysisPreferences {
   static let intervalKey = "timelineAnalysisIntervalSeconds"
-  static let intervalOptions: [TimeInterval] = [60, 300, 900]
+  static let intervalOptions: [TimeInterval] = [300, 600, 900]
   static let defaultInterval: TimeInterval = 300
 
   static var interval: TimeInterval {

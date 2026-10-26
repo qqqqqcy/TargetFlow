@@ -54,7 +54,7 @@ struct SettingsStorageTabView: View {
 
     return SettingsSection(
       title: String(localized: "Recording status"),
-      subtitle: String(localized: "Ensure Dayflow can capture your screen.")
+      subtitle: String(localized: "Ensure Target Flow can capture your screen.")
     ) {
       VStack(alignment: .leading, spacing: 0) {
         SettingsRow(label: String(localized: "Screen recording permission")) {
@@ -135,12 +135,12 @@ struct SettingsStorageTabView: View {
 
   private var timelineGenerationSection: some View {
     SettingsSection(
-      title: "时间线卡片",
+      title: "事件时间线",
       subtitle: "间隔越短，更新越及时，AI 请求也越频繁。"
     ) {
       SettingsRow(
         label: "卡片生成间隔",
-        subtitle: "修改后自动生效；实际出卡还需等待截屏和 AI 处理，同一活动可能合并到已有卡片。",
+        subtitle: "每隔这段时间分析新记录；同一事件可能延长已有卡片，因此卡片时长不固定。",
         showsDivider: false
       ) {
         settingsMenu(

@@ -93,19 +93,19 @@ struct GitHubStarPromptCard: View {
     if usesBrowser {
       return String(
         localized:
-          "Dayflow is free and open source, and GitHub stars are how other people find it. If you’re enjoying it, a star would mean a lot."
+          "Target Flow is free and open source, and GitHub stars are how other people find it. If you’re enjoying it, a star would mean a lot."
       )
     }
     if let starCount {
       let formattedCount = starCount.formatted(.number)
       return String(
         localized:
-          "Dayflow is free and open source, and GitHub stars are how other people find it. Join \(formattedCount) people who’ve starred it. It’s one click, no browser needed."
+          "Target Flow is free and open source, and GitHub stars are how other people find it. Join \(formattedCount) people who’ve starred it. It’s one click, no browser needed."
       )
     }
     return String(
       localized:
-        "Dayflow is free and open source, and GitHub stars are how other people find it. It’s one click, no browser needed."
+        "Target Flow is free and open source, and GitHub stars are how other people find it. It’s one click, no browser needed."
     )
   }
 
@@ -118,7 +118,7 @@ struct GitHubStarPromptCard: View {
   var body: some View {
     VStack(spacing: 40) {
       VStack(spacing: 12) {
-        Text("Enjoying Dayflow?")
+        Text("Enjoying Target Flow?")
           .font(.custom("Figtree", size: 16).weight(.semibold))
           .foregroundStyle(theme.textPrimary)
           .frame(maxWidth: .infinity)
@@ -129,7 +129,7 @@ struct GitHubStarPromptCard: View {
           .fixedSize(horizontal: false, vertical: true)
           .frame(maxWidth: .infinity, alignment: .leading)
 
-        Text("— Jerry, who makes Dayflow")
+        Text("— Jerry, who makes Target Flow")
           .font(.custom("Figtree", size: 13))
           .foregroundStyle(theme.textPrimary.opacity(0.6))
           .frame(maxWidth: .infinity, alignment: .trailing)
@@ -186,7 +186,7 @@ struct GitHubStarPromptCard: View {
     }
     .promptCardStyle(width: 339)
     .accessibilityElement(children: .contain)
-    .accessibilityLabel("Star Dayflow on GitHub")
+    .accessibilityLabel("Star Target Flow on GitHub")
   }
 }
 

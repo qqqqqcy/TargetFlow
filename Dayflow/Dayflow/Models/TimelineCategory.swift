@@ -12,6 +12,10 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
   var isNew: Bool
   var createdAt: Date
   var updatedAt: Date
+  // Optional for backwards-compatible decoding of existing event definitions.
+  var targetEnabled: Bool?
+
+  var isCurrentTarget: Bool { !isSystem && !isIdle && targetEnabled == true }
 
   init(
     id: UUID = UUID(),
@@ -23,7 +27,8 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
     isIdle: Bool = false,
     isNew: Bool = false,
     createdAt: Date = Date(),
-    updatedAt: Date = Date()
+    updatedAt: Date = Date(),
+    targetEnabled: Bool = false
   ) {
     self.id = id
     self.name = name
@@ -35,6 +40,7 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
     self.isNew = isNew
     self.createdAt = createdAt
     self.updatedAt = updatedAt
+    self.targetEnabled = targetEnabled
   }
 }
 
@@ -77,8 +83,31 @@ final class CategoryStore: ObservableObject {
 
   @Published private(set) var categories: [TimelineCategory] = []
 
-  init() {
+  private let defaults: UserDefaults
+  private let onEventsChanged: @MainActor ([TimelineCategory]) -> Void
+
+  init(
+    defaults: UserDefaults = .standard,
+    onEventsChanged: @escaping @MainActor ([TimelineCategory]) -> Void = {
+      TargetStore.shared.synchronize(events: $0)
+    }
+  ) {
+    self.defaults = defaults
+    self.onEventsChanged = onEventsChanged
     load()
+    migrateLegacyTarget()
+    onEventsChanged(categories)
+  }
+
+  var currentTargets: [TimelineCategory] {
+    editableCategories.filter(\.isCurrentTarget)
+  }
+
+  func setCurrentTarget(_ enabled: Bool, for id: UUID) {
+    guard let event = categories.first(where: { $0.id == id }),
+      !event.isSystem, !event.isIdle, event.isCurrentTarget != enabled
+    else { return }
+    updateCategory(id: id) { $0.targetEnabled = enabled }
   }
 
   var editableCategories: [TimelineCategory] {
@@ -90,11 +119,10 @@ final class CategoryStore: ObservableObject {
   }
 
   func setOnboardingRole(_ role: String) {
-    UserDefaults.standard.set(role, forKey: StoreKeys.onboardingSelectedRole)
+    defaults.set(role, forKey: StoreKeys.onboardingSelectedRole)
   }
 
   func applyOnboardingPresetIfNeeded() {
-    let defaults = UserDefaults.standard
     guard let roleName = defaults.string(forKey: StoreKeys.onboardingSelectedRole) else {
       return
     }
@@ -117,7 +145,17 @@ final class CategoryStore: ObservableObject {
   }
 
   func markOnboardingCategoriesCustomized() {
-    UserDefaults.standard.set(true, forKey: StoreKeys.onboardingCategoriesCustomized)
+    defaults.set(true, forKey: StoreKeys.onboardingCategoriesCustomized)
+  }
+
+  private static let newCategoryColors = [
+    "#6A7EFF", "#56CFEE", "#C787F7", "#FFAE8C", "#ADE3E3", "#F6C85F",
+  ]
+
+  private func colorForNewCategory() -> String {
+    let usedColors = Set(categories.filter { !$0.isSystem && !$0.isIdle }.map(\.colorHex))
+    return Self.newCategoryColors.first(where: { !usedColors.contains($0) })
+      ?? Self.newCategoryColors[categories.count % Self.newCategoryColors.count]
   }
 
   func addCategory(name: String, colorHex: String? = nil) {
@@ -127,7 +165,7 @@ final class CategoryStore: ObservableObject {
     let now = Date()
     let category = TimelineCategory(
       name: trimmed,
-      colorHex: colorHex ?? "#E5E7EB",
+      colorHex: colorHex ?? colorForNewCategory(),
       details: "",
       order: nextOrder,
       isSystem: false,
@@ -139,8 +177,8 @@ final class CategoryStore: ObservableObject {
     categories.append(category)
     save()
 
-    if UserDefaults.standard.bool(forKey: StoreKeys.hasUsedApp) == false {
-      UserDefaults.standard.set(true, forKey: StoreKeys.hasUsedApp)
+    if defaults.bool(forKey: StoreKeys.hasUsedApp) == false {
+      defaults.set(true, forKey: StoreKeys.hasUsedApp)
     }
   }
 
@@ -221,16 +259,34 @@ final class CategoryStore: ObservableObject {
   }
 
   private func load() {
-    let decoded = CategoryPersistence.loadPersistedCategories()
+    let decoded = CategoryPersistence.loadPersistedCategories(defaults: defaults)
     let effective = decoded.isEmpty ? CategoryPersistence.defaultCategories : decoded
     categories = CategoryPersistence.ensureIdleCategoryPresent(in: effective)
+  }
+
+  private func migrateLegacyTarget() {
+    let migrationKey = "target.migratedToEvents"
+    guard !defaults.bool(forKey: migrationKey) else { return }
+    if let data = defaults.data(forKey: "target.current"),
+      let legacy = try? JSONDecoder().decode(FocusTarget.self, from: data),
+      legacy.events == nil
+    {
+      // Preserve a running target as an enabled event instead of silently losing it.
+      categories.append(
+        TimelineCategory(
+          id: legacy.id, name: String(legacy.text.prefix(60)), colorHex: "#B984FF",
+          details: legacy.text, order: editableCategories.count, targetEnabled: true))
+      save()
+    }
+    defaults.set(true, forKey: migrationKey)
   }
 
   private func save() {
     let encoder = JSONEncoder()
     encoder.dateEncodingStrategy = .iso8601
     if let data = try? encoder.encode(categories) {
-      UserDefaults.standard.set(data, forKey: StoreKeys.categories)
+      defaults.set(data, forKey: StoreKeys.categories)
+      onEventsChanged(categories)
     }
   }
 
@@ -534,8 +590,8 @@ private enum OnboardingCategoryPreset: String {
 }
 
 enum CategoryPersistence {
-  static func loadPersistedCategories() -> [TimelineCategory] {
-    guard let data = UserDefaults.standard.data(forKey: CategoryStore.StoreKeys.categories) else {
+  static func loadPersistedCategories(defaults: UserDefaults = .standard) -> [TimelineCategory] {
+    guard let data = defaults.data(forKey: CategoryStore.StoreKeys.categories) else {
       return []
     }
     let decoder = JSONDecoder()

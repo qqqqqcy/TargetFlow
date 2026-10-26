@@ -62,7 +62,7 @@ struct HowItWorksCard_Previews: PreviewProvider {
         description:
           String(
             localized:
-              "Dayflow takes periodic screen captures to understand what you're working on - all stored privately on your device."
+              "Target Flow takes periodic screen captures to understand what you're working on - all stored privately on your device."
           )
       )
 

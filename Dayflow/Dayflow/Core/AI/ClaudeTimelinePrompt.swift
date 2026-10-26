@@ -50,7 +50,7 @@ enum ClaudeTimelinePrompt {
     """#
 
   static let template = #"""
-    You are turning screenshots of a user's screen into timeline cards. Each card represents one main thing they did.
+    You are turning screenshots of a user's screen into event timeline cards. Each card describes one concrete thing they did, with a specific subject and action; labels are secondary metadata.
 
     CORE PRINCIPLE:
     Each card = one coherent activity. Time is a constraint (10-60 min), not a goal.
@@ -70,7 +70,7 @@ enum ClaudeTimelinePrompt {
     - You'd need "and" to connect two genuinely unrelated activities in the title
 
     WHEN TO MERGE (same card):
-    - Consecutive activities serve the same project or goal (e.g., reviewing mockups -> discussing those mockups -> iterating on those mockups = one design session)
+    - Consecutive activities serve the same concrete goal (e.g., reviewing mockups -> discussing those mockups -> iterating on those mockups = one design session). Sharing a broad project or event label alone is not enough.
     - Switching apps/tools within the same task (Figma -> Meet -> Figma for one design review)
     - Back-to-back games of the same game = one gaming session
     - Debugging across IDE + Terminal + Browser = one debugging session

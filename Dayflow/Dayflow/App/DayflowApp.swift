@@ -22,10 +22,13 @@ struct AppRootView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .onAppear(perform: openPendingNotificationDestination)
     .onChange(of: didOnboard) { _, _ in openPendingNotificationDestination() }
-    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) {
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification))
+    {
       _ in openPendingNotificationDestination()
     }
-    .onReceive(NotificationCenter.default.publisher(for: AppDelegate.notificationNavigationRequested)) {
+    .onReceive(
+      NotificationCenter.default.publisher(for: AppDelegate.notificationNavigationRequested)
+    ) {
       _ in openPendingNotificationDestination()
     }
   }
@@ -39,8 +42,8 @@ struct AppRootView: View {
       switch destination {
       case .timeline:
         NotificationCenter.default.post(name: .navigateToTimeline, object: nil)
-      case .target:
-        NotificationCenter.default.post(name: .navigateToTarget, object: nil)
+      case .events:
+        NotificationCenter.default.post(name: .navigateToEvents, object: nil)
       }
     }
   }

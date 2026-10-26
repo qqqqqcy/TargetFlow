@@ -45,7 +45,7 @@ struct VideoLaunchView: View {
 
   private func setupVideo() {
     // Play directly from bundle - no need to write to temp file
-    guard let videoURL = Bundle.main.url(forResource: "DayflowAnimation", withExtension: "mp4")
+    guard let videoURL = Bundle.main.url(forResource: "TargetFlowAnimation", withExtension: "mp4")
     else {
       print("Failed to find video in bundle")
       completeVideo()

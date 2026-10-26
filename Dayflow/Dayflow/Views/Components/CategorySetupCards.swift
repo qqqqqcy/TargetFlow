@@ -15,6 +15,7 @@ struct EditableCategoryCard: View {
   var onSave: () -> Void
   var onDelete: () -> Void
 
+  @EnvironmentObject private var categoryStore: CategoryStore
   @Environment(\.dayflowTheme) private var theme
   @FocusState private var focusedField: Field?
 
@@ -34,6 +35,24 @@ struct EditableCategoryCard: View {
     }
   }
 
+  @ViewBuilder
+  private var targetToggle: some View {
+    if !category.isSystem && !category.isIdle {
+      Toggle(
+        "当前目标",
+        isOn: Binding(
+          get: { category.isCurrentTarget },
+          set: { categoryStore.setCurrentTarget($0, for: category.id) }
+        )
+      )
+      .toggleStyle(.switch)
+      .controlSize(.small)
+      .font(.custom("Figtree", size: 12))
+      .fixedSize()
+      .accessibilityLabel("将\(category.name)设为当前目标")
+    }
+  }
+
   private var editingView: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(alignment: .center, spacing: 12) {
@@ -49,6 +68,8 @@ struct EditableCategoryCard: View {
 
         Spacer(minLength: 12)
 
+        targetToggle
+
         Button {
           focusedField = nil
           onSave()
@@ -56,7 +77,7 @@ struct EditableCategoryCard: View {
           Image("CategoriesCheckmark")
             .resizable()
             .frame(width: 20, height: 20)
-            .accessibilityLabel("Save category edits")
+            .accessibilityLabel("保存事件")
         }
         .buttonStyle(.plain)
 
@@ -64,7 +85,7 @@ struct EditableCategoryCard: View {
 
       ZStack(alignment: .topLeading) {
         if draftDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-          Text("Professional, school, or career-focused tasks (coding, design, meetings).")
+          Text("描述要推进的具体事情，例如完成登录页，允许查阅 SwiftUI 文档。")
             .font(Font.custom("Figtree", size: 12).weight(.medium))
             .foregroundColor(theme.isDark ? Color.white.opacity(0.35) : Color.black.opacity(0.35))
             .padding(.horizontal, 12)
@@ -116,7 +137,7 @@ struct EditableCategoryCard: View {
 
         Text(
           category.details.isEmpty
-            ? String(localized: "Add a description to help Dayflow understand your workflow.")
+            ? String(localized: "补充事件说明，帮助识别实际在做的事情。")
             : category.details
         )
         .font(Font.custom("Figtree", size: 12).weight(.medium))
@@ -126,31 +147,41 @@ struct EditableCategoryCard: View {
         .frame(maxWidth: .infinity, alignment: .center)
         .lineLimit(2)
       }
-
-      Spacer()
-
-      if !category.isSystem {
-        Button {
+      .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
+      .onTapGesture {
+        if !category.isSystem {
           onStartEdit()
-        } label: {
-          Image("CategoriesEdit")
-            .resizable()
-            .frame(width: 20, height: 20)
-            .accessibilityLabel("Edit category")
         }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
+      }
+      .pointingHandCursor(enabled: !category.isSystem)
 
-        Button {
-          onDelete()
-        } label: {
-          Image("CategoriesDelete")
-            .resizable()
-            .frame(width: 20, height: 20)
-            .accessibilityLabel("Delete category")
+      HStack(spacing: 12) {
+        targetToggle
+
+        if !category.isSystem {
+          Button {
+            onStartEdit()
+          } label: {
+            Image("CategoriesEdit")
+              .resizable()
+              .frame(width: 20, height: 20)
+              .accessibilityLabel("编辑事件")
+          }
+          .buttonStyle(.plain)
+          .pointingHandCursor()
+
+          Button {
+            onDelete()
+          } label: {
+            Image("CategoriesDelete")
+              .resizable()
+              .frame(width: 20, height: 20)
+              .accessibilityLabel("删除事件")
+          }
+          .buttonStyle(.plain)
+          .pointingHandCursor()
         }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
       }
     }
     .padding(.horizontal, 20)
@@ -174,13 +205,6 @@ struct EditableCategoryCard: View {
         }
       }
     )
-    .contentShape(Rectangle())
-    .onTapGesture {
-      if !category.isSystem {
-        onStartEdit()
-      }
-    }
-    .pointingHandCursor(enabled: !category.isSystem)
   }
 }
 

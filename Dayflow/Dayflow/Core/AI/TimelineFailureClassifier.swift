@@ -64,12 +64,12 @@ struct TimelineFailureClassification {
   /// someone who doesn't know what an API or JSON is.
   func cardMessage(fallbackProviderLabel: String?) -> String {
     let provider = resolvedProvider(fallbackProviderLabel)
-    let catchUp = "Dayflow will catch up automatically once that's done."
+    let catchUp = "Target Flow will catch up automatically once that's done."
 
     switch kind {
     case .dayflowProRequired:
       return
-        "Your Dayflow Pro plan has ended. Renew it or switch to another provider in Settings. \(catchUp)"
+        "Your Target Flow Pro plan has ended. Renew it or switch to another provider in Settings. \(catchUp)"
 
     case .providerLoginExpired:
       if let fix = signInFix(for: provider) {
@@ -79,18 +79,18 @@ struct TimelineFailureClassification {
 
     case .cliNotInstalled:
       return
-        "Dayflow couldn't find \(provider)'s command-line tool on this Mac. Reinstall it, or switch providers in Settings. \(catchUp)"
+        "Target Flow couldn't find \(provider)'s command-line tool on this Mac. Reinstall it, or switch providers in Settings. \(catchUp)"
 
     case .cliOutdated:
       return
-        "Your Codex command-line tool is too old for the model Dayflow uses. Run `\(Self.codexUpdateCommand)` in Terminal to update it. \(catchUp)"
+        "Your Codex command-line tool is too old for the model Target Flow uses. Run `\(Self.codexUpdateCommand)` in Terminal to update it. \(catchUp)"
 
     case .localEngineOffline:
-      return "Dayflow couldn't reach Ollama or LM Studio on this Mac. Open it. \(catchUp)"
+      return "Target Flow couldn't reach Ollama or LM Studio on this Mac. Open it. \(catchUp)"
 
     case .localModelMissing:
       return
-        "Your local model isn't loaded. Open Ollama or LM Studio and load the model you picked in Dayflow. \(catchUp)"
+        "Your local model isn't loaded. Open Ollama or LM Studio and load the model you picked in Target Flow. \(catchUp)"
 
     case .apiKeyProblem:
       return
@@ -98,7 +98,7 @@ struct TimelineFailureClassification {
 
     case .usageLimitHit:
       return
-        "You've used up your \(provider) plan's usage for now. Dayflow will catch up automatically once your limit resets."
+        "You've used up your \(provider) plan's usage for now. Target Flow will catch up automatically once your limit resets."
 
     case .outOfCredits:
       return
@@ -114,22 +114,22 @@ struct TimelineFailureClassification {
 
     case .modelMisconfigured:
       return
-        "The AI model Dayflow tried to use isn't available on your \(provider) account. Pick a different one in Settings, under Providers. \(catchUp)"
+        "The AI model Target Flow tried to use isn't available on your \(provider) account. Pick a different one in Settings, under Providers. \(catchUp)"
 
     case .notConfigured:
       return "No AI provider is connected yet. Connect one in Settings, under Providers. \(catchUp)"
 
     case .transient:
       return
-        "Dayflow couldn't reach \(provider) because the connection dropped or its servers were busy. Dayflow will try again automatically."
+        "Target Flow couldn't reach \(provider) because the connection dropped or its servers were busy. Target Flow will try again automatically."
 
     case .modelFlaky:
       return
-        "The AI's reply came back jumbled, so Dayflow couldn't turn it into cards. This usually sorts itself out, and Dayflow will try again automatically."
+        "The AI's reply came back jumbled, so Target Flow couldn't turn it into cards. This usually sorts itself out, and Target Flow will try again automatically."
 
     case .unknown:
       return
-        "Something went wrong while turning this time into cards. Dayflow will try again automatically."
+        "Something went wrong while turning this time into cards. Target Flow will try again automatically."
     }
   }
 
@@ -138,7 +138,7 @@ struct TimelineFailureClassification {
   func toastContent(fallbackProviderLabel: String?) -> TimelineFailureToastContent? {
     let provider = resolvedProvider(fallbackProviderLabel)
     var content = baseToastContent(provider: provider)
-    content?.providerName = kind == .dayflowProRequired ? "Dayflow" : provider
+    content?.providerName = kind == .dayflowProRequired ? "Target Flow" : provider
     return content
   }
 
@@ -146,7 +146,7 @@ struct TimelineFailureClassification {
     switch kind {
     case .dayflowProRequired:
       return TimelineFailureToastContent(
-        title: "Your Dayflow Pro plan ended",
+        title: "Your Target Flow Pro plan ended",
         body: "Renew to keep your timeline going, or switch to a free provider like Gemini.",
         steps: [],
         command: nil,
@@ -158,7 +158,7 @@ struct TimelineFailureClassification {
         return TimelineFailureToastContent(
           title: "\(provider) is signed out",
           body:
-            "Sign in again from provider settings so Dayflow can turn your activity into cards.",
+            "Sign in again from provider settings so Target Flow can turn your activity into cards.",
           steps: [],
           command: nil,
           destination: .providers
@@ -176,17 +176,17 @@ struct TimelineFailureClassification {
     case .cliNotInstalled:
       guard let installCommand = installCommand(for: provider) else {
         return TimelineFailureToastContent(
-          title: "Dayflow can't find \(provider)",
+          title: "Target Flow can't find \(provider)",
           body:
-            "Dayflow couldn't find \(provider)'s command-line tool on this Mac. Reinstall it, or switch providers.",
+            "Target Flow couldn't find \(provider)'s command-line tool on this Mac. Reinstall it, or switch providers.",
           steps: [],
           command: nil,
           destination: .providers
         )
       }
       return TimelineFailureToastContent(
-        title: "Dayflow can't find \(provider)",
-        body: "Dayflow uses \(provider)'s command-line tool, but couldn't find it on this Mac.",
+        title: "Target Flow can't find \(provider)",
+        body: "Target Flow uses \(provider)'s command-line tool, but couldn't find it on this Mac.",
         steps: ["Open Terminal and run"],
         command: installCommand,
         destination: .providers
@@ -195,7 +195,7 @@ struct TimelineFailureClassification {
     case .cliOutdated:
       return TimelineFailureToastContent(
         title: "Codex needs an update",
-        body: "Your Codex command-line tool is too old for the model Dayflow uses.",
+        body: "Your Codex command-line tool is too old for the model Target Flow uses.",
         steps: ["Open Terminal and run"],
         command: Self.codexUpdateCommand,
         destination: .providers
@@ -204,7 +204,7 @@ struct TimelineFailureClassification {
     case .localEngineOffline:
       return TimelineFailureToastContent(
         title: "Ollama or LM Studio isn't running",
-        body: "Dayflow can't reach your local model.",
+        body: "Target Flow can't reach your local model.",
         steps: ["Open Ollama or LM Studio"],
         command: nil,
         destination: .providers
@@ -213,8 +213,8 @@ struct TimelineFailureClassification {
     case .localModelMissing:
       return TimelineFailureToastContent(
         title: "Your local model isn't loaded",
-        body: "Dayflow reached Ollama or LM Studio, but the model it uses isn't available.",
-        steps: ["Open Ollama or LM Studio", "Download or load the model you picked in Dayflow"],
+        body: "Target Flow reached Ollama or LM Studio, but the model it uses isn't available.",
+        steps: ["Open Ollama or LM Studio", "Download or load the model you picked in Target Flow"],
         command: nil,
         destination: .providers
       )
@@ -232,7 +232,7 @@ struct TimelineFailureClassification {
       return TimelineFailureToastContent(
         title: "You've hit \(provider)'s usage limit",
         body:
-          "Dayflow will catch up on its own when your limit resets. To keep going now, add a backup provider.",
+          "Target Flow will catch up on its own when your limit resets. To keep going now, add a backup provider.",
         steps: [],
         command: nil,
         destination: .providers
@@ -269,7 +269,7 @@ struct TimelineFailureClassification {
       return TimelineFailureToastContent(
         title: "Your selected model isn't available",
         body:
-          "The model Dayflow tried to use isn't available on your \(provider) account. Pick a different one.",
+          "The model Target Flow tried to use isn't available on your \(provider) account. Pick a different one.",
         steps: [],
         command: nil,
         destination: .providers
@@ -346,7 +346,7 @@ struct TimelineFailureClassification {
     case "chatgpt", "codex": return "ChatGPT"
     case "claude": return "Claude"
     case "local", "ollama": return "Ollama/LM Studio"
-    case "dayflow": return "Dayflow"
+    case "dayflow": return "Target Flow"
     default: return label
     }
   }

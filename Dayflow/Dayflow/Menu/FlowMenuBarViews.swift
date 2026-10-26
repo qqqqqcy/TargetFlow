@@ -402,8 +402,8 @@ struct FlowMenuSessionHero: View {
 
     case .dayflowPaused:
       VStack(alignment: .leading, spacing: 1 * s) {
-        title(String(localized: "Dayflow is paused."))
-        subtitle(String(localized: "Resume Dayflow to continue with the current session."))
+        title(String(localized: "Target Flow is paused."))
+        subtitle(String(localized: "Resume Target Flow to continue with the current session."))
           .frame(width: 96 * s, alignment: .leading)
           .fixedSize(horizontal: false, vertical: true)
       }

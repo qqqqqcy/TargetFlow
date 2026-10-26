@@ -13,7 +13,7 @@ struct SettingsRecordingPrivacyTabView: View {
   var body: some View {
     SettingsSection(
       title: String(localized: "Recording privacy"),
-      subtitle: String(localized: "Choose apps Dayflow should hide from screenshots.")
+      subtitle: String(localized: "Choose apps Target Flow should hide from screenshots.")
     ) {
       VStack(alignment: .leading, spacing: 18) {
         searchField

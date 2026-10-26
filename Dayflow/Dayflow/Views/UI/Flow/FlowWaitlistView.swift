@@ -108,14 +108,14 @@ struct FlowWaitlistView: View {
           .font(.custom("InstrumentSerif-Regular", size: 28))
         Text(
           providerLimited
-            ? "For Claude, ChatGPT and Dayflow Pro users" : "Get early access to Flow"
+            ? "For Claude, ChatGPT and Target Flow Pro users" : "Get early access to Flow"
         )
         .font(.custom("Figtree", size: 16).weight(.semibold))
       }
 
       Text(
         providerLimited
-          ? "Flow watches your screen during a session to keep you on track, and that takes a level of intelligence Gemini and local models can't reach yet. Switch your provider to Claude, ChatGPT or Dayflow Pro in Settings to use Flow now, or sign up and we'll tell you when it works with yours."
+          ? "Flow watches your screen during a session to keep you on track, and that takes a level of intelligence Gemini and local models can't reach yet. Switch your provider to Claude, ChatGPT or Target Flow Pro in Settings to use Flow now, or sign up and we'll tell you when it works with yours."
           : "Flow helps you plan your day and find your way back when you get distracted."
       )
       .font(.custom("Figtree", size: 14))

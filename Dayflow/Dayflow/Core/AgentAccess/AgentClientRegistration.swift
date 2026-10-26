@@ -114,7 +114,7 @@ enum AgentClientRegistration {
       switch CodexMCPRegistration(cliPath: cliPath).connect() {
       case .connected: return .connected
       case .notInstalled: return .failed("Codex isn't installed on this Mac.")
-      case .disconnected: return .failed("Codex didn't keep the Dayflow connection.")
+      case .disconnected: return .failed("Codex didn't keep the Target Flow connection.")
       case .failed(let message): return .failed(message)
       }
     case .claudeCode:

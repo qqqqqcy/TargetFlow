@@ -106,7 +106,7 @@ struct OnboardingPrototypeChooseProviderStep: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      Text("Choose a way to run Dayflow")
+      Text("Choose a way to run Target Flow")
         .font(.custom("InstrumentSerif-Regular", size: 40))
         .tracking(-1.2)
         .multilineTextAlignment(.center)
@@ -232,7 +232,7 @@ struct OnboardingPrototypeChooseProviderStep: View {
   private func headerIcon(for providerID: LLMProviderID) -> some View {
     switch providerID {
     case .dayflow:
-      Image("DayflowLogo")
+      Image("TargetFlowLogo")
         .resizable()
         .renderingMode(.original)
         .interpolation(.high)

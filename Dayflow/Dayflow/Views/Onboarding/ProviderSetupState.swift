@@ -113,7 +113,7 @@ class ProviderSetupState: ObservableObject {
             String(localized: "For experienced users"),
             String(
               localized:
-                "This path is recommended only if you're comfortable running LLMs locally and debugging technical issues. If terms like vLLM or API endpoint don't ring a bell, we recommend going back and picking ChatGPT, Claude, or Gemini. It's non-technical and takes about 30 seconds.\n\nFor local mode, Dayflow recommends Qwen3-VL 4B as the core vision-language model (Qwen2.5-VL 3B remains available if you need a smaller download)."
+                "This path is recommended only if you're comfortable running LLMs locally and debugging technical issues. If terms like vLLM or API endpoint don't ring a bell, we recommend going back and picking ChatGPT, Claude, or Gemini. It's non-technical and takes about 30 seconds.\n\nFor local mode, Target Flow recommends Qwen3-VL 4B as the core vision-language model (Qwen2.5-VL 3B remains available if you need a smaller download)."
             )
           )
         ),
@@ -134,7 +134,7 @@ class ProviderSetupState: ObservableObject {
           id: "complete", title: String(localized: "Complete"),
           contentType: .information(
             String(localized: "All set!"),
-            String(localized: "Local AI is configured and ready to use with Dayflow."))),
+            String(localized: "Local AI is configured and ready to use with Target Flow."))),
       ]
     case .chatGPT, .claude:
       preferredCLITool = provider == .claude ? .claude : .codex
@@ -173,7 +173,7 @@ class ProviderSetupState: ObservableObject {
           title: String(localized: "Complete"),
           contentType: .information(
             String(localized: "All set!"),
-            String(localized: "Your OpenAI-compatible provider is ready to use with Dayflow.")
+            String(localized: "Your OpenAI-compatible provider is ready to use with Target Flow.")
           )
         ),
       ]
@@ -198,7 +198,7 @@ class ProviderSetupState: ObservableObject {
           id: "complete", title: String(localized: "Complete"),
           contentType: .information(
             String(localized: "All set!"),
-            String(localized: "Gemini is now configured and ready to use with Dayflow."))),
+            String(localized: "Gemini is now configured and ready to use with Target Flow."))),
       ]
     }
   }
@@ -215,7 +215,7 @@ class ProviderSetupState: ObservableObject {
           "",
           String(
             localized:
-              "Dayflow uses \(cliName) through your existing \(providerName) subscription. Install it and sign in on this Mac, then we'll verify the connection."
+              "Target Flow uses \(cliName) through your existing \(providerName) subscription. Install it and sign in on this Mac, then we'll verify the connection."
           )
         )
       ),
@@ -237,7 +237,7 @@ class ProviderSetupState: ObservableObject {
         title: String(localized: "Complete"),
         contentType: .information(
           String(localized: "All set!"),
-          String(localized: "\(providerName) is configured and ready to use with Dayflow.")
+          String(localized: "\(providerName) is configured and ready to use with Target Flow.")
         )
       ),
     ]

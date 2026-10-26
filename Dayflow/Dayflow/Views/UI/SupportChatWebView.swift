@@ -467,7 +467,7 @@ struct SupportChatWebView: NSViewRepresentable {
           )
           : String(
             localized:
-              "Hey there! Found a bug, have an idea, or just confused about something? Drop it here and a real person on the Dayflow team will get back to you in this chat."
+              "Hey there! Found a bug, have an idea, or just confused about something? Drop it here and a real person on the Target Flow team will get back to you in this chat."
           ),
         "emailRequired": String(localized: "Add your email so we can reply."),
         "unavailable": String(localized: "Support is not available right now."),
@@ -935,7 +935,7 @@ private enum SupportChatPage {
 
         var meta = document.createElement("div");
         meta.className = "meta " + (isUser ? "user" : "team");
-        var who = isUser ? strings.you : (message.author_name || "Dayflow");
+        var who = isUser ? strings.you : (message.author_name || "Target Flow");
         var when = message.created_at ? formatTime(message.created_at) : "";
         meta.textContent = when ? who + " · " + when : who;
         el.messages.appendChild(meta);
@@ -1209,7 +1209,7 @@ private enum SupportChatPage {
       }
 
       // PostHog shares one rate limit for message fetches across every install,
-      // so each tick asks the Dayflow backend for the ticket's latest message id
+      // so each tick asks the Target Flow backend for the ticket's latest message id
       // and only fetches the conversation when that id changes.
       var unreadCount = 0;
       var lastAttemptAt = 0;
@@ -1247,7 +1247,7 @@ private enum SupportChatPage {
 
       // ---- Boot --------------------------------------------------------------
 
-      appendMessage({ id: "greeting", content: GREETING, author_type: "human", author_name: "Dayflow" });
+      appendMessage({ id: "greeting", content: GREETING, author_type: "human", author_name: "Target Flow" });
 
       function fail(reason) {
         native({ event: "unavailable", reason: reason });

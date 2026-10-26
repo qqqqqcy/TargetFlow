@@ -92,7 +92,7 @@ extension DailyView {
       return
         String(
           localized:
-            "Notifications are currently off for Dayflow. Enable them in System Settings to finish unlocking Daily."
+            "Notifications are currently off for Target Flow. Enable them in System Settings to finish unlocking Daily."
         )
     }
 

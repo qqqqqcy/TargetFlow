@@ -617,7 +617,7 @@ private struct WeeklyDataRequirementProgressBar: View {
           .fill(Color(hex: "FF6E00"))
           .frame(width: 24, height: 24)
           .overlay(
-            Image("DayflowLogo")
+            Image("TargetFlowLogo")
               .renderingMode(.template)
               .resizable()
               .scaledToFit()
@@ -1021,7 +1021,7 @@ private enum WeeklyExportWatermarkPlacement {
 private struct WeeklyExportWatermark: View {
   var body: some View {
     HStack(spacing: 6) {
-      Image("DayflowLogo")
+      Image("TargetFlowLogo")
         .resizable()
         .scaledToFit()
         .frame(width: 16, height: 16)
@@ -1050,7 +1050,7 @@ private struct WeeklyGeneratedWithDayflowText: View {
         .font(.custom("Figtree-SemiBold", size: 10))
         .foregroundStyle(WeeklyPalette.secondaryText)
 
-      Text("Dayflow")
+      Text("Target Flow")
         .font(.custom("Figtree-Bold", size: 10))
         .foregroundStyle(WeeklyPalette.title)
     }

@@ -139,11 +139,11 @@ extension StorageManager {
     let presentAlert = {
       let alert = NSAlert()
       alert.alertStyle = .critical
-      alert.messageText = String(localized: "Dayflow Can't Open Its Database")
+      alert.messageText = String(localized: "Target Flow Can't Open Its Database")
       alert.informativeText = String(
         localized: """
-          Dayflow couldn't open its database and has to quit. This usually happens \
-          when the disk is full — free up some space and open Dayflow again.
+          Target Flow couldn't open its database and has to quit. This usually happens \
+          when the disk is full — free up some space and open Target Flow again.
 
           Error: \(error)
           """)

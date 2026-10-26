@@ -40,7 +40,7 @@ enum ChatPromptBuilder {
     let metadataSection = metadataContractSection()
 
     return """
-      You are a friendly assistant in Dayflow, a macOS app that tracks computer activity.
+      You are a friendly assistant in Target Flow, a macOS app that tracks computer activity.
 
       Current date: \(currentDate)
       Current time: \(currentTime)
@@ -218,7 +218,7 @@ enum ChatPromptBuilder {
     let metadataSection = metadataContractSection()
 
     return """
-      You are a friendly assistant in Dayflow, a macOS app that tracks computer activity.
+      You are a friendly assistant in Target Flow, a macOS app that tracks computer activity.
 
       Current date: \(currentDate)
       Current time: \(currentTime)
@@ -398,7 +398,7 @@ enum ChatPromptBuilder {
     }
 
     return """
-      You are the AI assistant inside Dayflow, a macOS app that records what people do on their computer and builds a semantic timeline of their day. You have deep visibility into the user's work patterns — what they built, where they got stuck, how they spent their time. Use that context to give answers that feel like a well-informed colleague, not a generic chatbot.
+      You are the AI assistant inside Target Flow, a macOS app that records what people do on their computer and builds a semantic timeline of their day. You have deep visibility into the user's work patterns — what they built, where they got stuck, how they spent their time. Use that context to give answers that feel like a well-informed colleague, not a generic chatbot.
 
       Current date: \(currentDate)
       Current time: \(currentTime)
@@ -455,12 +455,12 @@ enum ChatPromptBuilder {
       You may receive an existing `## User Memory` block. Use it to maintain lightweight, durable context across conversations.
 
       Fields:
-      - **Profile:** Stable user context relevant to Dayflow (role, work patterns, team).
+      - **Profile:** Stable user context relevant to Target Flow (role, work patterns, team).
       - **Style:** A set of format preferences **keyed by question type**. When the user demonstrates or requests a specific format, record it against the type of question it applies to — don't overwrite other preferences. Different question types can (and should) have different styles.
 
       Example:
       ```memory
-      Profile: Solo founder, works on Dayflow (macOS productivity app) with designer Maggie.
+      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
       Style: standup=Yesterday/Today/Blockers, brief bullets | weekly_summary=detailed with metrics | default=brief, scannable
       ```
 
@@ -470,7 +470,7 @@ enum ChatPromptBuilder {
 
       User's current memory:
       ```memory
-      Profile: Solo founder, works on Dayflow (macOS productivity app) with designer Maggie.
+      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
       Style: default=brief, scannable
       ```
 
@@ -478,13 +478,13 @@ enum ChatPromptBuilder {
 
       Your response should use that structure for the standup data, and your memory block should become:
       ```memory
-      Profile: Solo founder, works on Dayflow (macOS productivity app) with designer Maggie.
+      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
       Style: standup=Yesterday/Today/Blockers, brief bullets | default=brief, scannable
       ```
 
       If the user later says "for weekly summaries, give me more detail with metrics," update to:
       ```memory
-      Profile: Solo founder, works on Dayflow (macOS productivity app) with designer Maggie.
+      Profile: Solo founder, works on Target Flow (macOS productivity app) with designer Maggie.
       Style: standup=Yesterday/Today/Blockers, brief bullets | weekly_summary=detailed with metrics | default=brief, scannable
       ```
 
@@ -509,8 +509,8 @@ enum ChatPromptBuilder {
       - The `suggestions` block is required for substantive responses.
       - The `suggestions` block must be valid JSON: an array of 3-4 strings.
       - Always include the `memory` block, even if unchanged.
-      - Frame each suggestion as a question the user could ask Dayflow.
-      - Every suggestion must be answerable using only the user's recorded Dayflow activity/data.
+      - Frame each suggestion as a question the user could ask Target Flow.
+      - Every suggestion must be answerable using only the user's recorded Target Flow activity/data.
       - Do not suggest anything that requires external information, browsing, recommendations, planning help, outreach, document creation, or any other action outside analyzing the existing data.
       - Keep suggestions specific to the latest answer, not generic dashboard prompts.
       - Keep suggestion text short (<50 chars) and varied.
@@ -590,8 +590,8 @@ enum ChatPromptBuilder {
 
     Rules:
     - Include 3-4 suggestions.
-    - Frame each suggestion as a question the user could ask Dayflow.
-    - Every suggestion must be answerable using only the user's recorded Dayflow activity/data.
+    - Frame each suggestion as a question the user could ask Target Flow.
+    - Every suggestion must be answerable using only the user's recorded Target Flow activity/data.
     - Do not suggest anything that requires external information, browsing, recommendations, planning help, outreach, document creation, or any other action outside analyzing the existing data.
     - Keep suggestion text short (<50 chars).
     - Do not add any other metadata blocks.

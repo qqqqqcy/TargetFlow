@@ -4,7 +4,7 @@ import Foundation
 /// GPT Luna's graded mistakes, and an output shape that has the model note each frame before it
 /// writes the cards.
 enum CodexTimelinePrompt {
-  static let system = "You generate precise Dayflow timeline cards in valid JSON only."
+  static let system = "You generate precise Target Flow timeline cards in valid JSON only."
 
   static let additionalRules = #"""
     - Write one detailedSummary line per minute by default. Merge minutes into one line only when the frames are the same screen with nothing new on it, and then say so. A minute in which a message arrived, a draft changed, a reply appeared or the page changed gets its own line.
@@ -12,7 +12,7 @@ enum CodexTimelinePrompt {
     - For every chat, email or assistant prompt, say which of three states the text is in. A message that sits in the thread, above a reply or with a delivered or working status, was sent: write sent "...". Text in the input box is a draft: write typed an unsent draft "...". Text from someone else was received: write who it came from. Greyed placeholder text in an empty input box (for example "Explain this codebase") is not something the user typed. Do not use the word "entered". A message that was already in the thread in an earlier frame was not sent again in this minute.
     - A coding assistant running inside a terminal is named by its own banner or prompt (Codex, Claude Code). Ghostty, Terminal and iTerm are only the window it runs in: write "Codex in Ghostty", never "Ghostty's reply". Commands, queries and edits shown in the assistant's output were run by the assistant, not by the user.
     - Describe each minute from its own frame. Do not move something from the frame before or after into this minute, and do not let one line borrow the topic of the line above it.
-    - Choose the category by counting minutes over the whole card. When half or more of the minutes are a terminal, an editor, a coding assistant, a design tool or the product being built, the card is that work with the feed visits as distractions, not a Distraction card. The title must name that work.
+    - Name the concrete event with the most supported foreground time. An editor, terminal, coding assistant or design tool does not by itself prove work on a goal. Choose the secondary category label from the event's actual subject and purpose, not the app name; keep short unrelated visits in the details.
     - Consecutive off-topic minutes are ONE distraction entry covering the whole stretch, with a summary that says what was looked at. Never list one entry per minute.
     - Before answering, check every time you wrote: all of them carry the same AM or PM as the frame labels, and no line ends after the window ends.
     - The frame labels are the only clock. Every startTime, endTime and detail-line time comes from the labels under INPUTS, in order: the first image is the first label. Ignore the menu-bar clock and any other time visible inside a screenshot; never copy it into a time field.

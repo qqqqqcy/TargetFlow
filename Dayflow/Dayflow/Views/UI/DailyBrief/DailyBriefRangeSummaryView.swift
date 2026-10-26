@@ -133,7 +133,7 @@ struct DailyBriefRangeSummaryView: View {
 
     let panel = NSSavePanel()
     panel.allowedContentTypes = [.png]
-    panel.nameFieldStringValue = "Dayflow – \(range.label).png"
+    panel.nameFieldStringValue = "Target Flow – \(range.label).png"
     panel.canCreateDirectories = true
     guard panel.runModal() == .OK, let url = panel.url else { return }
 

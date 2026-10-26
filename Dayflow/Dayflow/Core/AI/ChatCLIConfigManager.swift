@@ -31,6 +31,13 @@ struct CodexJSONLEvent: Decodable {
   let item: CodexItem?
   let message: String?
   let error: CodexError?
+  let usage: Usage?
+
+  struct Usage: Decodable {
+    let input_tokens: Int?
+    let cached_input_tokens: Int?
+    let output_tokens: Int?
+  }
 
   struct CodexError: Decodable {
     let message: String?

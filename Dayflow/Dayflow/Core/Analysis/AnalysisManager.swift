@@ -7,6 +7,7 @@
 //  • Still handles batching logic + DB status updates.
 //  • Keeps the public `AnalysisManaging` contract unchanged.
 //
+import Combine
 import Foundation
 import GRDB
 import Sentry
@@ -26,8 +27,12 @@ protocol AnalysisManaging {
     completion: @escaping (Result<Void, Error>) -> Void)
 }
 
-final class AnalysisManager: AnalysisManaging {
+final class AnalysisManager: ObservableObject, AnalysisManaging {
   static let shared = AnalysisManager()
+
+  /// Estimated time when enough screenshots will be collected for the next card.
+  /// Provider processing time is not included.
+  @Published private(set) var nextCardAnalysisDate: Date?
 
   private init() {
     store = StorageManager.shared
@@ -76,6 +81,7 @@ final class AnalysisManager: AnalysisManaging {
     } else {
       inFlightBatchIds.remove(batchId)
     }
+    queue.async { [weak self] in self?.updateNextCardAnalysisDate() }
   }
 
   func startAnalysisJob() {
@@ -527,6 +533,28 @@ final class AnalysisManager: AnalysisManaging {
     let batchIDs = batches.compactMap(saveScreenshotBatch)
     // 4. Fire LLM for each batch
     for id in batchIDs { queueLLMRequest(batchId: id) }
+    updateNextCardAnalysisDate()
+  }
+
+  private func updateNextCardAnalysisDate() {
+    inFlightLock.lock()
+    let hasInFlightBatch = !inFlightBatchIds.isEmpty
+    inFlightLock.unlock()
+
+    let config = llmService.batchingConfig
+    let screenshots = fetchUnprocessedScreenshots().sorted { $0.capturedAt < $1.capturedAt }
+    var batchStart = screenshots.first?.capturedAt
+    for (previous, current) in zip(screenshots, screenshots.dropFirst()) {
+      if TimeInterval(current.capturedAt - previous.capturedAt) > config.maxGap {
+        batchStart = current.capturedAt
+      }
+    }
+    let nextDate = hasInFlightBatch ? nil : batchStart.map {
+      Date(timeIntervalSince1970: TimeInterval($0) + config.targetDuration)
+    }
+    DispatchQueue.main.async {
+      self.nextCardAnalysisDate = nextDate
+    }
   }
 
   private func queueLLMRequest(

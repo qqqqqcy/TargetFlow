@@ -84,7 +84,8 @@ extension GemmaBackupProvider {
     let allowedValues = descriptorList.map { "\"\($0.name)\"" }.joined(separator: ", ")
 
     let basePrompt = """
-      First extract key information, then summarize.
+      First reconstruct the concrete event, then summarize it.
+      \(EventPromptGuidance.instructions)
 
       Observations:
       \(observationsText)
@@ -95,7 +96,7 @@ extension GemmaBackupProvider {
       - Main task: (one phrase)
       - Secondary activities: (brief list)
 
-      Step 2 - Choose EXACTLY ONE category from the list below. Use the label exactly as written.
+      Step 2 - Choose the closest event label for the category field. Use the label exactly as written.
       \(categoryLines.joined(separator: "\n"))
       Allowed values: [\(allowedValues)]
 

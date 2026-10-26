@@ -18,7 +18,6 @@ private enum SidebarMetrics {
 
 enum SidebarIcon: String, CaseIterable {
   case timeline
-  case target
   case settings
 
   var assetName: String? {
@@ -28,7 +27,6 @@ enum SidebarIcon: String, CaseIterable {
   var systemNameFallback: String? {
     switch self {
     case .timeline: return nil
-    case .target: return "target"
     case .settings: return "gearshape.fill"
     }
   }
@@ -36,7 +34,6 @@ enum SidebarIcon: String, CaseIterable {
   var displayName: String {
     switch self {
     case .timeline: return String(localized: "Timeline")
-    case .target: return "Target"
     case .settings: return String(localized: "Settings")
     }
   }

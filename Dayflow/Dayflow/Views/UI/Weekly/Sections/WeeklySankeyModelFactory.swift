@@ -55,8 +55,8 @@ enum WeeklySankeyModelFactory {
         id: "codex", name: "Codex", minutes: 0, barColorHex: "111111",
         icon: .none),
       WeeklySankeyAppInput(
-        id: "dayflow", name: "Dayflow", minutes: 0, barColorHex: "FF7A2F",
-        icon: .asset("DayflowLogoMainApp")),
+        id: "dayflow", name: "Target Flow", minutes: 0, barColorHex: "FF7A2F",
+        icon: .asset("TargetFlowLogoMainApp")),
       WeeklySankeyAppInput(
         id: "claude", name: "Claude", minutes: 0, barColorHex: "D97757",
         icon: .asset("ClaudeLogo")),

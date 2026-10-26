@@ -262,12 +262,17 @@ extension AgentCLISupporting {
 
   func tokenHeaders(from usage: TokenUsage?) -> [String: String]? {
     guard let usage else { return nil }
-    return [
+    var headers = [
       "x-usage-input": String(usage.input),
+      "x-usage-input-includes-cache": usage.inputIncludesCachedTokens ? "true" : "false",
       "x-usage-cached-input": String(usage.cachedInput),
       "x-usage-cache-creation-input": String(usage.cacheCreationInput),
       "x-usage-output": String(usage.output),
     ]
+    if let cost = usage.costUSD {
+      headers["x-usage-cost-usd"] = cost.description
+    }
+    return headers
   }
 
   func logSuccess(

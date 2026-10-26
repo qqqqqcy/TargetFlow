@@ -64,8 +64,6 @@ extension MainView {
     // Right column: Main white panel including header + content
     ZStack {
       switch selectedIcon {
-      case .target:
-        TargetView()
       case .settings:
         SettingsView()
           .padding(15)
@@ -144,6 +142,10 @@ extension MainView {
 
   private var timelineContent: some View {
     VStack(alignment: .leading, spacing: 12) {
+      CurrentGoalsStatusView(onManageEvents: { showCategoryEditor = true })
+        .padding(.leading, 10 + TimelineAlignment.categoryRowInset)
+        .opacity(contentOpacity)
+
       TabFilterBar(
         categories: categoryStore.editableCategories,
         idleCategory: categoryStore.idleCategory,
@@ -414,13 +416,15 @@ extension MainView {
     let textColor = theme.textTertiary
     let parts = timelineTrackedMinutesParts
 
-    return
+    return HStack(spacing: 6) {
       (Text(parts.bold)
-      .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.bold))
+        .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.bold))
+        + Text(parts.rest)
+        .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.regular)))
+      TimelineUsageCostView()
+        .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.regular))
+    }
       .foregroundColor(textColor)
-      + Text(parts.rest)
-      .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 10).weight(.regular))
-      .foregroundColor(textColor))
       .background(
         GeometryReader { proxy in
           Color.clear.preference(

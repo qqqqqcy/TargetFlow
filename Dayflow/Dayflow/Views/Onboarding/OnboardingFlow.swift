@@ -152,7 +152,7 @@ struct OnboardingFlow: View {
     } catch {
       if presentsError {
         routingSaveErrorMessage = String(
-          localized: "Dayflow couldn't save this provider. Please try again.")
+          localized: "Target Flow couldn't save this provider. Please try again.")
       }
       AnalyticsService.shared.capture(
         "llm_provider_routing_save_failed",
@@ -445,7 +445,7 @@ struct WelcomeView: View {
       let originY = (proxy.size.height - artworkSize.height * scale) / 2
 
       ZStack(alignment: .topLeading) {
-        Image("OnboardingSplash")
+        Image("TargetFlowSplash")
           .resizable()
           .frame(width: artworkSize.width * scale, height: artworkSize.height * scale)
           .offset(x: originX, y: originY)
@@ -519,7 +519,7 @@ struct OnboardingPrototypeReferralStep: View {
 
       VStack(spacing: 20) {
         ReferralSurveyView(
-          prompt: String(localized: "Where did you first hear about Dayflow?"),
+          prompt: String(localized: "Where did you first hear about Target Flow?"),
           showSubmitButton: false,
           selectedReferral: $selectedReferral,
           customReferral: $referralDetail
@@ -578,7 +578,7 @@ struct OnboardingPersonalGoalStep: View {
       Spacer()
         .frame(height: 39)
 
-      Text("Dayflow adapts to what you need")
+      Text("Target Flow adapts to what you need")
         .font(.custom("InstrumentSerif-Regular", size: 40))
         .tracking(-1.2)
         .multilineTextAlignment(.center)
@@ -589,7 +589,7 @@ struct OnboardingPersonalGoalStep: View {
       Spacer()
         .frame(height: 12)
 
-      Text("Tell Dayflow what you're hoping to get out of it.")
+      Text("Tell Target Flow what you're hoping to get out of it.")
         .font(.custom("Figtree", size: 18))
         .foregroundColor(Color(hex: "89380E").opacity(0.78))
         .multilineTextAlignment(.center)
@@ -691,7 +691,7 @@ struct CompletionView: View {
 
   var body: some View {
     VStack(spacing: 16) {
-      Image("DayflowLogoMainApp")
+      Image("TargetFlowLogoMainApp")
         .resizable()
         .renderingMode(.original)
         .scaledToFit()
@@ -704,7 +704,7 @@ struct CompletionView: View {
           .foregroundColor(.black.opacity(0.9))
 
         Text(
-          "To get useful insights, let Dayflow run in the background for an hour or two to gather enough context, then check back in."
+          "To get useful insights, let Target Flow run in the background for an hour or two to gather enough context, then check back in."
         )
         .font(.custom("Figtree", size: 15))
         .foregroundColor(.black.opacity(0.6))
@@ -717,7 +717,7 @@ struct CompletionView: View {
           onFinish()
         },
         content: {
-          Text("Launch Dayflow")
+          Text("Launch Target Flow")
             .font(.custom("Figtree", size: 16))
             .fontWeight(.semibold)
         },

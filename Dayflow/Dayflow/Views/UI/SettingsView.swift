@@ -13,16 +13,14 @@ struct SettingsView: View {
     case storage
     case privacy
     case providers
-    case target
 
     var id: String { rawValue }
 
     var title: String {
       switch self {
-      case .storage: return String(localized: "Storage")
+      case .storage: return "记录与提醒"
       case .privacy: return String(localized: "Privacy")
       case .providers: return String(localized: "Providers")
-      case .target: return "Target"
       }
     }
   }
@@ -218,12 +216,11 @@ struct SettingsView: View {
       switch selectedTab {
       case .storage:
         SettingsStorageTabView(viewModel: storageViewModel)
+        TargetNotificationSettingsView()
       case .privacy:
         SettingsRecordingPrivacyTabView(viewModel: privacyViewModel)
       case .providers:
         SettingsProvidersTabView(viewModel: providersViewModel)
-      case .target:
-        SettingsTargetTabView()
       }
     }
     .id(selectedTab)

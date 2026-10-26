@@ -87,7 +87,7 @@ struct FlowEarlyBirdCard: View {
 
   private var copy: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("Start a session within the hour you opened Dayflow to earn 2X the points.")
+      Text("Start a session within the hour you opened Target Flow to earn 2X the points.")
         .font(.custom("Figtree", size: 13))
         // The design sets the lines solid (13pt on 13pt).
         .lineSpacing(-3)

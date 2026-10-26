@@ -278,7 +278,7 @@ extension StorageManager {
 
   // MARK: - Onboarding Card
 
-  /// Creates a dummy "Installed Dayflow!" card when onboarding completes.
+  /// Creates a dummy "Installed Target Flow!" card when onboarding completes.
   /// This gives users an immediate example of what cards look like.
   func createOnboardingCard() {
     let now = Date()
@@ -333,7 +333,7 @@ extension StorageManager {
           startTs,
           endTs,
           dayString,
-          "Installed Dayflow!",
+          "Installed Target Flow!",
           summary,
           category,
           "Setup",
@@ -349,38 +349,38 @@ extension StorageManager {
     switch selectedProvider {
     case .gemini:
       return
-        "You successfully installed Dayflow and configured it with Gemini AI. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+        "You successfully installed Target Flow and configured it with Gemini AI. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
 
     case .chatGPT:
       return
-        "You successfully installed Dayflow with ChatGPT. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+        "You successfully installed Target Flow with ChatGPT. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
 
     case .claude:
       return
-        "You successfully installed Dayflow with Claude. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+        "You successfully installed Target Flow with Claude. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
 
     case .local:
       // Check which local engine they picked
       let localEngine = UserDefaults.standard.string(forKey: "llmLocalEngine") ?? "ollama"
       if localEngine == "lmstudio" {
         return
-          "You successfully installed Dayflow with LM Studio — your data stays 100% on your device. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+          "You successfully installed Target Flow with LM Studio — your data stays 100% on your device. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
       } else {
         return
-          "You successfully installed Dayflow with Ollama — your data stays 100% on your device. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+          "You successfully installed Target Flow with Ollama — your data stays 100% on your device. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
       }
 
     case .dayflow:
       return
-        "You successfully installed Dayflow with Dayflow Pro. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+        "You successfully installed Target Flow with Target Flow Pro. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
 
     case .openAICompatible:
       return
-        "You successfully installed Dayflow with your OpenAI-compatible provider. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+        "You successfully installed Target Flow with your OpenAI-compatible provider. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
 
     case nil:
       return
-        "You successfully installed Dayflow. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
+        "You successfully installed Target Flow. Come back in 30 minutes to see your first real activity card! ✨ (This is a sample card, so you can see what your timeline will look like.)"
     }
   }
 

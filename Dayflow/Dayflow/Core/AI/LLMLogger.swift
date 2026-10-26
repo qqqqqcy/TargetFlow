@@ -154,7 +154,9 @@ enum LLMLogger {
       responseBody: resBodyString,
       errorDomain: error?.0,
       errorCode: error?.1,
-      errorMessage: error?.2
+      errorMessage: error?.2,
+      usageReceipt: LLMUsageReceipt.parse(
+        body: http?.responseBody, headers: http?.responseHeaders, requestURL: ctx.requestURL)
     )
   }
 

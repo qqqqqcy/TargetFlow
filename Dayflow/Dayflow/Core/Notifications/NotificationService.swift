@@ -92,7 +92,7 @@ final class NotificationService: NSObject, ObservableObject {
       let isFlow = flowSessionKey != nil
       let identifier = isFlow ? "flow.waitlist.reply" : "support.reply"
       let content = UNMutableNotificationContent()
-      content.title = String(localized: "New reply from Dayflow")
+      content.title = String(localized: "New reply from Target Flow")
       content.body =
         isFlow
         ? String(localized: "You have a new reply about Flow. Open Flow to read it.")
@@ -115,9 +115,9 @@ final class NotificationService: NSObject, ObservableObject {
       guard Self.canScheduleNotifications(for: status) else { return }
 
       let content = UNMutableNotificationContent()
-      content.title = String(localized: "Your first Dayflow cards are ready")
+      content.title = String(localized: "Your first Target Flow cards are ready")
       content.body = String(
-        localized: "Take a look at what Dayflow picked up from your last few minutes of work.")
+        localized: "Take a look at what Target Flow picked up from your last few minutes of work.")
       content.sound = .default
       do {
         try await center.add(
@@ -139,7 +139,7 @@ final class NotificationService: NSObject, ObservableObject {
     guard Self.canScheduleNotifications(for: status), shouldSend() else { return false }
 
     let content = UNMutableNotificationContent()
-    content.title = "Target 偏离提醒"
+    content.title = "当前目标提醒"
     content.body = body
     content.sound = .default
     let request = UNNotificationRequest(
@@ -159,7 +159,7 @@ final class NotificationService: NSObject, ObservableObject {
   func sendTargetTestNotification() async throws -> Bool {
     try await notifyTargetDeviation(
       identifier: "test.\(UUID().uuidString)",
-      body: "这是一条测试通知。偏离当前目标时，Target 会在这里提醒你。点击可打开 Target。")
+      body: "这是一条测试通知。事件未推进当前目标时，会在这里提醒你。点击可打开事件与目标。")
   }
 
   /// Request notification permission from the user
@@ -459,7 +459,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     }
 
     Task { @MainActor in
-      AppDelegate.pendingNotificationNavigationDestination = isTarget ? .target : .timeline
+      AppDelegate.pendingNotificationNavigationDestination = isTarget ? .events : .timeline
       activateAppForNotificationTap()
       completionHandler()
     }

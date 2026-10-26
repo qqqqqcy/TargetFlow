@@ -50,11 +50,11 @@ struct SettingsAccountSection: View {
     SettingsSection(
       title: String(localized: "Account"),
       subtitle: String(
-        localized: "Sign in once to keep Dayflow Pro and cloud features attached to this Mac.")
+        localized: "Sign in once to keep Target Flow Pro and cloud features attached to this Mac.")
     ) {
       VStack(alignment: .leading, spacing: 0) {
         SettingsRow(
-          label: String(localized: "Dayflow account"),
+          label: String(localized: "Target Flow account"),
           subtitle: authManager.isSignedIn
             ? authManager.displayIdentity
             : nil,
@@ -91,7 +91,7 @@ struct SettingsAccountSection: View {
   private var currentPlanSection: some View {
     SettingsSection(
       title: String(localized: "Account"),
-      subtitle: String(localized: "Manage your Dayflow account and subscription.")
+      subtitle: String(localized: "Manage your Target Flow account and subscription.")
     ) {
       ActiveProCard(
         entitlement: authManager.entitlements,
@@ -105,7 +105,7 @@ struct SettingsAccountSection: View {
 
   private var upgradeSection: some View {
     SettingsSection(
-      title: String(localized: "Upgrade to Dayflow Pro"),
+      title: String(localized: "Upgrade to Target Flow Pro"),
       subtitle: String(localized: "Pick a plan, then finish securely in Stripe Checkout.")
     ) {
       VStack(alignment: .leading, spacing: 16) {
@@ -293,8 +293,8 @@ private struct ActiveProCard: View {
   }
 
   private var title: String {
-    if isPlus { return String(localized: "Dayflow Plus") }
-    return isGifted ? String(localized: "Gifted Pro") : String(localized: "Dayflow Pro")
+    if isPlus { return String(localized: "Target Flow Plus") }
+    return isGifted ? String(localized: "Gifted Pro") : String(localized: "Target Flow Pro")
   }
 
   private var badge: String {
@@ -307,19 +307,19 @@ private struct ActiveProCard: View {
       return isTrial
         ? String(localized: "Your free trial of Flow is running on this Mac.")
         : String(
-          localized: "Flow is unlocked on this Mac and attached to your Dayflow account.")
+          localized: "Flow is unlocked on this Mac and attached to your Target Flow account.")
     }
 
     if isGifted {
       return
         String(
           localized:
-            "You have complimentary Dayflow Pro access. There is no billing to manage for this account."
+            "You have complimentary Target Flow Pro access. There is no billing to manage for this account."
         )
     }
 
     return String(
-      localized: "Your Pro access is active on this Mac and attached to your Dayflow account.")
+      localized: "Your Pro access is active on this Mac and attached to your Target Flow account.")
   }
 
   private var dateLabel: String {
@@ -418,7 +418,7 @@ private struct ActiveProCard: View {
       }
       .frame(width: 34, height: 34)
     } else {
-      Image("DayflowLogo")
+      Image("TargetFlowLogo")
         .resizable()
         .scaledToFit()
         .frame(width: 34, height: 34)
@@ -513,7 +513,7 @@ private struct ReferralProgramCard: View {
         .fontWeight(.bold)
         .foregroundColor(theme.textPrimary)
 
-      Text("Give a month of Dayflow Pro and earn $20 in credits for each person you refer!")
+      Text("Give a month of Target Flow Pro and earn $20 in credits for each person you refer!")
         .font(.custom("Figtree", size: 12))
         .foregroundColor(theme.textPrimary)
     }
@@ -600,7 +600,7 @@ private struct ReferralProgramCard: View {
           .foregroundColor(theme.textPrimary)
 
         Text(
-          "Referral credits are tied to your Dayflow account so we can credit you when friends join."
+          "Referral credits are tied to your Target Flow account so we can credit you when friends join."
         )
         .font(.custom("Figtree", size: 11))
         .foregroundColor(theme.textSecondary)
@@ -674,12 +674,12 @@ private struct ReferralProgramCard: View {
         )
         ReferralStepRow(
           icon: .menuBarMark,
-          content: Text("They sign up and get a **free month of Dayflow Pro!**")
+          content: Text("They sign up and get a **free month of Target Flow Pro!**")
         )
         ReferralStepRow(
           icon: .system("sparkles"),
           content: Text(
-            "You earn **1 month of Dayflow Pro (stackable!)**, when they use Dayflow for a week.")
+            "You earn **1 month of Target Flow Pro (stackable!)**, when they use Target Flow for a week.")
         )
       }
     }

@@ -103,8 +103,9 @@ struct MainView: View {
 
   var body: some View {
     mainLayout
-      .onReceive(NotificationCenter.default.publisher(for: .navigateToTarget)) { _ in
-        selectedIcon = .target
+      .onReceive(NotificationCenter.default.publisher(for: .navigateToEvents)) { _ in
+        selectedIcon = .timeline
+        showCategoryEditor = true
       }
       .onReceive(NotificationCenter.default.publisher(for: .navigateToTimeline)) { _ in
         selectedActivity = nil

@@ -98,7 +98,7 @@ struct ClaudeCLIExecutionProfile: Sendable {
   )
 
   private static let flowAgentSystemPrompt =
-    "You are the focus companion inside Dayflow. When a message lists a local image "
+    "You are the focus companion inside Target Flow. When a message lists a local image "
     + "file, use Read exactly once on it to look at the user's screen, then answer with "
     + "only the JSON the user asked for. The one other file you may touch is timeline.json "
     + "in your working directory, and only when a message asks for a timeline update. "
@@ -1171,6 +1171,22 @@ struct ChatCLIProcessRunner {
     let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 
     if tool == .codex {
+      let events = trimmed.split(separator: "\n").compactMap {
+        try? JSONDecoder().decode(CodexJSONLEvent.self, from: Data($0.utf8))
+      }
+      let messages = events.filter { $0.type == "item.completed" && $0.item?.type == "agent_message" }
+        .compactMap { $0.item?.text }
+      if let message = messages.last {
+        let usage = events.last(where: { $0.type == "turn.completed" })?.usage
+        return (
+          message,
+          usage.map {
+            TokenUsage(
+              input: $0.input_tokens ?? 0, cachedInput: $0.cached_input_tokens ?? 0,
+              output: $0.output_tokens ?? 0, inputIncludesCachedTokens: true)
+          }
+        )
+      }
       if let codexRange = trimmed.range(of: "\ncodex\n", options: .backwards) {
         var response = String(trimmed[codexRange.upperBound...])
         if let tokensRange = response.range(of: "\ntokens used", options: .caseInsensitive) {
@@ -1228,7 +1244,8 @@ struct ChatCLIProcessRunner {
         input: $0.inputTokens ?? 0,
         cachedInput: $0.cacheReadInputTokens ?? 0,
         cacheCreationInput: $0.cacheCreationInputTokens ?? 0,
-        output: $0.outputTokens ?? 0
+        output: $0.outputTokens ?? 0,
+        costUSD: resultEvent.totalCostUSD
       )
     }
     let sessionId = resultEvent.sessionId ?? events.compactMap(\.sessionId).last
@@ -1427,7 +1444,7 @@ struct ChatCLIProcessRunner {
           cmdParts.append(contentsOf: ["--config", "mcp_servers.\(serverName).enabled=false"])
         }
       }
-      cmdParts.append(contentsOf: ["-c", "rmcp_client=false", "-c", "web_search=disabled"])
+      cmdParts.append(contentsOf: ["-c", "rmcp_client=false", "-c", "web_search=disabled", "--json"])
       for path in imagePaths {
         cmdParts.append(contentsOf: ["--image", LoginShellRunner.shellEscape(path)])
       }
@@ -1620,12 +1637,14 @@ private struct ClaudeNonStreamingEvent: Decodable {
   let result: String?
   let sessionId: String?
   let usage: Usage?
+  let totalCostUSD: Decimal?
 
   enum CodingKeys: String, CodingKey {
     case type
     case result
     case sessionId = "session_id"
     case usage
+    case totalCostUSD = "total_cost_usd"
   }
 
   struct Usage: Decodable {

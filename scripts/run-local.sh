@@ -10,6 +10,30 @@ if [[ -z "$identity" && -f "$identity_file" ]]; then
 fi
 app_path="/Applications/TargetFlow.app"
 
+stop_running_app() {
+  local current_uid
+  current_uid="$(/usr/bin/id -u)"
+  if ! /usr/bin/pgrep -u "$current_uid" -x TargetFlow >/dev/null; then
+    return 0
+  fi
+
+  # A normal Quit request only hides this menu-bar app. TERM ends the process.
+  printf '%s\n' 'Stopping Target Flow before installing…'
+  /usr/bin/pkill -TERM -u "$current_uid" -x TargetFlow || true
+  local attempt
+  for ((attempt = 0; attempt < 60; attempt++)); do
+    if ! /usr/bin/pgrep -u "$current_uid" -x TargetFlow >/dev/null; then
+      return 0
+    fi
+    /bin/sleep 0.5
+  done
+
+  if /usr/bin/pgrep -u "$current_uid" -x TargetFlow >/dev/null; then
+    printf '%s\n' 'Target Flow did not exit within 30 seconds. Installation cancelled; the installed app has not been replaced.' >&2
+    return 1
+  fi
+}
+
 if [[ "${1:-}" != "" && "${1:-}" != "--build-only" ]]; then
   printf 'Usage: bash scripts/run-local.sh [--build-only]\n' >&2
   exit 2
@@ -39,10 +63,6 @@ if [[ "${1:-}" == "--build-only" ]]; then
   exit 0
 fi
 
-if /usr/bin/pgrep -x TargetFlow >/dev/null; then
-  printf '%s\n' 'Quit Target Flow completely from its menu bar before installing, then run this script again.' >&2
-  exit 1
-fi
 if [[ -e "$app_path" ]]; then
   installed_id=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app_path/Contents/Info.plist")
   if [[ "$installed_id" != "local.targetflow.app" ]]; then
@@ -55,6 +75,7 @@ stage_dir=$(/usr/bin/mktemp -d /Applications/.targetflow-install.XXXXXX)
 trap '/bin/rm -rf "$stage_dir"' EXIT
 /usr/bin/ditto "$built_app" "$stage_dir/TargetFlow.app"
 /usr/bin/codesign --verify --deep --strict "$stage_dir/TargetFlow.app"
+stop_running_app
 if [[ -e "$app_path" ]]; then
   /bin/mv "$app_path" "$stage_dir/previous.app"
 fi

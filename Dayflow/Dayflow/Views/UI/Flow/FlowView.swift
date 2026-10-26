@@ -41,7 +41,7 @@ struct FlowView: View {
         errorView(
           title: "Flow needs an internet connection",
           message: String(
-            localized: "Dayflow couldn't reach your account. Check your connection and try again.")
+            localized: "Target Flow couldn't reach your account. Check your connection and try again.")
         ) {
           Task { await authManager.restoreStoredSession() }
         }

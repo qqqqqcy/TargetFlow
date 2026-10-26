@@ -50,7 +50,7 @@ private enum TourPage: Int, CaseIterable {
   var title: String {
     switch self {
     case .recording:
-      return String(localized: "Dayflow is running in the background")
+      return String(localized: "Target Flow is running in the background")
     case .cards:
       return String(localized: "Every 15 minutes, your day writes itself")
     case .unlocks:
@@ -65,7 +65,7 @@ private enum TourPage: Int, CaseIterable {
     case .recording:
       return String(
         localized:
-          "It quietly records your screen while you work and keeps the recordings on this Mac. Pause or resume anytime from the Dayflow icon in your menu bar."
+          "It quietly records your screen while you work and keeps the recordings on this Mac. Pause or resume anytime from the Target Flow icon in your menu bar."
       )
     case .cards:
       return String(
@@ -75,12 +75,12 @@ private enum TourPage: Int, CaseIterable {
     case .unlocks:
       return String(
         localized:
-          "Some views need enough of your day to say something useful, so they unlock as Dayflow records. Here's what's on the way."
+          "Some views need enough of your day to say something useful, so they unlock as Target Flow records. Here's what's on the way."
       )
     case .closeWindow:
       return String(
         localized:
-          "Dayflow keeps working from your menu bar. Your first cards usually show up about 15 minutes after recording starts, and we can send you a notification when they're ready."
+          "Target Flow keeps working from your menu bar. Your first cards usually show up about 15 minutes after recording starts, and we can send you a notification when they're ready."
       )
     }
   }
@@ -386,7 +386,7 @@ private struct TourRecordingIllustration: View {
       Image(systemName: "apple.logo")
         .font(.system(size: 12))
       Spacer()
-      Image("DayflowLogoMainApp")
+      Image("TargetFlowLogoMainApp")
         .resizable()
         .renderingMode(.original)
         .scaledToFit()
@@ -433,8 +433,8 @@ private struct TourRecordingIllustration: View {
       .padding(.horizontal, 10)
       .padding(.vertical, 7)
 
-      menuRow(symbol: "pause.fill", title: String(localized: "Pause Dayflow"))
-      menuRow(symbol: "macwindow", title: String(localized: "Open Dayflow"))
+      menuRow(symbol: "pause.fill", title: String(localized: "Pause Target Flow"))
+      menuRow(symbol: "macwindow", title: String(localized: "Open Target Flow"))
     }
     .foregroundColor(theme.textPrimary)
     .padding(5)
@@ -655,7 +655,7 @@ private struct TourNotificationIllustration: View {
 
   private var banner: some View {
     HStack(alignment: .top, spacing: 10) {
-      Image("DayflowLogoMainApp")
+      Image("TargetFlowLogoMainApp")
         .resizable()
         .renderingMode(.original)
         .scaledToFit()
@@ -663,16 +663,16 @@ private struct TourNotificationIllustration: View {
 
       VStack(alignment: .leading, spacing: 2) {
         HStack {
-          Text("Dayflow")
+          Text("Target Flow")
             .font(.system(size: 12, weight: .semibold))
           Spacer()
           Text("now")
             .font(.system(size: 11))
             .foregroundColor(theme.textMuted)
         }
-        Text("Your first Dayflow cards are ready")
+        Text("Your first Target Flow cards are ready")
           .font(.system(size: 12, weight: .semibold))
-        Text("Take a look at what Dayflow picked up from your last few minutes of work.")
+        Text("Take a look at what Target Flow picked up from your last few minutes of work.")
           .font(.system(size: 12))
           .foregroundColor(theme.textSecondary)
           .fixedSize(horizontal: false, vertical: true)

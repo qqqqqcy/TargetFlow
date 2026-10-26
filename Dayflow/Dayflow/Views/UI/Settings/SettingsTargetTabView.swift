@@ -2,9 +2,8 @@ import AppKit
 import SwiftUI
 @preconcurrency import UserNotifications
 
-struct SettingsTargetTabView: View {
+struct TargetNotificationSettingsView: View {
   @AppStorage(TargetPreferences.alertsEnabledKey) private var alertsEnabled = true
-  @AppStorage(TargetPreferences.cooldownMinutesKey) private var cooldownMinutes = 15
   @State private var notificationSettings: UNNotificationSettings?
   @State private var isWorking = false
   @State private var feedback: String?
@@ -13,25 +12,12 @@ struct SettingsTargetTabView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: SettingsStyle.sectionSpacing) {
       SettingsSection(
-        title: "Target 提醒",
-        subtitle: "发现当前活动偏离目标时，发送通知帮助你回到目标。"
+        title: "目标提醒",
+        subtitle: "在时间线的“事件与目标”中开启当前目标。中性和分心事件会提醒，推进任意当前目标则不提醒。"
       ) {
-        SettingsRow(label: "偏离提醒", subtitle: "仅在有进行中的目标时生效。") {
+        SettingsRow(label: "偏离提醒", subtitle: "每次新事件评估后生效，同一段记录不重复提醒。", showsDivider: false) {
           SettingsToggle(isOn: $alertsEnabled)
             .accessibilityLabel("偏离提醒")
-        }
-        SettingsRow(
-          label: "提醒间隔", subtitle: "两次偏离提醒之间至少间隔这段时间。", showsDivider: false
-        ) {
-          Picker("提醒间隔", selection: cooldownSelection) {
-            ForEach([5, 15, 30], id: \.self) { minutes in
-              Text("\(minutes) 分钟").tag(minutes)
-            }
-          }
-          .pickerStyle(.menu)
-          .labelsHidden()
-          .frame(width: 130)
-          .disabled(!alertsEnabled)
         }
       }
 
@@ -62,7 +48,7 @@ struct SettingsTargetTabView: View {
           }
         }
         SettingsRow(
-          label: "测试通知", subtitle: "立即发送一条测试通知，不受偏离提醒开关或间隔限制。",
+          label: "测试通知", subtitle: "立即发送一条测试通知，不受偏离提醒开关限制。",
           showsDivider: false
         ) {
           SettingsSecondaryButton(title: "发送测试通知", isDisabled: isWorking) {
@@ -83,12 +69,6 @@ struct SettingsTargetTabView: View {
     {
       _ in Task { await refreshNotificationSettings() }
     }
-  }
-
-  private var cooldownSelection: Binding<Int> {
-    Binding(
-      get: { [5, 15, 30].contains(cooldownMinutes) ? cooldownMinutes : 15 },
-      set: { cooldownMinutes = $0 })
   }
 
   private var authorizationStatus: SettingsStatusDot {

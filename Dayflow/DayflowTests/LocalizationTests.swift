@@ -81,7 +81,7 @@ final class LocalizationTests: XCTestCase {
   /// Languages that name the brand first must address the arguments by index.
   func testOnboardingProviderSentenceKeepsToolAndSubscriptionApart() throws {
     let key =
-      "Dayflow uses %@ through your existing %@ subscription. Install it and sign in on this Mac, then we'll verify the connection."
+      "Target Flow uses %@ through your existing %@ subscription. Install it and sign in on this Mac, then we'll verify the connection."
     let subscriptionPhrase = [
       "de": "ChatGPT-Abo", "fr": "abonnement ChatGPT", "ja": "ChatGPTサブスクリプション",
       "ko": "ChatGPT 구독", "ru": "подписку ChatGPT", "zh-Hans": "ChatGPT 订阅",

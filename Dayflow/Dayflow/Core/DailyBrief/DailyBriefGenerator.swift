@@ -144,7 +144,7 @@ enum DailyBriefGenerator {
       timeoutSeconds: runTimeoutSeconds,
       transcriptURL: DailyBriefStore.transcriptURL(for: input.day),
       tooLongMessage:
-        "Claude took longer than 20 minutes on your brief, so Dayflow stopped it. Try again."
+        "Claude took longer than 20 minutes on your brief, so Target Flow stopped it. Try again."
     )
 
     let content: DailyBriefContent
@@ -183,7 +183,7 @@ enum DailyBriefGenerator {
         at: base.appendingPathComponent("candidates", isDirectory: true),
         withIntermediateDirectories: true)
     } catch {
-      throw GenerationError(message: "Dayflow couldn't create a temporary folder for the brief.")
+      throw GenerationError(message: "Target Flow couldn't create a temporary folder for the brief.")
     }
     return URL(fileURLWithPath: resolvedPath(base.path), isDirectory: true)
   }
@@ -388,7 +388,7 @@ enum DailyBriefGenerator {
     do {
       try readOnlyHookScript.write(to: hookURL, atomically: true, encoding: .utf8)
     } catch {
-      throw GenerationError(message: "Dayflow couldn't prepare the brief's safety check.")
+      throw GenerationError(message: "Target Flow couldn't prepare the brief's safety check.")
     }
 
     // Every MCP tool call goes through the read-only hook first.
@@ -439,7 +439,7 @@ enum DailyBriefGenerator {
   /// an explicit allow so connector reads don't stall on a permission prompt.
   static let readOnlyHookScript = #"""
     #!/bin/sh
-    # Dayflow Daily brief: keeps MCP tools (the user's connectors) read-only.
+    # Target Flow Daily brief: keeps MCP tools (the user's connectors) read-only.
 
     input=$(cat | tr '\n' ' ')
     tool=$(printf '%s' "$input" \
@@ -448,7 +448,7 @@ enum DailyBriefGenerator {
       | sed 's/.*:[[:space:]]*"\([^"]*\)"$/\1/')
 
     deny() {
-      echo "Dayflow's daily brief can only read from your tools, so $tool was blocked." >&2
+      echo "Target Flow's daily brief can only read from your tools, so $tool was blocked." >&2
       exit 2
     }
 
@@ -461,7 +461,7 @@ enum DailyBriefGenerator {
 
     lower=$(printf '%s' "$tool" | tr '[:upper:]' '[:lower:]')
 
-    # Dayflow's own server: everything except the tools that change data.
+    # Target Flow's own server: everything except the tools that change data.
     case "$lower" in
       mcp__dayflow__create_category | mcp__dayflow__delete_category | \
       mcp__dayflow__update_category | mcp__dayflow__delete_activity | \
@@ -868,13 +868,13 @@ enum DailyBriefGenerator {
     case .providerLoginExpired:
       return "Claude isn't signed in. Open Terminal, run `claude`, then type /login."
     case .cliNotInstalled:
-      return "Dayflow couldn't find Claude Code on this Mac."
+      return "Target Flow couldn't find Claude Code on this Mac."
     case .outOfCredits, .apiKeyProblem, .accountBlocked:
       return "Claude's account has a billing or API key problem, so the brief couldn't run."
     case .modelMisconfigured:
       return "Your Claude account can't use the Opus model the brief needs."
     case .transient:
-      return "Dayflow couldn't reach Claude. Try again in a bit."
+      return "Target Flow couldn't reach Claude. Try again in a bit."
     case .modelFlaky:
       return "Claude's answer came back in an unexpected shape. Try again."
     default:

@@ -44,7 +44,7 @@ struct SurveyPromptCard: View {
 
         answerArea
 
-        Text("Your answer goes straight to the Dayflow team.")
+        Text("Your answer goes straight to the Target Flow team.")
           .font(.custom("Figtree", size: 11))
           .foregroundStyle(theme.textTertiary)
       }
@@ -53,7 +53,7 @@ struct SurveyPromptCard: View {
     .animation(.easeInOut(duration: 0.2), value: questionIndex)
     .animation(.easeInOut(duration: 0.2), value: isFinished)
     .accessibilityElement(children: .contain)
-    .accessibilityLabel("Dayflow survey")
+    .accessibilityLabel("Target Flow survey")
   }
 
   // MARK: - Pieces

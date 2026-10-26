@@ -64,7 +64,7 @@ struct SplashView: View {
     ZStack {
       Color.clear
 
-      Image("DayflowLaunch")
+      Image("TargetFlowLaunch")
         .resizable()
         .aspectRatio(contentMode: .fit)
         .frame(width: 180, height: 180)

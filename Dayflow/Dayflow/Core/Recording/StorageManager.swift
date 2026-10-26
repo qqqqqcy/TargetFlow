@@ -650,6 +650,30 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
               CREATE INDEX IF NOT EXISTS idx_llm_calls_batch ON llm_calls(batch_id);
           """)
 
+      // Preserve receipts separately from response bodies, which may be truncated later.
+      if !(try db.columns(in: "llm_calls")).contains(where: { $0.name == "usage_receipt" }) {
+        try db.execute(sql: "ALTER TABLE llm_calls ADD COLUMN usage_receipt TEXT")
+      }
+      // Also recover logs written by an older app version after the column was added.
+      let usageRows = try Row.fetchCursor(
+        db,
+        sql: "SELECT id, response_body, response_headers, request_url FROM llm_calls WHERE usage_receipt IS NULL")
+      while let row = try usageRows.next() {
+        let body: String? = row["response_body"]
+        let headers: String? = row["response_headers"]
+        let requestURL: String? = row["request_url"]
+        let receipt = LLMUsageReceipt.parse(
+          body: body.map { Data($0.utf8) },
+          headers: headers.flatMap {
+            try? JSONDecoder().decode([String: String].self, from: Data($0.utf8))
+          },
+          requestURL: requestURL.flatMap(URL.init(string:)))
+        let json = String(decoding: try JSONEncoder().encode(receipt), as: UTF8.self)
+        let id: Int64 = row["id"]
+        try db.execute(
+          sql: "UPDATE llm_calls SET usage_receipt = ? WHERE id = ?", arguments: [json, id])
+      }
+
       // Dashboard chat history: conversations and their messages
       try db.execute(
         sql: """

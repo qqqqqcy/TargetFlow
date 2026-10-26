@@ -543,7 +543,7 @@ struct CanvasTimelineDataView: View {
         config: timelineSpinnerConfig,
         visualScale: 0.5
       )
-      Text("Generating your next card")
+      NextCardGenerationStatusText()
     }
     .font(
       Font.custom("Figtree", size: 12)
@@ -560,7 +560,7 @@ struct CanvasTimelineDataView: View {
     statusText(
       iconName: "pause.fill",
       message: String(
-        localized: "Dayflow is paused. Click 'Resume' to generate new activity cards.")
+        localized: "Target Flow is paused. Click 'Resume' to generate new activity cards.")
     )
   }
 
@@ -568,7 +568,7 @@ struct CanvasTimelineDataView: View {
     statusText(
       iconName: "play.fill",
       message: String(
-        localized: "Dayflow isn't recording. Click 'Resume' to generate new activity cards.")
+        localized: "Target Flow isn't recording. Click 'Resume' to generate new activity cards.")
     )
   }
 
@@ -944,6 +944,29 @@ extension CanvasTimelineDataView {
     }
   }
   return PreviewWrapper()
+}
+
+private struct NextCardGenerationStatusText: View {
+  @ObservedObject private var analysisManager = AnalysisManager.shared
+
+  var body: some View {
+    TimelineView(.periodic(from: .now, by: 1)) { context in
+      if let deadline = analysisManager.nextCardAnalysisDate {
+        let seconds = max(0, Int(ceil(deadline.timeIntervalSince(context.date))))
+        if seconds > 0 {
+          (Text("Generating your next card")
+            + Text(" · ")
+            + Text("\(seconds / 60) min \(seconds % 60) sec remaining"))
+            .monospacedDigit()
+        } else {
+          Text("Generating your next card") + Text(" · ") + Text("Analyzing…")
+        }
+      } else {
+        Text("Generating your next card")
+      }
+    }
+    .help("Countdown until enough recording data is collected. AI analysis may take additional time.")
+  }
 }
 
 // Only touched on the main thread (onHover and MainActor.run in loadActivities).

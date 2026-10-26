@@ -33,7 +33,7 @@ struct FeedbackModalContent {
     placeholder:
       String(
         localized:
-          "I don't have access to your timeline (privacy first!), so your feedback here helps improve the quality of Dayflow for everyone."
+          "I don't have access to your timeline (privacy first!), so your feedback here helps improve the quality of Target Flow for everyone."
       ),
     shareLogsLabel: String(
       localized: "I'd like to share this log to the developer to help improve the product."),
@@ -42,7 +42,7 @@ struct FeedbackModalContent {
     thanksBody:
       String(
         localized:
-          "If you find that your activities are summarized inaccurately, try editing the descriptions of your categories to improve Dayflow's accuracy."
+          "If you find that your activities are summarized inaccurately, try editing the descriptions of your categories to improve Target Flow's accuracy."
       ),
     illustrationImageName: "CategoryEditUI",
     illustrationAccessibilityLabel: String(localized: "Illustration showing how to edit categories")

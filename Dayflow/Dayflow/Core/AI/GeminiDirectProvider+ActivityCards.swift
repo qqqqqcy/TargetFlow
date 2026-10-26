@@ -73,7 +73,7 @@ extension GeminiDirectProvider {
 
       ---
 
-      ## Category
+      ## Event labels
 
       \(categoriesSection(from: context.categories))
 

@@ -136,7 +136,7 @@ struct ColorOrganizerRoot: View {
         if showsTitles {
           // Rendered in both stages (invisible in part 2) so the modal keeps
           // the same height when moving between parts.
-          Text("Customize your categories")
+          Text("事件与当前目标")
             .font(
               Font.custom(
                 "Instrument Serif", size: 36)
@@ -242,14 +242,14 @@ struct ColorOrganizerRoot: View {
     VStack(alignment: .leading, spacing: showTitles ? 20 : 16) {
       if showTitles {
         VStack(alignment: .leading, spacing: 6) {
-          Text("Part 1 of 2")
+          Text(presentationStyle == .sheet ? "当前目标可多选" : "Part 1 of 2")
             .font(Font.custom("Figtree", size: 14).weight(.bold))
             .foregroundColor(
               theme.isDark ? Color(hex: "FF9A64") : Color(red: 0.98, green: 0.43, blue: 0)
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
-          Text("Edit title and description")
+          Text("描述具体事件")
             .font(
               Font.custom("Instrument Serif", size: 30)
             )
@@ -264,7 +264,7 @@ struct ColorOrganizerRoot: View {
           text:
             String(
               localized:
-                "Dayflow organizes your activities by the category titles and descriptions you provide."
+                "写下你要做的事情和具体说明，例如修复登录问题或准备面试。"
             )
         )
         .frame(maxWidth: isCompact ? .infinity : 280, alignment: .leading)
@@ -274,14 +274,14 @@ struct ColorOrganizerRoot: View {
           text:
             String(
               localized:
-                "Try to provide as much details in the descriptions as you can to help Dayflow understand your workflow and habits."
+                "开启事件下方的“当前目标”开关，可同时选择多个。推进其中任意一个即为专注。"
             )
         )
         .frame(maxWidth: isCompact ? .infinity : 280, alignment: .leading)
       }
 
       Text(
-        "This step is optional. You can customize the categories or create new ones anytime while using Dayflow."
+        "中性或分心事件会提醒，专注时不提醒。全部关闭即可暂停目标评估。"
       )
       .font(Font.custom("Figtree", size: 12).weight(.medium))
       .foregroundColor(
@@ -354,10 +354,10 @@ struct ColorOrganizerRoot: View {
       VStack(alignment: .leading, spacing: 12) {
         Text(
           isDraggingColor
-            ? String(localized: "Drop on a category →")
+            ? String(localized: "拖到事件上 →")
             : String(
               localized:
-                "Click and drag on the canvas above to change the color palette. Then drag a color onto a category."
+                "拖动上方色盘调整配色，再将颜色拖到事件上。颜色仅用于辅助识别。"
             )
         )
         .font(Font.custom("Figtree", size: 13).weight(.medium))
@@ -399,7 +399,7 @@ struct ColorOrganizerRoot: View {
           .font(.system(size: 10, weight: .bold))
           .foregroundColor(theme.controlText)
 
-        Text("Create a new category")
+        Text("添加事件")
           .font(Font.custom("Figtree", size: 14).weight(.regular))
           .foregroundColor(theme.controlText)
       }
@@ -476,7 +476,7 @@ struct ColorOrganizerRoot: View {
       .frame(maxWidth: isCompact ? .infinity : 708)
       .frame(height: containerHeight, alignment: .topLeading)
 
-      Text("This step is optional. You can change the colors anytime while using Dayflow.")
+      Text("颜色可选，之后也可以随时修改。")
         .font(Font.custom("Figtree", size: 12).weight(.medium))
         .foregroundColor(
           theme.isDark ? Color(hex: "BDBDBD") : Color(red: 0.48, green: 0.48, blue: 0.48)
@@ -499,12 +499,24 @@ struct ColorOrganizerRoot: View {
           }
         }
 
-        SetupContinueButton(title: String(localized: "Next"), isEnabled: !categories.isEmpty) {
-          commitPendingEditsIfNeeded()
-          trackDetailsCompletion()
-          categoryStore.persist()
-          withAnimation(.easeInOut(duration: 0.25)) {
-            stage = .colors
+        if presentationStyle == .sheet {
+          SetupSecondaryButton(title: "调整颜色") {
+            commitPendingEditsIfNeeded()
+            withAnimation(.easeInOut(duration: 0.25)) { stage = .colors }
+          }
+          SetupContinueButton(title: completionButtonTitle ?? "完成", isEnabled: true) {
+            commitPendingEditsIfNeeded()
+            categoryStore.persist()
+            onDismiss?()
+          }
+        } else {
+          SetupContinueButton(title: String(localized: "Next"), isEnabled: !categories.isEmpty) {
+            commitPendingEditsIfNeeded()
+            trackDetailsCompletion()
+            categoryStore.persist()
+            withAnimation(.easeInOut(duration: 0.25)) {
+              stage = .colors
+            }
           }
         }
       } else {
@@ -596,7 +608,7 @@ struct ColorOrganizerRoot: View {
   }
 
   private var emptyState: some View {
-    Text("Add a category to get started.")
+    Text("添加一件要做的事情。")
       .font(Font.custom("Figtree", size: 13).weight(.medium))
       .foregroundColor(
         theme.isDark ? Color(hex: "BDBDBD") : Color(red: 0.35, green: 0.35, blue: 0.35)
@@ -695,7 +707,7 @@ struct ColorOrganizerRoot: View {
 
       showFirstTimeHints = false
 
-      let baseName = "New category"
+      let baseName = "新事件"
       var candidate = baseName
       var suffix = 2
       let existingNames = Set(categories.map { $0.name.lowercased() })

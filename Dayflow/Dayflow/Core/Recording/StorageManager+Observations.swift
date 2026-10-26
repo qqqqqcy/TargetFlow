@@ -100,8 +100,8 @@ extension StorageManager {
                   batch_id, call_group_id, attempt, provider, model, operation,
                   status, latency_ms, http_status, request_method, request_url,
                   request_headers, request_body, response_headers, response_body,
-                  error_domain, error_code, error_message
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  error_domain, error_code, error_message, usage_receipt
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           """,
         arguments: [
           rec.batchId,
@@ -122,7 +122,29 @@ extension StorageManager {
           rec.errorDomain,
           rec.errorCode,
           rec.errorMessage,
+          String(decoding: try JSONEncoder().encode(rec.usageReceipt), as: UTF8.self),
         ])
+    }
+    NotificationCenter.default.post(name: .llmUsageUpdated, object: nil)
+  }
+
+  func fetchLLMUsageSummary() throws -> LLMUsageSummary {
+    try db.read { db in
+      var summary = LLMUsageSummary()
+      let rows = try Row.fetchCursor(db, sql: "SELECT status, usage_receipt FROM llm_calls")
+      while let row = try rows.next() {
+        guard let json: String = row["usage_receipt"],
+          let receipt = try? JSONDecoder().decode(LLMUsageReceipt.self, from: Data(json.utf8))
+        else { continue }
+        let status: String = row["status"]
+        // A network failure without usage is not evidence of a billable call.
+        if status == "success" || receipt.costUSD != nil
+          || receipt.inputTokens != nil || receipt.outputTokens != nil
+        {
+          summary.include(receipt)
+        }
+      }
+      return summary
     }
   }
 

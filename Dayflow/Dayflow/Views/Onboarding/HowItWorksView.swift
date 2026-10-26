@@ -13,7 +13,7 @@ struct HowItWorksView: View {
   @State private var cardOpacities: [Double] = [0, 0, 0]
   @State private var buttonsOpacity: Double = 0
 
-  private let fullText = String(localized: "How Dayflow Works")
+  private let fullText = String(localized: "How Target Flow Works")
 
   // Navigation callbacks
   var onBack: () -> Void
@@ -25,7 +25,7 @@ struct HowItWorksView: View {
       String(localized: "Install and Forget"),
       String(
         localized:
-          "Dayflow takes periodic screen captures to understand what you're working on, all stored privately on your device. You can toggle this whenever you like."
+          "Target Flow takes periodic screen captures to understand what you're working on, all stored privately on your device. You can toggle this whenever you like."
       )
     ),
     (
@@ -33,7 +33,7 @@ struct HowItWorksView: View {
       String(localized: "Privacy by Default"),
       String(
         localized:
-          "Dayflow can run entirely on local AI models, which means your data never leaves your computer. You can also find the source code below - please consider giving it a star on Github!"
+          "Target Flow can run entirely on local AI models, which means your data never leaves your computer. You can also find the source code below - please consider giving it a star on Github!"
       )
     ),
     (
@@ -41,7 +41,7 @@ struct HowItWorksView: View {
       String(localized: "Understand your Day"),
       String(
         localized:
-          "Knows the difference between YouTube tutorials and YouTube rabbit holes. Dayflow actually gets what you're working on."
+          "Knows the difference between YouTube tutorials and YouTube rabbit holes. Target Flow actually gets what you're working on."
       )
     ),
   ]
@@ -111,7 +111,7 @@ struct HowItWorksView: View {
               Image("GithubIcon").resizable().aspectRatio(contentMode: .fit).frame(
                 width: 20, height: 20
               ).colorInvert()
-              Text("Star Dayflow on GitHub").font(.custom("Figtree", size: 14)).fontWeight(.medium)
+              Text("Star Target Flow on GitHub").font(.custom("Figtree", size: 14)).fontWeight(.medium)
             }
           },
           background: Color(hex: "FF9F6F"),

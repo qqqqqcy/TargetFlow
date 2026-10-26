@@ -28,8 +28,8 @@ struct DayflowEntitlement: Codable, Equatable {
   var displayName: String {
     guard status == "active" else { return String(localized: "Free") }
     switch plan {
-    case "pro": return String(localized: "Dayflow Pro")
-    case "plus": return String(localized: "Dayflow Plus")
+    case "pro": return String(localized: "Target Flow Pro")
+    case "plus": return String(localized: "Target Flow Plus")
     default: return String(localized: "Free")
     }
   }
@@ -516,7 +516,7 @@ final class DayflowAuthManager: ObservableObject {
       awaitingCheckout = true
       refreshAfterCheckout()
     } else if case DayflowAuthError.busy? = error {
-      errorText = String(localized: "Dayflow was busy and could not open checkout. Try again.")
+      errorText = String(localized: "Target Flow was busy and could not open checkout. Try again.")
     }
   }
 
@@ -577,7 +577,7 @@ final class DayflowAuthManager: ObservableObject {
       errorText = nil
     }
     if case DayflowAuthError.busy? = error {
-      errorText = String(localized: "Dayflow was busy and could not start the trial. Try again.")
+      errorText = String(localized: "Target Flow was busy and could not start the trial. Try again.")
     }
   }
 
@@ -937,11 +937,11 @@ final class DayflowAuthManager: ObservableObject {
 
   private func makeRequest(path: String, method: String) throws -> URLRequest {
     guard let endpoint else {
-      throw DayflowAuthError.message("Invalid Dayflow backend URL.")
+      throw DayflowAuthError.message("Invalid Target Flow backend URL.")
     }
 
     guard let url = URL(string: "\(endpoint)\(path)") else {
-      throw DayflowAuthError.message("Invalid Dayflow backend URL.")
+      throw DayflowAuthError.message("Invalid Target Flow backend URL.")
     }
 
     var request = URLRequest(url: url)
@@ -1176,13 +1176,13 @@ private enum DayflowAuthError: LocalizedError {
       if let detail, !detail.isEmpty {
         return detail
       }
-      return String(localized: "Dayflow sign-in failed (\(statusCode)).")
+      return String(localized: "Target Flow sign-in failed (\(statusCode)).")
     case .busy:
-      return String(localized: "Another Dayflow account request is already running.")
+      return String(localized: "Another Target Flow account request is already running.")
     case .message(let message):
       return message
     case .nonHTTP:
-      return String(localized: "Dayflow returned a non-HTTP response.")
+      return String(localized: "Target Flow returned a non-HTTP response.")
     case .unauthorized:
       return String(localized: "Your session could not be verified.")
     }

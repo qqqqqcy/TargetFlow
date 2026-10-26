@@ -9,7 +9,7 @@
 //  Every failure path falls back to revealing the transcript in Finder, so
 //  the button never dead-ends.
 //
-//  Scripting Ghostty requires the one-time Automation permission ("Dayflow
+//  Scripting Ghostty requires the one-time Automation permission ("Target Flow
 //  wants to control Ghostty") and NSAppleEventsUsageDescription in Info.plist.
 //
 

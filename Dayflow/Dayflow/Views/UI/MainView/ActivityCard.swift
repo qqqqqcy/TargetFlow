@@ -154,7 +154,7 @@ struct ActivityCard: View {
               Text("Recording is off")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.gray.opacity(0.7))
-              Text("Dayflow recording is currently turned off, so cards aren’t being produced.")
+              Text("Target Flow recording is currently turned off, so cards aren’t being produced.")
                 .font(.custom("Figtree", size: 13))
                 .foregroundColor(.gray.opacity(0.6))
                 .multilineTextAlignment(.center)
@@ -212,30 +212,17 @@ struct ActivityCard: View {
 
             HStack(spacing: 6) {
               if let badge = categoryBadge(for: activity.category) {
-                HStack(spacing: 6) {
+                HStack(spacing: 4) {
                   Circle()
-                    .fill(badge.indicator)
-                    .frame(width: 8, height: 8)
+                    .fill(badge.indicator.opacity(0.65))
+                    .frame(width: 6, height: 6)
 
                   Text(badge.name)
-                    .font(Font.custom("Figtree", size: 12))
-                    .foregroundColor(
-                      usesDarkChrome ? theme.chipText : Color(red: 0.2, green: 0.2, blue: 0.2)
-                    )
+                    .font(Font.custom("Figtree", size: 11))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(usesDarkChrome ? theme.chipFill : Color.white.opacity(0.76))
-                .cornerRadius(6)
-                .overlay(
-                  RoundedRectangle(cornerRadius: 6)
-                    .inset(by: 0.25)
-                    .stroke(
-                      usesDarkChrome ? theme.chipBorder : Color(red: 0.88, green: 0.88, blue: 0.88),
-                      lineWidth: 0.5
-                    )
-                )
+                .help("事件标签，仅用于辅助归纳")
               }
 
               if !isFailedCard(activity) {
@@ -246,7 +233,7 @@ struct ActivityCard: View {
                     }
                   },
                   diameter: 24,
-                  accessibilityLabel: String(localized: "Change category")
+                  accessibilityLabel: String(localized: "调整事件标签")
                 )
               }
             }
@@ -426,7 +413,7 @@ struct ActivityCard: View {
     }
     return String(
       localized:
-        "This time couldn't be turned into cards yet. Dayflow will try again automatically. Your recording is saved."
+        "This time couldn't be turned into cards yet. Target Flow will try again automatically. Your recording is saved."
     )
   }
 

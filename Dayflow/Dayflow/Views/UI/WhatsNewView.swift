@@ -107,7 +107,7 @@ enum WhatsNewConfiguration {
       highlights: [
         String(
           localized:
-            "Anthropic released Claude Haiku 5.5 last week, and Claude users now run on it. Expect increased quality and a 90% reduction in cost. Dayflow now only consumes roughly a dollar a week of your usage limits (under 1% of the usage limits on the $20 plan)."
+            "Anthropic released Claude Haiku 5.5 last week, and Claude users now run on it. Expect increased quality and a 90% reduction in cost. Target Flow now only consumes roughly a dollar a week of your usage limits (under 1% of the usage limits on the $20 plan)."
         ),
         String(
           localized:

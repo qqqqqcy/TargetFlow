@@ -3,8 +3,8 @@ import XCTest
 @testable import Dayflow
 
 final class TargetFlowScopeTests: XCTestCase {
-  func testNavigationExposesTimelineTargetAndSettings() {
-    XCTAssertEqual(SidebarIcon.allCases.map(\.rawValue), ["timeline", "target", "settings"])
+  func testNavigationExposesOnlyTimelineAndSettings() {
+    XCTAssertEqual(SidebarIcon.allCases.map(\.rawValue), ["timeline", "settings"])
   }
 
   func testStorageAndTimelapsesDoNotShareUpstreamDirectory() {

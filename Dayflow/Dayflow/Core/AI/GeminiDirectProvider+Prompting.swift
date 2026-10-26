@@ -4,11 +4,14 @@ extension GeminiDirectProvider {
   func categoriesSection(from descriptors: [LLMCategoryDescriptor]) -> String {
     guard !descriptors.isEmpty else {
       return
-        "USER CATEGORIES: No categories configured. Use consistent labels based on the activity story."
+        EventPromptGuidance.instructions
+        + "\nNo event definitions configured. Use consistent labels based on the observed event."
     }
 
     let allowed = descriptors.map { "\"\($0.name)\"" }.joined(separator: ", ")
-    var lines: [String] = ["USER CATEGORIES (choose exactly one label):"]
+    var lines: [String] = [
+      EventPromptGuidance.instructions, "USER EVENT DEFINITIONS (secondary labels):",
+    ]
 
     for (index, descriptor) in descriptors.enumerated() {
       var desc = descriptor.description?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

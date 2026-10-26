@@ -329,7 +329,7 @@ private struct WeeklyAccessProgressBar: View {
         .fill(Color(hex: "FF6E00"))
         .frame(width: knobSize, height: knobSize)
         .overlay(
-          Image("DayflowLogo")
+          Image("TargetFlowLogo")
             .renderingMode(.template)
             .resizable()
             .scaledToFit()

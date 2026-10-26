@@ -58,7 +58,7 @@ struct WeeklyTreemapSnapshot {
         apps: [
           WeeklyTreemapApp(
             id: "dayflow",
-            name: "Dayflow",
+            name: "Target Flow",
             duration: 5 * 3600 + 24 * 60,
             change: .positive(45)
           ),
@@ -160,7 +160,7 @@ struct WeeklyTreemapSnapshot {
         palette: .testing,
         apps: [
           WeeklyTreemapApp(
-            id: "dayflow", name: "Dayflow", duration: hours(2, 24), change: .positive(24)),
+            id: "dayflow", name: "Target Flow", duration: hours(2, 24), change: .positive(24)),
           WeeklyTreemapApp(
             id: "clickup", name: "ClickUp", duration: hours(0, 53), change: .negative(9)),
           WeeklyTreemapApp(
@@ -274,7 +274,7 @@ struct WeeklyTreemapSnapshot {
         palette: .testing,
         apps: [
           WeeklyTreemapApp(
-            id: "dayflow", name: "Dayflow", duration: hours(5, 10), change: .positive(17)),
+            id: "dayflow", name: "Target Flow", duration: hours(5, 10), change: .positive(17)),
           WeeklyTreemapApp(
             id: "clickup", name: "ClickUp", duration: hours(4, 24), change: .negative(12)),
           WeeklyTreemapApp(id: "slack", name: "Slack", duration: hours(3, 28), change: .neutral(2)),

@@ -28,7 +28,7 @@ struct LLMProviderSetupView: View {
     case .gemini:
       return String(localized: "Gemini")
     case .dayflow:
-      return String(localized: "Dayflow Pro")
+      return String(localized: "Target Flow Pro")
     }
   }
 
@@ -417,7 +417,7 @@ struct LLMProviderSetupView: View {
             .fontWeight(.semibold)
             .foregroundColor(Color(hex: "333333"))
 
-          Text("This model enables Dayflow to understand what's on your screen")
+          Text("This model enables Target Flow to understand what's on your screen")
             .font(.custom("Figtree", size: 14))
             .foregroundColor(Color(hex: "333333"))
         }
@@ -612,7 +612,7 @@ struct LLMProviderSetupView: View {
             .foregroundColor(Color(hex: "333333"))
 
           Text(
-            "allows you to run Dayflow for free. All you need is a Google account - no credit card required."
+            "allows you to run Target Flow for free. All you need is a Google account - no credit card required."
           )
           .font(.custom("Figtree", size: 14))
           .foregroundColor(Color(hex: "333333"))
@@ -740,7 +740,7 @@ struct LLMProviderSetupView: View {
         setupState.saveErrorMessage =
           String(
             localized:
-              "Dayflow couldn't save this endpoint configuration. Your previous configuration is still active."
+              "Target Flow couldn't save this endpoint configuration. Your previous configuration is still active."
           )
         return false
       }
@@ -751,7 +751,7 @@ struct LLMProviderSetupView: View {
       return true
     } catch {
       setupState.saveErrorMessage =
-        String(localized: "Dayflow couldn't finish saving this provider. Please try again.")
+        String(localized: "Target Flow couldn't finish saving this provider. Please try again.")
       return false
     }
   }
@@ -762,7 +762,7 @@ struct LLMProviderSetupView: View {
       setupState.saveErrorMessage =
         String(
           localized:
-            "The provider is configured, but Dayflow couldn't update your routing. Your previous selection is still active."
+            "The provider is configured, but Target Flow couldn't update your routing. Your previous selection is still active."
         )
       return
     }

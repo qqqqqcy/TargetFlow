@@ -181,7 +181,7 @@ extension MainView {
     // The liberal allowance (date shows 55pt earlier than strict fit) only
     // applies when the trailing cluster is in its *compact* state. When
     // Pause expands — either the duration-chip menu (~250pt) or the
-    // paused-status text "Dayflow paused for HH:MM" (~290pt) — the trailing
+    // paused-status text "Target Flow paused for HH:MM" (~290pt) — the trailing
     // cluster's leftward occupation already fills the header; piling on
     // a date-allowance at that point produces overlap with the status
     // text. Threshold of 100pt safely partitions compact (idle 73, paused

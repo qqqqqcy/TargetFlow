@@ -31,7 +31,7 @@ final class ChatStreamingRegressionTests: XCTestCase {
   }
 
   func testStreamingMetadataIsHiddenAtEveryTokenBoundary() {
-    let answer = "Dayflow chat test OK."
+    let answer = "Target Flow chat test OK."
     let suffix =
       "\n\n```suggestions\n[\"Follow up?\"]\n```\n\n```memory\nProfile: example\nStyle: brief\n```"
     for length in 1...suffix.count {

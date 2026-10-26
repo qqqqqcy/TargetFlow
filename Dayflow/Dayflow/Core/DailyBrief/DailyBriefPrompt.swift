@@ -49,7 +49,7 @@ enum DailyBriefPrompt {
     return """
       ## Extra instructions from the user
 
-      They typed these preferences into Dayflow. They take priority over the defaults above
+      They typed these preferences into Target Flow. They take priority over the defaults above
       whenever the two disagree (for example, which sections to include or skip, how many items,
       or what to focus on). The output shape below still applies.
 
@@ -58,9 +58,9 @@ enum DailyBriefPrompt {
   }
 
   static let template = """
-    You're writing today's Daily brief for {{USER_NAME}}, a person who uses Dayflow, an app
+    You're writing today's Daily brief for {{USER_NAME}}, a person who uses Target Flow, an app
     that records their screen and turns it into a timeline of what they did. They'll open it this morning
-    inside Dayflow. Today is {{TODAY_LONG}} ({{TIMEZONE}}). Yesterday was {{YESTERDAY_LONG}}.
+    inside Target Flow. Today is {{TODAY_LONG}} ({{TIMEZONE}}). Yesterday was {{YESTERDAY_LONG}}.
 
     ## What this brief is for
 
@@ -110,9 +110,9 @@ enum DailyBriefPrompt {
 
     ## Tools you can use
 
-    - **Dayflow tools** (`mcp__dayflow__*`): read older history, such as the last 2 weeks of timeline, search
+    - **Target Flow tools** (`mcp__dayflow__*`): read older history, such as the last 2 weeks of timeline, search
       for an activity, or get the time breakdown. Use them to tell a one-off from an ongoing project.
-    - **Their connectors** (whatever tools are available besides Dayflow's, e.g. Slack, Linear, Gmail,
+    - **Their connectors** (whatever tools are available besides Target Flow's, e.g. Slack, Linear, Gmail,
       Notion, Google Drive): read only. You can search and read; you cannot send, post, create, or edit
       anything, and those calls will be refused. If no connectors are available, skip the sections
       that need them.

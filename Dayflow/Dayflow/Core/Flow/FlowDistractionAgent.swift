@@ -85,7 +85,7 @@ final class FlowDistractionAgent: ObservableObject {
       switch self {
       case .codex: return "Codex"
       case .claude: return "Claude"
-      case .dayflow: return "Dayflow Pro"
+      case .dayflow: return "Target Flow Pro"
       }
     }
   }
@@ -292,8 +292,8 @@ final class FlowDistractionAgent: ObservableObject {
     guard let engine = Engine.current() else {
       print("[FlowAgent] Not starting: the primary provider can't run the Flow agent")
       appendTranscript(
-        "Flow's screen watching needs ChatGPT (Codex), Claude or Dayflow Pro as your provider.")
-      statusLine = "Needs Codex, Claude or Dayflow Pro"
+        "Flow's screen watching needs ChatGPT (Codex), Claude or Target Flow Pro as your provider.")
+      statusLine = "Needs Codex, Claude or Target Flow Pro"
       AnalyticsService.shared.capture("flow_agent_unsupported_provider")
       return
     }
@@ -318,8 +318,8 @@ final class FlowDistractionAgent: ObservableObject {
     // the briefing rides along with every tick instead.
     if engine == .dayflow {
       guard Self.dayflowCredentials() != nil else {
-        appendTranscript("Couldn't start the agent: not signed in to Dayflow Pro.")
-        statusLine = "Sign in to Dayflow Pro"
+        appendTranscript("Couldn't start the agent: not signed in to Target Flow Pro.")
+        statusLine = "Sign in to Target Flow Pro"
         AnalyticsService.shared.capture("flow_agent_start_failed", ["engine": "dayflow"])
         cleanupWorkDirectory()
         return
@@ -987,7 +987,7 @@ final class FlowDistractionAgent: ObservableObject {
   /// The built-in briefing. Placeholders: {{started}}, {{length}}, {{style}},
   /// {{goals}}, {{style_rules}}, {{tick_seconds}}, {{categories}}, {{timeline_mechanics}}. The debug panel can replace the whole thing.
   static let briefingTemplate = """
-    You are the focus companion inside Dayflow, a Mac time-tracking app. The user just \
+    You are the focus companion inside Target Flow, a Mac time-tracking app. The user just \
     started a Flow focus session and you're watching over it. Roughly every {{tick_seconds}} seconds \
     you'll get a message with a screenshot of their screen, the current time, and the time \
     left. Your job: judge whether they're on task, and decide whether their focus buddy (a \
@@ -1028,7 +1028,7 @@ final class FlowDistractionAgent: ObservableObject {
     goal, never two ("X or Y" is wrong), don't say how long they've been away or how much time is left, and \
     don't describe what they're looking at. Never preachy, and never the same \
     wording as a nudge you already sent this session.
-    - Dayflow decides when a nudge is due and says so in the message ("NUDGE DUE"). On \
+    - Target Flow decides when a nudge is due and says so in the message ("NUDGE DUE"). On \
     those turns, if the screenshot is still off task, use "nudge". On every other turn \
     keep action "none".
     - message is required whenever action is "nudge". reason: a few words of evidence \
@@ -1037,7 +1037,7 @@ final class FlowDistractionAgent: ObservableObject {
     screen shows a goal has been FINISHED — the PR is merged, the email is in Sent, the \
     doc is published, the ticket is closed, they typed "done" — include its id, e.g. \
     "completed_goals": ["g2"], in that turn's verdict. Working on a goal is not finishing \
-    it: only report on clear evidence of completion, and report each goal once. Dayflow \
+    it: only report on clear evidence of completion, and report each goal once. Target Flow \
     checks the task off for them, so a false positive is worse than a miss.
 
     ALERT STYLE
@@ -1052,7 +1052,7 @@ final class FlowDistractionAgent: ObservableObject {
     - It is a JSON array of entries \
     {"start": "HH:mm", "end": "HH:mm", "kind": "focused" | "distracted" | "break", "category": "...", "site": "...", "title": "..."}, \
     plus an optional "completed" list on focused entries (see below).
-    - category files the entry under one of the user's own Dayflow categories. Use one \
+    - category files the entry under one of the user's own Target Flow categories. Use one \
     of these names exactly as written, never a name of your own:
     {{categories}}
     Pick the one that fits most of the stretch. Every focused and distracted entry \
@@ -1206,7 +1206,7 @@ final class FlowDistractionAgent: ObservableObject {
     switch engine {
     case .codex: return "\(settings.model), \(settings.reasoningEffort)"
     case .claude: return "Claude \(Self.claudeModel)"
-    case .dayflow: return "Dayflow Pro"
+    case .dayflow: return "Target Flow Pro"
     }
   }
 
@@ -1249,7 +1249,7 @@ final class FlowDistractionAgent: ObservableObject {
     else {
       throw NSError(
         domain: "FlowAgent", code: -3,
-        userInfo: [NSLocalizedDescriptionKey: "Not signed in to Dayflow Pro"])
+        userInfo: [NSLocalizedDescriptionKey: "Not signed in to Target Flow Pro"])
     }
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
@@ -1266,7 +1266,7 @@ final class FlowDistractionAgent: ObservableObject {
       throw NSError(
         domain: "FlowAgent", code: status,
         userInfo: [
-          NSLocalizedDescriptionKey: "Dayflow Pro check failed (\(status)): \(body.prefix(200))"
+          NSLocalizedDescriptionKey: "Target Flow Pro check failed (\(status)): \(body.prefix(200))"
         ])
     }
     return try JSONDecoder().decode(BackendCheckResponse.self, from: data).text

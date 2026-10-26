@@ -1,20 +1,14 @@
 import Foundation
 
 extension Notification.Name {
-  static let navigateToTarget = Notification.Name("navigateToTarget")
+  static let navigateToEvents = Notification.Name("navigateToEvents")
 }
 
 enum TargetPreferences {
   static let alertsEnabledKey = "target.alertsEnabled"
-  static let cooldownMinutesKey = "target.cooldownMinutes"
 
   static func alertsEnabled(defaults: UserDefaults = .standard) -> Bool {
     defaults.object(forKey: alertsEnabledKey) as? Bool ?? true
-  }
-
-  static func cooldownMinutes(defaults: UserDefaults = .standard) -> Int {
-    let value = defaults.integer(forKey: cooldownMinutesKey)
-    return [5, 15, 30].contains(value) ? value : 15
   }
 }
 
@@ -22,6 +16,13 @@ struct FocusTarget: Codable, Equatable, Identifiable {
   let id: UUID
   let text: String
   let startedAt: Date
+  var events: [FocusTargetEvent]? = nil
+}
+
+struct FocusTargetEvent: Codable, Equatable {
+  let id: UUID
+  let name: String
+  let details: String
 }
 
 enum TargetAlignment: String, Codable, CaseIterable {
@@ -31,9 +32,9 @@ enum TargetAlignment: String, Codable, CaseIterable {
 
   var title: String {
     switch self {
-    case .focused: return "专心"
+    case .focused: return "专注"
     case .neutral: return "中性"
-    case .severe: return "严重偏离"
+    case .severe: return "分心"
     }
   }
 
@@ -73,7 +74,7 @@ struct TargetEvaluationResponse: Decodable {
     let response = try JSONDecoder().decode(Self.self, from: Data(text[start...end].utf8))
     guard !response.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
       response.reason.count <= 1000, response.reminder.count <= 500,
-      response.alignment != .severe
+      response.alignment == .focused
         || !response.reminder.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     else { throw TargetEvaluationError.invalidResponse }
     return response
@@ -92,13 +93,10 @@ enum TargetEvaluationPolicy {
   }
 
   static func shouldNotify(
-    alignment: TargetAlignment, endTime: Date, now: Date,
-    lastReminderAt: Date?, cooldownMinutes: Int
+    alignment: TargetAlignment, endTime: Date, now: Date
   ) -> Bool {
-    guard alignment == .severe,
-      now.timeIntervalSince(endTime) >= -60,
-      now.timeIntervalSince(endTime) <= 30 * 60
-    else { return false }
-    return lastReminderAt.map { now.timeIntervalSince($0) >= Double(cooldownMinutes * 60) } ?? true
+    alignment != .focused
+      && now.timeIntervalSince(endTime) >= -60
+      && now.timeIntervalSince(endTime) <= 30 * 60
   }
 }

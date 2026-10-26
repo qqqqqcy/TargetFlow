@@ -26,7 +26,7 @@ struct SettingsOtherTabView: View {
           label: String(localized: "App language"),
           subtitle: String(
             localized:
-              "Choose a language for Dayflow only. Quit and reopen the app to apply a change.")
+              "Choose a language for Target Flow only. Quit and reopen the app to apply a change.")
         ) {
           Picker("App language", selection: $appLanguage) {
             ForEach(AppLanguage.allCases) { language in
@@ -60,7 +60,7 @@ struct SettingsOtherTabView: View {
         }
 
         SettingsRow(
-          label: String(localized: "Launch Dayflow at login"),
+          label: String(localized: "Launch Target Flow at login"),
           subtitle:
             String(
               localized:
@@ -77,7 +77,7 @@ struct SettingsOtherTabView: View {
 
         SettingsRow(
           label: String(localized: "Pause lengths"),
-          subtitle: String(localized: "The three timed options shown when you pause Dayflow.")
+          subtitle: String(localized: "The three timed options shown when you pause Target Flow.")
         ) {
           HStack(spacing: 6) {
             ForEach(viewModel.pausePresetMinutes.indices, id: \.self) { index in
@@ -99,7 +99,7 @@ struct SettingsOtherTabView: View {
 
         SettingsRow(
           label: String(localized: "Show Dock icon"),
-          subtitle: String(localized: "When off, Dayflow runs as a menu bar-only app.")
+          subtitle: String(localized: "When off, Target Flow runs as a menu bar-only app.")
         ) {
           SettingsToggle(isOn: $viewModel.showDockIcon)
         }
@@ -116,7 +116,7 @@ struct SettingsOtherTabView: View {
           subtitle:
             String(
               localized:
-                "When off, Dayflow won't automatically open goal setup or yesterday's review after 4am."
+                "When off, Target Flow won't automatically open goal setup or yesterday's review after 4am."
             )
         ) {
           SettingsToggle(isOn: $viewModel.showDailyGoalPopups)

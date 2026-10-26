@@ -327,7 +327,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
       providerRoutingErrorMessage =
         String(
           localized:
-            "Dayflow couldn't load your provider routing. Your saved providers were left unchanged."
+            "Target Flow couldn't load your provider routing. Your saved providers were left unchanged."
         )
     }
   }
@@ -641,7 +641,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
       providerRoutingErrorMessage =
         String(
           localized:
-            "Dayflow couldn't save your provider routing. Your previous selection is still active.")
+            "Target Flow couldn't save your provider routing. Your previous selection is still active.")
       return false
     }
   }
@@ -769,7 +769,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
     case .openAICompatible:
       return String(localized: "OpenAI-compatible API")
     case .dayflow:
-      return String(localized: "Dayflow Backend")
+      return String(localized: "Target Flow Backend")
     }
   }
 
@@ -780,7 +780,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
     case .chatGPT: return "ChatGPT"
     case .claude: return "Claude"
     case .openAICompatible: return "OpenAI-compatible"
-    case .dayflow: return String(localized: "Dayflow Pro")
+    case .dayflow: return String(localized: "Target Flow Pro")
     }
   }
 
@@ -799,7 +799,7 @@ struct CompactProviderInfo: Identifiable {
     case .chatGPT: return "ChatGPT"
     case .claude: return "Claude"
     case .openAICompatible: return "OpenAI-compatible"
-    case .dayflow: return String(localized: "Dayflow Pro")
+    case .dayflow: return String(localized: "Target Flow Pro")
     }
   }
 }

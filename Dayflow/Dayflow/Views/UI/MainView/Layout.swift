@@ -450,7 +450,7 @@ private struct TimelineFailureToastView: View {
       providerLogo
         .frame(width: 22, height: 22)
 
-      Text(payload.title ?? String(localized: "Dayflow needs a hand"))
+      Text(payload.title ?? String(localized: "Target Flow needs a hand"))
         .font(.custom("Figtree", size: 15).weight(.semibold))
         .foregroundStyle(theme.textPrimary)
         .fixedSize(horizontal: false, vertical: true)
@@ -478,7 +478,7 @@ private struct TimelineFailureToastView: View {
     } else if name.contains("gemini") || name.contains("gemma") {
       Image("GeminiLogo").resizable().scaledToFit()
     } else if name.contains("dayflow") {
-      Image("DayflowLogo").resizable().scaledToFit()
+      Image("TargetFlowLogo").resizable().scaledToFit()
     } else {
       Image(systemName: "cpu")
         .font(.system(size: 15))
@@ -513,7 +513,7 @@ private struct TimelineFailureToastView: View {
           .foregroundStyle(theme.accent)
           .frame(width: 20, height: 20)
 
-        Text("Dayflow catches up automatically")
+        Text("Target Flow catches up automatically")
           .font(.custom("Figtree", size: 13))
           .foregroundStyle(theme.textPrimary)
           .padding(.top, 1)
@@ -636,7 +636,7 @@ private struct TimelineFailureToastView: View {
           .font(.custom("Figtree", size: 12))
           .foregroundStyle(theme.textMuted)
       } else {
-        Text("Dayflow catches up automatically")
+        Text("Target Flow catches up automatically")
           .font(.custom("Figtree", size: 12))
           .foregroundStyle(theme.textSecondary)
         Spacer(minLength: 0)
@@ -684,7 +684,7 @@ private struct ScreenRecordingPermissionNoticeView: View {
             .fontWeight(.semibold)
             .foregroundColor(theme.textPrimary)
 
-          Text("Dayflow cannot update your timeline until access is restored.")
+          Text("Target Flow cannot update your timeline until access is restored.")
             .font(.custom("Figtree", size: 12))
             .foregroundColor(theme.textSecondary)
             .fixedSize(horizontal: false, vertical: true)
