@@ -223,52 +223,15 @@ final class AnalyticsService {
   private var throttles: [String: Date] = [:]
 
   var isOptedIn: Bool {
-    get {
-      if UserDefaults.standard.object(forKey: optInKey) == nil {
-        // Default ON per product decision
-        return true
-      }
-      return UserDefaults.standard.bool(forKey: optInKey)
-    }
+    get { false }
     set {
-      UserDefaults.standard.set(newValue, forKey: optInKey)
+      // Target Flow has no telemetry opt-in UI or upstream analytics integration.
+      UserDefaults.standard.set(false, forKey: optInKey)
     }
   }
 
   func start(apiKey: String, host: String) {
-    let config = PostHogConfig(apiKey: apiKey, host: host)
-    let optedIn = isOptedIn
-    // Disable autocapture for privacy
-    config.captureApplicationLifecycleEvents = false
-    // Keep SDK initialized for backend auth token usage, but hard-disable networked telemetry when opted out.
-    config.optOut = !optedIn
-    config.preloadFeatureFlags = optedIn
-    config.remoteConfig = optedIn
-    PostHogSDK.shared.setup(config)
-
-    guard optedIn else { return }
-
-    // Identity - run on background thread to avoid blocking app launch.
-    // Use PostHog's own distinct ID as the canonical identifier source.
-    Task.detached(priority: .utility) {
-      let id = PostHogSDK.shared.getDistinctId().trimmingCharacters(in: .whitespacesAndNewlines)
-      guard !id.isEmpty else { return }
-      PostHogSDK.shared.identify(id)
-    }
-
-    // Super properties at launch
-    registerInitialSuperProperties()
-
-    // Person properties via $set / $set_once
-    let set: [String: Any] = [
-      "analytics_opt_in": optedIn
-    ]
-    var payload: [String: Any] = ["$set": sanitize(set)]
-    if !UserDefaults.standard.bool(forKey: "installTsSent") {
-      payload["$set_once"] = ["install_ts": iso8601Now()]
-      UserDefaults.standard.set(true, forKey: "installTsSent")
-    }
-    PostHogSDK.shared.capture("person_props_updated", properties: payload)
+    // The fork does not initialize upstream telemetry SDKs.
   }
 
   /// Returns the stable PostHog distinct ID used as backend auth identity.
@@ -355,51 +318,8 @@ final class AnalyticsService {
   }
 
   func setOptIn(_ enabled: Bool) {
-    let previousValue = isOptedIn
-    isOptedIn = enabled
-
-    if enabled {
-      PostHogSDK.shared.optIn()
-      SentryHelper.setEnabled(true)
-      NotificationCenter.default.post(
-        name: .analyticsPreferenceChanged,
-        object: nil,
-        userInfo: ["enabled": enabled]
-      )
-
-      guard previousValue != enabled else { return }
-
-      let payload: [String: Any] = ["$set": sanitize(["analytics_opt_in": enabled])]
-      Task.detached(priority: .utility) {
-        PostHogSDK.shared.capture("person_props_updated", properties: payload)
-        PostHogSDK.shared.capture("analytics_opt_in_changed", properties: ["enabled": enabled])
-      }
-      return
-    }
-
-    guard previousValue != enabled else {
-      SentryHelper.setEnabled(false)
-      PostHogSDK.shared.optOut()
-      NotificationCenter.default.post(
-        name: .analyticsPreferenceChanged,
-        object: nil,
-        userInfo: ["enabled": enabled]
-      )
-      return
-    }
-
-    // Disable Sentry immediately, then send one final explicit PostHog opt-out signal.
+    isOptedIn = false
     SentryHelper.setEnabled(false)
-    let payload: [String: Any] = ["$set": sanitize(["analytics_opt_in": enabled])]
-    PostHogSDK.shared.capture("person_props_updated", properties: payload)
-    PostHogSDK.shared.capture("analytics_opt_in_changed", properties: ["enabled": enabled])
-    PostHogSDK.shared.flush()
-    PostHogSDK.shared.optOut()
-    NotificationCenter.default.post(
-      name: .analyticsPreferenceChanged,
-      object: nil,
-      userInfo: ["enabled": enabled]
-    )
   }
 
   func capture(_ name: String, _ props: [String: Any] = [:]) {

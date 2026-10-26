@@ -10,20 +10,5 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
-	<key>com.apple.security.network.server</key>
-	<true/>
-
-	<!-- Flow's voice planning uses the microphone from its web view. Release builds are
-	     signed with the hardened runtime, which blocks audio input without a prompt
-	     unless this is present. -->
-	<key>com.apple.security.device.audio-input</key>
-	<true/>
-
-	<!-- Allow Sparkle's installer launcher XPC services to be looked up from sandbox -->
-	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
-	<array>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spks</string>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER)-spki</string>
-	</array>
 </dict>
 </plist>

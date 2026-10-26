@@ -42,6 +42,25 @@ final class ProvidersSettingsViewModelTests: XCTestCase {
     super.tearDown()
   }
 
+  func testCatalogAndRoutingRejectHostedProvider() throws {
+    try LLMProviderRoutingStore.save(.init(primary: .local))
+    let viewModel = ProvidersSettingsViewModel()
+    viewModel.loadRouting()
+
+    XCTAssertEqual(
+      Set(viewModel.routingProviders.map(\.id)),
+      Set([LLMProviderID.gemini, .chatGPT, .claude, .openAICompatible, .local])
+    )
+    viewModel.beginProviderSetup(.dayflow, role: .primary)
+    viewModel.editProviderConfiguration(.dayflow)
+    XCTAssertNil(viewModel.setupModalProvider)
+    XCTAssertFalse(viewModel.isProviderConfigured(.dayflow))
+    XCTAssertFalse(viewModel.handleProviderSetupCompletion(.dayflow))
+    XCTAssertFalse(viewModel.assignPrimaryProvider(.dayflow, requiresReadinessCheck: false))
+    XCTAssertFalse(viewModel.assignSecondaryProvider(.dayflow, requiresReadinessCheck: false))
+    XCTAssertEqual(viewModel.routing, .init(primary: .local))
+  }
+
   func testProviderSetupCompletionRefreshesLocalModelSettingsFromDefaults() {
     UserDefaults.standard.set(LocalEngine.ollama.rawValue, forKey: "llmLocalEngine")
     UserDefaults.standard.set("http://localhost:11434", forKey: "llmLocalBaseURL")

@@ -21,6 +21,7 @@ final class NotificationService: NSObject, ObservableObject {
   static let shared = NotificationService()
 
   private let center = UNUserNotificationCenter.current()
+  nonisolated private static let targetNotificationPrefix = "target.deviation."
 
   @Published private(set) var permissionGranted: Bool = false
 
@@ -36,9 +37,23 @@ final class NotificationService: NSObject, ObservableObject {
 
     // Check current permission status
     Task {
+      await retireExcludedNotifications()
       await retireJournalNotifications()
       await checkPermissionStatus()
     }
+  }
+
+  private func retireExcludedNotifications() async {
+    let requests = await center.pendingNotificationRequests()
+    let delivered = await center.deliveredNotifications()
+    let shouldRetire: (String) -> Bool = { identifier in
+      identifier != "gettingStarted.firstCards"
+        && !identifier.hasPrefix(Self.targetNotificationPrefix)
+    }
+    center.removePendingNotificationRequests(
+      withIdentifiers: requests.map(\.identifier).filter(shouldRetire))
+    center.removeDeliveredNotifications(
+      withIdentifiers: delivered.map { $0.request.identifier }.filter(shouldRetire))
   }
 
   func clearSupportReplyNotification() {
@@ -115,6 +130,38 @@ final class NotificationService: NSObject, ObservableObject {
     }
   }
 
+  /// Sends a Target alert only when permission already exists; never prompts automatically.
+  /// The request is enqueued synchronously after the permission check, before awaiting delivery.
+  func notifyTargetDeviation(
+    identifier: String, body: String, shouldSend: () -> Bool = { true }
+  ) async throws -> Bool {
+    let status = await authorizationStatus()
+    guard Self.canScheduleNotifications(for: status), shouldSend() else { return false }
+
+    let content = UNMutableNotificationContent()
+    content.title = "Target 偏离提醒"
+    content.body = body
+    content.sound = .default
+    let request = UNNotificationRequest(
+      identifier: Self.targetNotificationPrefix + identifier, content: content, trigger: nil)
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      center.add(request) { error in
+        if let error {
+          continuation.resume(throwing: error)
+        } else {
+          continuation.resume()
+        }
+      }
+    }
+    return true
+  }
+
+  func sendTargetTestNotification() async throws -> Bool {
+    try await notifyTargetDeviation(
+      identifier: "test.\(UUID().uuidString)",
+      body: "这是一条测试通知。偏离当前目标时，Target 会在这里提醒你。点击可打开 Target。")
+  }
+
   /// Request notification permission from the user
   @discardableResult
   func requestPermission() async -> Bool {
@@ -135,9 +182,7 @@ final class NotificationService: NSObject, ObservableObject {
   func authorizationStatus() async -> UNAuthorizationStatus {
     let settings = await center.notificationSettings()
     let authorizationStatus = settings.authorizationStatus
-    await MainActor.run {
-      self.permissionGranted = Self.canScheduleNotifications(for: authorizationStatus)
-    }
+    permissionGranted = Self.canScheduleNotifications(for: authorizationStatus)
     return authorizationStatus
   }
 
@@ -405,68 +450,19 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
     let identifier = response.notification.request.identifier
-    let day = response.notification.request.content.userInfo["day"] as? String
-    print(
-      "[NotificationService] didReceive notification identifier=\(identifier) "
-        + "action=\(response.actionIdentifier) day=\(day ?? "nil")"
-    )
-
-    let isDailyRecapNotification = identifier.hasPrefix("daily.")
-    let isWeeklyUnlockNotification = identifier.hasPrefix("weekly.")
-
-    let isSupportNotification = identifier.hasPrefix("support.")
-    let isFlowNotification = identifier == "flow.waitlist.reply"
-    let isGettingStartedNotification = identifier.hasPrefix("gettingStarted.")
-    guard
-      isDailyRecapNotification || isWeeklyUnlockNotification || isSupportNotification
-        || isFlowNotification || isGettingStartedNotification
+    let isTarget = identifier.hasPrefix(Self.targetNotificationPrefix)
+    guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+      isTarget || identifier == "gettingStarted.firstCards"
     else {
       completionHandler()
       return
     }
 
     Task { @MainActor in
-      if isGettingStartedNotification {
-        AnalyticsService.shared.capture("getting_started_first_cards_notification_clicked")
-        AppDelegate.pendingNotificationNavigationDestination = .timeline
-        activateAppForNotificationTap()
-      } else if isFlowNotification {
-        AppDelegate.pendingNotificationNavigationDestination = .flow
-        activateAppForNotificationTap()
-      } else if isSupportNotification {
-        AppDelegate.pendingNotificationNavigationDestination = .support
-        activateAppForNotificationTap()
-      } else if isDailyRecapNotification {
-        AppDelegate.pendingNotificationNavigationDestination = .daily(day: day)
-
-        if let day, !day.isEmpty {
-          AnalyticsService.shared.capture(
-            "daily_auto_generation_notification_clicked",
-            [
-              "target_day": day
-            ])
-          print("[NotificationService] didReceive daily notification navigation target_day=\(day)")
-        } else {
-          AnalyticsService.shared.capture(
-            "daily_auto_generation_notification_clicked",
-            [
-              "target_day": "unknown"
-            ])
-          print("[NotificationService] didReceive daily notification navigation target_day=unknown")
-        }
-
-        activateAppForNotificationTap()
-      } else {
-        AppDelegate.pendingNotificationNavigationDestination = .weekly
-        activateAppForNotificationTap()
-        print(
-          "[NotificationService] didReceive weekly unlock notification handled "
-            + "identifier=\(identifier)"
-        )
-      }
+      AppDelegate.pendingNotificationNavigationDestination = isTarget ? .target : .timeline
+      activateAppForNotificationTap()
+      completionHandler()
     }
-
-    completionHandler()
   }
 
   /// Called when notification fires while app is in foreground
@@ -475,34 +471,7 @@ extension NotificationService: UNUserNotificationCenterDelegate {
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    let identifier = notification.request.identifier
-    let day = notification.request.content.userInfo["day"] as? String
-    print("[NotificationService] willPresent identifier=\(identifier) day=\(day ?? "nil")")
-
-    if identifier.hasPrefix("daily.") {
-      print("[NotificationService] willPresent options=banner,sound identifier=\(identifier)")
-      completionHandler([.banner, .sound])
-      return
-    }
-
-    if identifier.hasPrefix("support.") || identifier == "flow.waitlist.reply" {
-      completionHandler([.banner, .sound])
-      return
-    }
-
-    if identifier.hasPrefix("weekly.") {
-      print("[NotificationService] willPresent options=banner,sound identifier=\(identifier)")
-      completionHandler([.banner, .sound])
-      return
-    }
-
-    // Someone already looking at Dayflow sees the cards arrive; no banner needed.
-    if identifier.hasPrefix("gettingStarted.") {
-      completionHandler([])
-      return
-    }
-
-    print("[NotificationService] willPresent: unknown notification identifier, skipping")
-    completionHandler([])
+    let isTarget = notification.request.identifier.hasPrefix(Self.targetNotificationPrefix)
+    completionHandler(isTarget ? [.banner, .sound] : [])
   }
 }

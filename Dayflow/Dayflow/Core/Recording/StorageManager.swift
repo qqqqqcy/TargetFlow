@@ -198,11 +198,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
   var backupTimer: DispatchSourceTimer?
 
   init() {
-    UserDefaultsMigrator.migrateIfNeeded()
-    StoragePathMigrator.migrateIfNeeded()
-
-    let appSupport = fileMgr.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    let baseDir = appSupport.appendingPathComponent("Dayflow", isDirectory: true)
+    let baseDir = AppStoragePaths.applicationSupport
     let recordingsDir = baseDir.appendingPathComponent("recordings", isDirectory: true)
     let backupDir = baseDir.appendingPathComponent("backups", isDirectory: true)
 
@@ -515,6 +511,11 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
               CREATE INDEX IF NOT EXISTS idx_timeline_cards_day ON timeline_cards(day);
               CREATE INDEX IF NOT EXISTS idx_timeline_cards_start_ts ON timeline_cards(start_ts);
               CREATE INDEX IF NOT EXISTS idx_timeline_cards_time_range ON timeline_cards(start_ts, end_ts);
+
+              CREATE TABLE IF NOT EXISTS target_assessments (
+                  card_id INTEGER PRIMARY KEY REFERENCES timeline_cards(id) ON DELETE CASCADE,
+                  assessment_json TEXT NOT NULL
+              );
 
               -- Timeline review ratings: stores time-based review segments
               CREATE TABLE IF NOT EXISTS timeline_review_ratings (

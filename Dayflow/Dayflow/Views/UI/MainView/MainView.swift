@@ -19,11 +19,6 @@ struct MainView: View {
   @Environment(\.dayflowTheme) var theme
   @Environment(\.stylePreviewAfter) var stylePreviewAfter
   @State var selectedIcon: SidebarIcon = .timeline
-  // Flow's web view outlives a switch to another tab by `flowKeepAlive`, so a
-  // quick look at the timeline doesn't reload Flow or cut off a voice call.
-  @State var flowAlive = false
-  @State var flowTeardown: Task<Void, Never>?
-  static let flowKeepAlive: Duration = .seconds(5 * 60)
   @State var selectedDate = timelineDisplayDate(from: Date())
   @State var cachedTimelineWeekRange: TimelineWeekRange = TimelineWeekRange.containing(
     timelineDisplayDate(from: Date()))
@@ -42,7 +37,6 @@ struct MainView: View {
   @State var refreshActivitiesTrigger: Int = 0
   @ObservedObject var inactivity = InactivityMonitor.shared
   @ObservedObject var pauseManager = PauseManager.shared
-  @ObservedObject var dailyBrief = DailyBriefStore.shared
 
   // Animation states for orchestrated entrance - Emil Kowalski principles
   @State var logoScale: CGFloat = 0.8
@@ -96,9 +90,6 @@ struct MainView: View {
   @State var didDismissScreenRecordingPermissionNoticeThisSession = false
   /// macOS says access is granted, but the recorder gave up after captures kept failing.
   @State var screenCaptureIsFailing = false
-  @State var pendingGoalPromptDay: String?
-  @Binding var goalFlowPresentation: DayGoalFlowPresentation?
-
   let rateSummaryFooterHeight: CGFloat = 28
   let weeklyHoursFadeDistance: CGFloat = 12
   var rateSummaryFooterInset: CGFloat {
@@ -110,28 +101,10 @@ struct MainView: View {
     return formatter
   }()
 
-  init(goalFlowPresentation: Binding<DayGoalFlowPresentation?> = .constant(nil)) {
-    _goalFlowPresentation = goalFlowPresentation
-  }
-
   var body: some View {
     mainLayout
-      .onReceive(NotificationCenter.default.publisher(for: .navigateToSupport)) { _ in
-        selectedIcon = .bug
-      }
-      .onReceive(NotificationCenter.default.publisher(for: .navigateToDaily)) { notification in
-        let wasAlreadyOnDaily = selectedIcon == .daily
-        if let dayString = notification.userInfo?["day"] as? String,
-          let dayDate = DateFormatter.yyyyMMdd.date(from: dayString)
-        {
-          setSelectedDate(dayDate)
-        }
-        if wasAlreadyOnDaily {
-          consumePendingDailyRecapOpenIfNeeded(source: "daily_notification_navigation")
-        }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-          selectedIcon = .daily
-        }
+      .onReceive(NotificationCenter.default.publisher(for: .navigateToTarget)) { _ in
+        selectedIcon = .target
       }
       .onReceive(NotificationCenter.default.publisher(for: .navigateToTimeline)) { _ in
         selectedActivity = nil
@@ -140,26 +113,5 @@ struct MainView: View {
           selectedIcon = .timeline
         }
       }
-      .onReceive(NotificationCenter.default.publisher(for: .navigateToFlow)) { _ in
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-          selectedIcon = .flow
-        }
-      }
-  }
-
-  @discardableResult
-  func consumePendingDailyRecapOpenIfNeeded(source: String) -> Bool {
-    guard let pendingContext = NotificationBadgeManager.shared.consumePendingDailyRecapContext()
-    else {
-      return false
-    }
-
-    AnalyticsService.shared.capture(
-      "daily_opened_after_recap_ready",
-      [
-        "target_day": pendingContext.targetDay ?? "unknown",
-        "source": source,
-      ])
-    return true
   }
 }

@@ -18,6 +18,7 @@ final class StorageSettingsViewModel: ObservableObject {
   @Published var pendingLimit: PendingLimit?
   @Published var captureHeight: Int = ScreenshotConfig.captureHeight
   @Published var captureInterval: TimeInterval = ScreenshotConfig.interval
+  @Published var analysisInterval: TimeInterval = AnalysisPreferences.interval
   /// Measured from the last hour of finalized segments; nil until enough has been recorded.
   @Published var observedBytesPerHour: Int64?
 
@@ -112,6 +113,15 @@ final class StorageSettingsViewModel: ObservableObject {
     ScreenshotConfig.interval = interval
     captureInterval = interval
     AnalyticsService.shared.capture("capture_interval_changed", ["interval_seconds": interval])
+  }
+
+  func setAnalysisInterval(_ interval: TimeInterval) {
+    guard AnalysisPreferences.intervalOptions.contains(interval), interval != analysisInterval else {
+      return
+    }
+    AnalysisPreferences.interval = interval
+    analysisInterval = interval
+    AnalysisManager.shared.triggerAnalysisNow()
   }
 
   /// "≈ 10 MB per hour · ≈ 2.5 GB per month at 8 h/day"

@@ -12,6 +12,7 @@ build_tmp/
 build_universal/
 .claude/
 scripts/release.env
+scripts/local-signing-identity
 Dayflow/Config/LocalSecrets.xcconfig
 signed/
 

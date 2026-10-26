@@ -6,8 +6,8 @@
 //
 
 import AppKit
+import Combine
 import CoreGraphics
-import ScreenCaptureKit
 import SwiftUI
 
 private struct LeftColumnSizeKey: PreferenceKey {
@@ -25,6 +25,8 @@ struct ScreenRecordingPermissionView: View {
   @State private var isCheckingPermission = false
   @State private var initiatedFlow = false
   @State private var leftColumnSize: CGSize = .zero
+  @State private var restartError: String?
+  private let permissionPoll = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
   enum PermissionState {
     case notRequested
@@ -43,27 +45,22 @@ struct ScreenRecordingPermissionView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .onPreferenceChange(LeftColumnSizeKey.self) { leftColumnSize = $0 }
     }
-    .onAppear {
-      // If already granted, mark as granted; otherwise start in notRequested
-      if CGPreflightScreenCaptureAccess() {
-        permissionState = .granted
-        Task { @MainActor in AppDelegate.allowTermination = false }
-      } else {
-        permissionState = .notRequested
-        Task { @MainActor in AppDelegate.permitTermination(reason: "screen_permission_step") }
-      }
-    }
-    // Re-check when app becomes active again (e.g., returning from System Settings)
+    .onAppear(perform: refreshPermission)
     .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification))
-    { _ in
-      // Only transition to granted here; avoid flipping notChecked to denied automatically
-      if CGPreflightScreenCaptureAccess() {
-        permissionState = .granted
-        Task { @MainActor in AppDelegate.allowTermination = false }
-      }
+    { _ in refreshPermission() }
+    .onReceive(permissionPoll) { _ in
+      if NSApp.isActive { refreshPermission() }
     }
     .onDisappear {
-      Task { @MainActor in AppDelegate.allowTermination = false }
+      AppDelegate.allowTermination = false
+    }
+    .alert("无法重新打开 Target Flow", isPresented: Binding(
+      get: { restartError != nil },
+      set: { if !$0 { restartError = nil } }
+    )) {
+      Button("好", role: .cancel) { restartError = nil }
+    } message: {
+      Text(restartError ?? "请退出应用后，从访达重新打开。")
     }
   }
 
@@ -72,12 +69,7 @@ struct ScreenRecordingPermissionView: View {
   private func layoutMetrics(size: CGSize) -> (
     leading: CGFloat, gap: CGFloat, trailing: CGFloat, imageWidth: CGFloat, imageHeight: CGFloat
   ) {
-    let aspect: CGFloat = {
-      if let img = NSImage(named: "ScreenRecordingPermissions"), img.size.height > 0 {
-        return img.size.width / img.size.height
-      }
-      return 4.0 / 3.0
-    }()
+    let aspect: CGFloat = 4.0 / 3.0
     let leftW = leftColumnSize.width > 0 ? leftColumnSize.width : min(374, size.width * 0.4)
     var imgW = max(0, size.width * 0.70 - leftW)
     var imgH = imgW / aspect
@@ -106,7 +98,7 @@ struct ScreenRecordingPermissionView: View {
           .font(.custom("InstrumentSerif-Regular", size: 28))
           .foregroundColor(.black)
 
-        Text("Dayflow can help understand your day.")
+        Text("Target Flow 需要屏幕录制权限来生成时间线。")
           .font(.custom("Figtree-Medium", size: 14))
           .foregroundColor(Color(hex: "5B5B5B"))
           .fixedSize(horizontal: false, vertical: true)
@@ -117,19 +109,19 @@ struct ScreenRecordingPermissionView: View {
             Image(systemName: "shield.fill")
               .font(.system(size: 14))
               .foregroundColor(privacyTextColor)
-            Text("Dayflow is built to be private and secure.")
+            Text("Target Flow 将录制内容保存在本机。")
               .font(.custom("Figtree-Bold", size: 14))
               .foregroundColor(privacyTextColor)
               .fixedSize(horizontal: false, vertical: true)
           }
 
           Text(
-            "Dayflow stores all recordings locally on your Mac, and can process everything privately on your device using local AI models."
+            "使用本地 AI 时，分析可在设备上进行；选择云端提供商时，分析所需的数据会发送到该提供商。"
           )
           .font(.custom("Figtree-Medium", size: 14))
           .foregroundColor(privacyTextColor)
 
-          Text("You are always in control — you can pause or turn off Dayflow whenever you like.")
+          Text("你可以随时暂停或关闭 Target Flow。")
             .font(.custom("Figtree-Medium", size: 14))
             .foregroundColor(privacyTextColor)
         }
@@ -154,7 +146,7 @@ struct ScreenRecordingPermissionView: View {
               .font(.custom("Figtree", size: 14))
               .foregroundColor(.green)
           case .needsAction:
-            Text("Turn on Screen Recording for Dayflow, then quit and reopen the app to finish.")
+            Text("尚未检测到录屏权限。请在系统设置中开启；如果开关已开启，点击‘退出并重新打开’让授权生效。")
               .font(.custom("Figtree", size: 14))
               .foregroundColor(.orange)
           }
@@ -227,22 +219,25 @@ struct ScreenRecordingPermissionView: View {
         }
       )
 
-      // Right side - image
-      if let image = NSImage(named: "ScreenRecordingPermissions") {
-        Image(nsImage: image)
-          .resizable()
-          .aspectRatio(contentMode: .fit)
-          .frame(width: metrics.imageWidth, height: metrics.imageHeight)
-          .background(Color(hex: "FCFCFC"))
-          .cornerRadius(8)
-          .overlay(
-            RoundedRectangle(cornerRadius: 8)
-              .stroke(Color(hex: "F0F0F0"), lineWidth: 1)
-          )
-          .shadow(
-            color: Color(red: 0.725, green: 0.608, blue: 0.482).opacity(0.25), radius: 3, x: 0,
-            y: 2)
+      VStack(alignment: .leading, spacing: 18) {
+        Label("屏幕与系统音频录制", systemImage: "display")
+          .font(.title3.bold())
+        Text("系统设置 → 隐私与安全性 → 屏幕与系统音频录制")
+        Text("在列表中找到 Target Flow（或 TargetFlow），开启右侧开关。这里不需要辅助功能权限。")
+        Text("如果没有找到，点击列表下方的 +，选择当前应用：")
+        Text(Bundle.main.bundleURL.path)
+          .font(.system(size: 12, design: .monospaced))
+          .textSelection(.enabled)
+        Button("在访达中显示 Target Flow") {
+          NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
+        }
+        Text("授权后返回此窗口；若系统要求重新启动，请退出后重新打开应用。")
       }
+      .foregroundColor(brownAccent)
+      .padding(24)
+      .frame(width: max(300, metrics.imageWidth), alignment: .leading)
+      .background(Color.white.opacity(0.7))
+      .cornerRadius(12)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     .padding(.leading, metrics.leading)
@@ -266,6 +261,7 @@ struct ScreenRecordingPermissionView: View {
       )
       DayflowSurfaceButton(
         action: {
+          refreshPermission()
           if permissionState == .granted { onNext() }
         },
         content: {
@@ -293,41 +289,36 @@ struct ScreenRecordingPermissionView: View {
     .padding(.bottom, 40)
   }
 
+  private func refreshPermission() {
+    let granted = ScreenRecordingPermissionNotice.isGranted
+    // Revocation must also disable Next, including after a previously successful check.
+    permissionState = granted ? .granted : (initiatedFlow ? .needsAction : .notRequested)
+    AppDelegate.allowTermination = !granted
+  }
+
   private func requestPermission() {
     guard !isCheckingPermission else { return }
     isCheckingPermission = true
+    defer { isCheckingPermission = false }
     initiatedFlow = true
-
-    // This will prompt and register the app with TCC; may return false
     _ = CGRequestScreenCaptureAccess()
-    if CGPreflightScreenCaptureAccess() {
-      permissionState = .granted
-      AnalyticsService.shared.capture("screen_permission_granted")
-      Task { @MainActor in AppDelegate.allowTermination = false }
-    } else {
-      permissionState = .needsAction
-      AnalyticsService.shared.capture("screen_permission_denied")
-      Task { @MainActor in AppDelegate.permitTermination(reason: "screen_permission_step") }
-    }
-    isCheckingPermission = false
+    refreshPermission()
+    if permissionState != .granted { openSystemSettings() }
   }
 
   private func openSystemSettings() {
     initiatedFlow = true
-    Task { @MainActor in AppDelegate.permitTermination(reason: "screen_permission_step") }
-    if let url = URL(
-      string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-    {
-      _ = NSWorkspace.shared.open(url)
-    }
-    // Move to needsAction so we show Quit & Reopen guidance
-    if permissionState != .granted { permissionState = .needsAction }
+    refreshPermission()
+    ScreenRecordingPermissionNotice.openSystemSettings()
   }
 
   private func quitAndReopen() {
-    Task { @MainActor in
+    do {
+      try AppRelauncher.schedule()
       AppDelegate.permitTermination(reason: "screen_permission_quit_and_reopen")
       NSApp.terminate(nil)
+    } catch {
+      restartError = "无法启动重启助手：\(error.localizedDescription)。请退出应用后，从访达重新打开。"
     }
   }
 }

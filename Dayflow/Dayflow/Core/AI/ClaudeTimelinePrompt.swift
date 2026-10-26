@@ -58,7 +58,8 @@ enum ClaudeTimelinePrompt {
     CARD BOUNDARIES:
     - Minimum card length: 10 minutes
     - Maximum card length: 60 minutes
-    - The 10-minute minimum has exactly one exception: the LAST card may be shorter when a clearly different activity started in the final minutes and is still going in the last screenshot (the next batch will extend it). Never output a short card anywhere else, and never output two cards under 10 minutes. The new activity must fill at least the last 3 minutes; a single different screen at the very end is a detail line of the current card.
+    - If the entire supplied span (including connected previous cards) is under 10 minutes, return one provisional card covering exactly that span. Do not invent extra time to reach the minimum; later batches will extend it.
+    - Otherwise, the 10-minute minimum has one exception: the LAST card may be shorter when a clearly different activity started in the final minutes and is still going in the last screenshot (the next batch will extend it). Never output a short card anywhere else, and never output two cards under 10 minutes. The new activity must fill at least the last 3 minutes; a single different screen at the very end is a detail line of the current card.
     - If the first minutes of the new window continue the last previous card's activity, those minutes extend that card instead of opening the new one.
     - When the new window does not contain 10 minutes of a second activity, it belongs in one card: extend the last previous card when its activity continues, otherwise write one card for the window and record the shorter stretches as detail lines and distractions.
     - A window made of many unrelated short visits is ONE card, titled as scattered (see TITLE GUIDELINES). Its category is Distraction when most minutes were feeds, videos, shopping or aimless tab-hopping, otherwise the category that holds the most minutes.

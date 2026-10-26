@@ -7,8 +7,6 @@ private let cachedDayFormatter: DateFormatter = {
   return formatter
 }()
 
-private let dailyGoalPromptHandledDayKey = "dayGoalPromptHandledTimelineDay"
-
 extension MainView {
   func startDayChangeTimer() {
     stopDayChangeTimer()
@@ -36,70 +34,6 @@ extension MainView {
           scrollToNowTick &+= 1
         }
       }
-    }
-  }
-
-  func requestDailyGoalPromptIfNeeded() {
-    // People who get the Daily brief see it instead of the goal pop-up.
-    guard !DailyBriefStore.shared.suppressesDailyGoalPrompt else {
-      pendingGoalPromptDay = nil
-      return
-    }
-    guard DayGoalPreferences.showDailyGoalPopups else {
-      pendingGoalPromptDay = nil
-      return
-    }
-
-    let today = timelineDisplayDate(from: Date())
-    let promptDay = cachedDayFormatter.string(from: today)
-
-    guard UserDefaults.standard.string(forKey: dailyGoalPromptHandledDayKey) != promptDay
-    else {
-      return
-    }
-    guard pendingGoalPromptDay != promptDay else { return }
-    guard goalFlowPresentation == nil else { return }
-
-    if StorageManager.shared.fetchDayGoalPlan(forDay: promptDay) != nil {
-      markDailyGoalPromptHandled(day: promptDay)
-      return
-    }
-
-    // New users: wait until Dayflow has real data (3 prior days of activity)
-    // before asking them to set targets. Not marked handled, so the prompt
-    // starts appearing the day the threshold is crossed.
-    let activeDays = StorageManager.shared.countDistinctTimelineDays(excludingDay: promptDay)
-    guard activeDays >= FeatureAccessRequirements.dayGoalRequiredActiveDays else {
-      return
-    }
-
-    // Prompt fatigue: if the last 5 answers were all skips, stop auto-prompting.
-    // Confirming a goal later (via "Set goals") breaks the streak and resumes.
-    let skipStreak = StorageManager.shared.consecutiveSkippedDayGoalCount(
-      before: promptDay,
-      limit: FeatureAccessRequirements.dayGoalMaxConsecutiveSkips
-    )
-    guard skipStreak < FeatureAccessRequirements.dayGoalMaxConsecutiveSkips else {
-      return
-    }
-
-    selectedActivity = nil
-    setSelectedDate(today)
-    setTimelineMode(.day)
-
-    if selectedIcon != .timeline {
-      withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-        selectedIcon = .timeline
-      }
-    }
-
-    pendingGoalPromptDay = promptDay
-  }
-
-  func markDailyGoalPromptHandled(day: String) {
-    UserDefaults.standard.set(day, forKey: dailyGoalPromptHandledDayKey)
-    if pendingGoalPromptDay == day {
-      pendingGoalPromptDay = nil
     }
   }
 

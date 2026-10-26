@@ -21,6 +21,8 @@ struct ActivityCard: View {
   @AppStorage(TimelapsePreferences.saveAllTimelapsesToDiskKey) private var saveAllTimelapsesToDisk =
     false
 
+  @ObservedObject private var targetStore = TargetStore.shared
+
   @State private var showCategoryPicker = false
   @State private var isEditingTitle = false
   @State private var draftTitle = ""
@@ -140,7 +142,7 @@ struct ActivityCard: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.gray.opacity(0.7))
               Text(
-                "Cards are generated about every 15 minutes. If Dayflow is on and no cards show up within 30 minutes, please report a bug."
+                "卡片会按设置中的生成间隔自动更新，AI 处理还需要一些时间。可在‘设置 → 存储空间’选择 1、5 或 15 分钟。"
               )
               .font(.custom("Figtree", size: 13))
               .foregroundColor(.gray.opacity(0.6))
@@ -282,6 +284,10 @@ struct ActivityCard: View {
           // Timelapse thumbnail (slideshow pipeline)
           timelapsePreviewView(for: activity)
         }
+      }
+
+      if let cardID = activity.recordId, let assessment = targetStore.assessments[cardID] {
+        TargetAssessmentView(assessment: assessment)
       }
 
       // Summary section (scrolls internally when constrained)

@@ -229,38 +229,7 @@ extension MainView {
   }
 
   private var timelineTrailingControls: some View {
-    HStack(spacing: 8) {
-      if dailyBrief.isFeatureEnabled {
-        dailyBriefButton
-      }
-      PausePillView()
-    }
-  }
-
-  /// Reopens today's Daily brief after it was closed. Only shown to people
-  /// who get the brief.
-  private var dailyBriefButton: some View {
-    Button(action: {
-      dailyBrief.present(source: "manual")
-    }) {
-      ZStack {
-        glassControlBackground()
-        Image(systemName: "sun.horizon")
-          .font(.system(size: 14, weight: .medium))
-          .foregroundColor(theme.controlText)
-      }
-      .frame(width: 36, height: 30)
-      .contentShape(Capsule(style: .continuous))
-    }
-    .buttonStyle(
-      DayflowPressScaleButtonStyle(
-        pressedScale: 0.985,
-        animation: .spring(response: 0.18, dampingFraction: 0.88)
-      )
-    )
-    .pointingHandCursorOnHover(reassertOnPressEnd: true)
-    .help("Open today's brief")
-    .accessibilityLabel("Open today's brief")
+    PausePillView()
   }
 
   private var timelineHeaderTrailingReservation: CGFloat {

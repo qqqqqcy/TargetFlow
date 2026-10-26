@@ -10,40 +10,30 @@ import SwiftUI
 
 struct SettingsView: View {
   private enum SettingsTab: String, CaseIterable, Identifiable {
-    case account
     case storage
     case privacy
     case providers
-    case aiTools
-    case data
-    case other
+    case target
 
     var id: String { rawValue }
 
     var title: String {
       switch self {
-      case .account: return String(localized: "Account")
       case .storage: return String(localized: "Storage")
       case .privacy: return String(localized: "Privacy")
       case .providers: return String(localized: "Providers")
-      case .aiTools: return String(localized: "MCP / CLI")
-      case .data: return String(localized: "Export")
-      case .other: return String(localized: "Other")
+      case .target: return "Target"
       }
     }
   }
 
-  @State private var selectedTab: SettingsTab = .account
+  @State private var selectedTab: SettingsTab = .storage
 
   @Namespace private var sidebarSelectionNamespace
-
-  @ObservedObject private var launchAtLoginManager = LaunchAtLoginManager.shared
 
   @StateObject private var storageViewModel = StorageSettingsViewModel()
   @StateObject private var privacyViewModel = RecordingPrivacySettingsViewModel()
   @StateObject private var providersViewModel = ProvidersSettingsViewModel()
-  @StateObject private var otherViewModel = OtherSettingsViewModel()
-  @StateObject private var agentAccessViewModel = AgentAccessViewModel()
 
   var body: some View {
     contentWithSheets
@@ -104,12 +94,8 @@ struct SettingsView: View {
         .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
     }
     .onAppear {
-      DayflowAuthManager.shared.loadStoredSessionIfNeeded()
       providersViewModel.handleOnAppear()
-      otherViewModel.refreshAnalyticsState()
       storageViewModel.refreshStorageIfNeeded(isStorageTab: selectedTab == .storage)
-      AnalyticsService.shared.capture("settings_opened")
-      launchAtLoginManager.refreshStatus()
     }
     .onChange(of: selectedTab) { _, newValue in
       if newValue == .storage {
@@ -122,12 +108,6 @@ struct SettingsView: View {
       guard selectedTab != .providers else { return }
       withAnimation(.easeOut(duration: 0.18)) {
         selectedTab = .providers
-      }
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .openAccountSettings)) { _ in
-      guard selectedTab != .account else { return }
-      withAnimation(.easeOut(duration: 0.18)) {
-        selectedTab = .account
       }
     }
   }
@@ -198,26 +178,9 @@ struct SettingsView: View {
 
   private var sidebarFooter: some View {
     let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-    return VStack(alignment: .leading, spacing: 8) {
-      Text("Dayflow v\(version)")
-        .font(.custom("Figtree", size: 11))
-        .foregroundColor(SettingsStyle.meta)
-
-      Button {
-        NotificationCenter.default.post(name: .showWhatsNew, object: nil)
-      } label: {
-        HStack(spacing: 4) {
-          Text("Release notes")
-            .font(.custom("Figtree", size: 11))
-            .fontWeight(.semibold)
-          Image(systemName: "arrow.up.right")
-            .font(.system(size: 9, weight: .semibold))
-        }
-        .foregroundColor(SettingsStyle.ink)
-      }
-      .buttonStyle(.plain)
-      .pointingHandCursor()
-    }
+    return Text("Target Flow v\(version)")
+      .font(.custom("Figtree", size: 11))
+      .foregroundColor(SettingsStyle.meta)
   }
 
   private func sidebarButton(for tab: SettingsTab) -> some View {
@@ -253,20 +216,14 @@ struct SettingsView: View {
     // actually exist (the sidebar is vertical, not left/right tabs).
     Group {
       switch selectedTab {
-      case .account:
-        SettingsAccountSection()
       case .storage:
         SettingsStorageTabView(viewModel: storageViewModel)
       case .privacy:
         SettingsRecordingPrivacyTabView(viewModel: privacyViewModel)
       case .providers:
         SettingsProvidersTabView(viewModel: providersViewModel)
-      case .aiTools:
-        SettingsAgentAccessTabView(viewModel: agentAccessViewModel)
-      case .data:
-        SettingsDataTabView(viewModel: otherViewModel)
-      case .other:
-        SettingsOtherTabView(viewModel: otherViewModel, launchAtLoginManager: launchAtLoginManager)
+      case .target:
+        SettingsTargetTabView()
       }
     }
     .id(selectedTab)
@@ -283,7 +240,6 @@ private struct ProviderSetupWrapper: Identifiable {
 struct SettingsView_Previews: PreviewProvider {
   static var previews: some View {
     SettingsView()
-      .environmentObject(UpdaterManager.shared)
       .frame(width: 1400, height: 860)
   }
 }

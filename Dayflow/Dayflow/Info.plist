@@ -10,10 +10,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>teleportlabs.com.Dayflow</string>
+			<string>local.targetflow.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>dayflow</string>
+				<string>targetflow</string>
 			</array>
 		</dict>
 	</array>
@@ -21,28 +21,8 @@
 	<string>139</string>
 	<key>DayflowBackendURL</key>
 	<string>$(DAYFLOW_BACKEND_URL)</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>Dayflow uses Automation to focus or reopen your agent sessions in the terminal.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Dayflow listens while you talk to Flow about your plan. Audio is only used for that conversation.</string>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>Dayflow uses screen access to create your timeline. Recordings stay on your Mac and you can pause or delete them anytime.</string>
-	<key>PHPostHogApiKey</key>
-	<string>$(POSTHOG_API_KEY)</string>
-	<key>SUAllowsAutomaticUpdates</key>
-	<true/>
-	<key>SUAutomaticallyUpdate</key>
-	<true/>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUEnableInstallerLauncherService</key>
-	<true/>
-	<key>SUFeedURL</key>
-	<string>https://dayflow.so/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>lf33Kn/Gx26j9zfGtsNNc6Lk2QTBHyXkFxxwnsXmdYA=</string>
-	<key>SUScheduledCheckInterval</key>
-	<integer>3600</integer>
+	<string>Target Flow uses screen access to create your timeline. Recordings stay on your Mac and you can pause or delete them anytime.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>InstrumentSerif-Regular.ttf</string>
@@ -52,5 +32,9 @@
 		<string>Nunito-VariableFont_wght.ttf</string>
 		<string>Nunito-Italic-VariableFont_wght.ttf</string>
 	</array>
+	<key>CFBundleDisplayName</key>
+	<string>Target Flow</string>
+	<key>CFBundleName</key>
+	<string>Target Flow</string>
 </dict>
 </plist>

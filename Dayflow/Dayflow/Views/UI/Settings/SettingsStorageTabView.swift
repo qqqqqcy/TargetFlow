@@ -7,6 +7,7 @@ struct SettingsStorageTabView: View {
     VStack(alignment: .leading, spacing: SettingsStyle.sectionSpacing) {
       recordingStatusSection
       recordingQualitySection
+      timelineGenerationSection
       diskUsageSection
     }
     .alert(isPresented: $viewModel.showLimitConfirmation) {
@@ -128,6 +129,27 @@ struct SettingsStorageTabView: View {
           }
         }
         .padding(.top, 18)
+      }
+    }
+  }
+
+  private var timelineGenerationSection: some View {
+    SettingsSection(
+      title: "时间线卡片",
+      subtitle: "间隔越短，更新越及时，AI 请求也越频繁。"
+    ) {
+      SettingsRow(
+        label: "卡片生成间隔",
+        subtitle: "修改后自动生效；实际出卡还需等待截屏和 AI 处理，同一活动可能合并到已有卡片。",
+        showsDivider: false
+      ) {
+        settingsMenu(
+          selected: AnalysisPreferences.label(for: viewModel.analysisInterval),
+          options: AnalysisPreferences.intervalOptions.map {
+            ($0, AnalysisPreferences.label(for: $0))
+          },
+          onSelect: viewModel.setAnalysisInterval
+        )
       }
     }
   }

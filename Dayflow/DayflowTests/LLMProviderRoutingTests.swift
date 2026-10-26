@@ -238,7 +238,7 @@ final class LLMProviderRoutingTests: XCTestCase {
 
     let routing = try LLMProviderRoutingStore.load(from: defaults)
 
-    XCTAssertEqual(routing, LLMProviderRouting(primary: .dayflow, secondary: .claude))
+    XCTAssertEqual(routing, LLMProviderRouting(primary: .gemini, secondary: .claude))
     XCTAssertEqual(CodexPromptPreferences.load(from: defaults), sharedOverrides)
     XCTAssertEqual(ClaudePromptPreferences.load(from: defaults), sharedOverrides)
     XCTAssertEqual(DayflowEndpointPreferences.load(from: defaults), "https://example.com/api")
@@ -300,7 +300,7 @@ final class LLMProviderRoutingTests: XCTestCase {
 
     let routing = try LLMProviderRoutingStore.load(from: defaults)
 
-    XCTAssertEqual(routing, LLMProviderRouting(primary: .dayflow))
+    XCTAssertEqual(routing, LLMProviderRouting(primary: .gemini))
     XCTAssertEqual(
       CodexPromptPreferences.load(from: defaults),
       existingChatGPTOverrides
@@ -495,6 +495,67 @@ final class LLMProviderRoutingTests: XCTestCase {
     }
   }
 
+  func testSavedHostedRoutesAreNormalizedAndPersisted() throws {
+    let cases: [(LLMProviderRouting, LLMProviderRouting)] = [
+      (.init(primary: .dayflow), .init(primary: .gemini)),
+      (.init(primary: .dayflow, secondary: .claude), .init(primary: .gemini, secondary: .claude)),
+      (.init(primary: .dayflow, secondary: .gemini), .init(primary: .gemini)),
+      (.init(primary: .local, secondary: .dayflow), .init(primary: .local)),
+    ]
+    for (stored, expected) in cases {
+      let defaults = try makeRecordingDefaults()
+      defaults.set(try JSONEncoder().encode(stored), forKey: LLMProviderRoutingStore.storageKey)
+      defaults.writtenKeys = []
+
+      XCTAssertEqual(try LLMProviderRoutingStore.load(from: defaults), expected)
+      XCTAssertEqual(
+        try JSONDecoder().decode(
+          LLMProviderRouting.self,
+          from: XCTUnwrap(defaults.data(forKey: LLMProviderRoutingStore.storageKey))),
+        expected
+      )
+      XCTAssertEqual(defaults.writtenKeys, [LLMProviderRoutingStore.storageKey])
+      defaults.writtenKeys = []
+      XCTAssertEqual(try LLMProviderRoutingStore.load(from: defaults), expected)
+      XCTAssertTrue(defaults.writtenKeys.isEmpty)
+    }
+  }
+
+  func testHostedNormalizationWriteFailureThrowsWithoutReturningHostedRoute() throws {
+    let defaults = try makeRecordingDefaults()
+    let stored = try JSONEncoder().encode(LLMProviderRouting(primary: .dayflow))
+    defaults.set(stored, forKey: LLMProviderRoutingStore.storageKey)
+    defaults.ignoredWriteKeys = [LLMProviderRoutingStore.storageKey]
+
+    XCTAssertThrowsError(try LLMProviderRoutingStore.load(from: defaults)) { error in
+      XCTAssertEqual(error as? LLMProviderRoutingStoreError, .writeVerificationFailed)
+    }
+    XCTAssertEqual(defaults.data(forKey: LLMProviderRoutingStore.storageKey), stored)
+  }
+
+  func testLegacyHostedBackupAndExplicitHostedSaveAreNormalized() throws {
+    let defaults = try makeDefaults()
+    defaults.set("local", forKey: LegacyLLMProviderMigration.Key.selectedProvider)
+    defaults.set("dayflow", forKey: LegacyLLMProviderMigration.Key.backupProvider)
+    XCTAssertEqual(try LLMProviderRoutingStore.load(from: defaults), .init(primary: .local))
+
+    try LLMProviderRoutingStore.save(.init(primary: .dayflow, secondary: .dayflow), to: defaults)
+    XCTAssertEqual(try LLMProviderRoutingStore.load(from: defaults), .init(primary: .gemini))
+    XCTAssertFalse(LLMProviderSetupPreferences.isComplete(.gemini, in: defaults))
+  }
+
+  func testEverySupportedProviderPairSurvivesNormalization() throws {
+    let providers: [LLMProviderID] = [.gemini, .chatGPT, .claude, .openAICompatible, .local]
+    let defaults = try makeDefaults()
+    for primary in providers {
+      for secondary in providers {
+        let route = LLMProviderRouting(primary: primary, secondary: secondary)
+        try LLMProviderRoutingStore.save(route, to: defaults)
+        XCTAssertEqual(try LLMProviderRoutingStore.load(from: defaults), route)
+      }
+    }
+  }
+
   private func makeDefaults() throws -> UserDefaults {
     let suiteName = "LLMProviderRoutingTests.\(UUID().uuidString)"
     suiteNames.append(suiteName)
@@ -515,6 +576,38 @@ final class LLMProviderRoutingTests: XCTestCase {
       try JSONEncoder().encode(providerType),
       forKey: LegacyLLMProviderMigration.Key.providerType
     )
+  }
+}
+
+final class OnboardingSetupMigrationTests: XCTestCase {
+  func testPersistedStepValuesAndPermissionBoundaryStayStable() {
+    XCTAssertEqual(OnboardingStep.allCases.map(\.rawValue), Array(0...7))
+    XCTAssertEqual(OnboardingStep.screen.rawValue, 5)
+    XCTAssertFalse(OnboardingStep.hasPassedScreenRecordingStep(rawValue: 5))
+    XCTAssertTrue(OnboardingStep.hasPassedScreenRecordingStep(rawValue: 6))
+    XCTAssertTrue(OnboardingStep.hasPassedScreenRecordingStep(rawValue: 7))
+  }
+
+  func testExcludedSavedStepsNormalizeWithoutSkippingProviderSetup() throws {
+    let suiteName = "OnboardingSetupMigrationTests.\(UUID().uuidString)"
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let expected: [OnboardingStep] = [
+      .llmSelection, .llmSelection, .llmSelection, .llmSelection,
+      .llmSetup, .screen, .screen, .screen,
+    ]
+    for rawValue in 0...7 {
+      defaults.set(6, forKey: OnboardingStepMigration.schemaVersionKey)
+      defaults.set(rawValue, forKey: "onboardingStep")
+      XCTAssertEqual(OnboardingStepMigration.restoredStep(defaults: defaults), expected[rawValue])
+      XCTAssertEqual(defaults.integer(forKey: "onboardingStep"), expected[rawValue].rawValue)
+      XCTAssertEqual(OnboardingStepMigration.restoredStep(defaults: defaults), expected[rawValue])
+    }
+
+    defaults.set("dayflow", forKey: "onboardingSelectedProviderID")
+    defaults.set(OnboardingStep.screen.rawValue, forKey: "onboardingStep")
+    XCTAssertEqual(OnboardingStepMigration.restoredStep(defaults: defaults), .llmSelection)
+    XCTAssertEqual(defaults.string(forKey: "onboardingSelectedProviderID"), "gemini")
   }
 }
 

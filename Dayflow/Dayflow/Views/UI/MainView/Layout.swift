@@ -24,15 +24,11 @@ extension MainView {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(Color.clear)
       .ignoresSafeArea()
-      .blur(radius: goalFlowPresentation == nil ? 0 : 10)
-      .allowsHitTesting(goalFlowPresentation == nil)
       // Hero animation overlay for video expansion (Emil Kowalski: shared element transitions)
       .overlay { overlayContent }
       .overlay(alignment: .bottomTrailing) { timelineFailureToastOverlayContent }
       .overlay(alignment: .bottomTrailing) { screenRecordingPermissionNoticeOverlayContent }
       .overlay { categoryEditorOverlay }
-      .overlay { dailyBriefOverlayContent }
-      .animation(.easeOut(duration: 0.22), value: dailyBrief.isPresented)
   }
 
   // Layer 2: sheet + lifecycle + notifications + state-change reactions.
@@ -58,9 +54,8 @@ extension MainView {
           InactivityMonitor.shared.markHandledIfPending()
         }
       }
-      .onChange(of: selectedIcon) { oldIcon, newIcon in
+      .onChange(of: selectedIcon) { _, newIcon in
         handleTabSelectionChange(newIcon)
-        keepFlowAlive(leaving: oldIcon, entering: newIcon)
       }
       .onChange(of: selectedDate) { _, newDate in
         handleSelectedDateChange(newDate)
@@ -79,11 +74,6 @@ extension MainView {
         if newIcon != .settings, inactivity.pendingReset {
           performIdleResetAndScroll()
           InactivityMonitor.shared.markHandledIfPending()
-        }
-      }
-      .onReceive(NotificationCenter.default.publisher(for: .navigateToWeekly)) { _ in
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-          selectedIcon = .weekly
         }
       }
       .onReceive(NotificationCenter.default.publisher(for: .showTimelineFailureToast)) {
@@ -177,9 +167,6 @@ extension MainView {
     startDayChangeTimer()
     loadWeeklyTrackedMinutes()
     updateCardsToReviewCount()
-    requestDailyGoalPromptIfNeeded()
-    dailyBrief.runIfNeeded(trigger: "launch")
-    presentDailyBriefIfNeeded(source: "timeline_open")
   }
 
   private func performMainLayoutOnDisappear() {
@@ -192,13 +179,6 @@ extension MainView {
   }
 
   private func handleTabSelectionChange(_ newIcon: SidebarIcon) {
-    // Clear tab-specific notification badges once the user visits the destination.
-    if newIcon == .daily {
-      if !consumePendingDailyRecapOpenIfNeeded(source: "daily_tab_selected") {
-        NotificationBadgeManager.shared.clearDailyBadge()
-      }
-    }
-
     let tabName = newIcon.analyticsTabName
     syncCurrentUIContext(selectedTab: newIcon)
 
@@ -225,13 +205,8 @@ extension MainView {
       }
       updateCardsToReviewCount()
       loadWeeklyTrackedMinutes()
-      presentDailyBriefIfNeeded(source: "timeline_open")
     } else {
       showTimelineReview = false
-      // The brief lives over the Timeline panel, so leaving the tab closes it.
-      if dailyBrief.isPresented {
-        dailyBrief.dismiss()
-      }
     }
   }
 
@@ -280,7 +255,6 @@ extension MainView {
   private func handleSelectedActivityIdChange() {
     dismissFeedbackModal(animated: false)
     guard let a = selectedActivity else { return }
-    GettingStarted.markCardOpened()
     let dur = a.endTime.timeIntervalSince(a.startTime)
     AnalyticsService.shared.capture(
       "activity_card_opened",
@@ -350,48 +324,12 @@ extension MainView {
 
     // Check if day changed while app was backgrounded
     handleMinuteTickForDayChange()
-    requestDailyGoalPromptIfNeeded()
     // Ensure timer is running
     if dayChangeTimer == nil {
       startDayChangeTimer()
     }
     // Refresh weekly hours in case activities were added
     loadWeeklyTrackedMinutes()
-    // A new day may have started while the app was in the background.
-    dailyBrief.loadToday()
-    dailyBrief.runIfNeeded(trigger: "app_active")
-  }
-
-  // MARK: - Daily brief
-
-  /// Pops the brief up when the Timeline is shown and today's brief hasn't
-  /// been seen yet. A brief that finishes while the user is already on the
-  /// Timeline doesn't pop up; the ready notice announces it instead.
-  func presentDailyBriefIfNeeded(source: String) {
-    guard selectedIcon == .timeline,
-      dailyBrief.shouldAutoPresent,
-      !dailyBrief.isPresented,
-      goalFlowPresentation == nil
-    else {
-      return
-    }
-    showTimelineReview = false
-    dailyBrief.present(source: source)
-  }
-
-  /// The brief covers the main panel only: the 80pt sidebar column and the
-  /// 15pt window padding stay visible, matching the "In-tab overlay" design.
-  @ViewBuilder
-  private var dailyBriefOverlayContent: some View {
-    if dailyBrief.isPresented, goalFlowPresentation == nil {
-      DailyBriefOverlay()
-        .padding(.leading, 80)
-        .padding([.top, .trailing, .bottom], 15)
-        // Match the main panel, which also ignores the title bar inset.
-        .ignoresSafeArea()
-        .transition(.opacity)
-        .zIndex(20)
-    }
   }
 
   private func handleTimelineFailureToastOpenSettings(_ payload: TimelineFailureToastPayload) {
@@ -401,8 +339,7 @@ extension MainView {
       selectedIcon = .settings
       timelineFailureToastPayload = nil
     }
-    let settingsTab: Notification.Name =
-      payload.destination == .account ? .openAccountSettings : .openProvidersSettings
+    let settingsTab: Notification.Name = .openProvidersSettings
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
       NotificationCenter.default.post(name: settingsTab, object: nil)
     }
@@ -483,8 +420,7 @@ private struct TimelineFailureToastView: View {
   @State private var didCopy = false
 
   private var actionTitle: String {
-    payload.destination == .account
-      ? String(localized: "Open Account") : String(localized: "Open Provider Settings")
+    String(localized: "Open Provider Settings")
   }
 
   var body: some View {
@@ -794,23 +730,5 @@ private struct ScreenRecordingPermissionNoticeView: View {
         .stroke(theme.popoverBorder, lineWidth: 1)
     )
     .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
-  }
-}
-
-extension MainView {
-  /// Keeps Flow loaded for `flowKeepAlive` after the user leaves its tab, then lets it go.
-  func keepFlowAlive(leaving oldIcon: SidebarIcon, entering newIcon: SidebarIcon) {
-    if newIcon == .flow {
-      flowTeardown?.cancel()
-      flowTeardown = nil
-      flowAlive = true
-    } else if oldIcon == .flow {
-      flowTeardown?.cancel()
-      flowTeardown = Task { @MainActor in
-        try? await Task.sleep(for: MainView.flowKeepAlive)
-        guard !Task.isCancelled, selectedIcon != .flow else { return }
-        flowAlive = false
-      }
-    }
   }
 }

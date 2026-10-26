@@ -4,208 +4,67 @@
 //
 
 import AppKit
-import Combine
-import ScreenCaptureKit
-import ServiceManagement
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
   enum PendingNotificationNavigationDestination: Equatable {
-    case daily(day: String?)
-    case weekly
-    case support
-    case flow
     case timeline
+    case target
   }
 
-  // Controls whether the app is allowed to terminate.
-  // Default is false so Cmd+Q/Dock/App menu quit will be cancelled
-  // and the app will continue running in the background.
-  static var allowTermination: Bool = false
+  static let notificationNavigationRequested = Notification.Name("notificationNavigationRequested")
+  static var pendingNotificationNavigationDestination: PendingNotificationNavigationDestination? {
+    didSet {
+      if pendingNotificationNavigationDestination != nil {
+        NotificationCenter.default.post(name: notificationNavigationRequested, object: nil)
+      }
+    }
+  }
 
-  /// Why the app is about to quit, sent with `app_terminated`.
-  /// Set together with `allowTermination` through `permitTermination(reason:)`.
-  static var terminationReason: String = "unknown"
+  // Closing or soft-quitting keeps recording available from the menu bar.
+  static var allowTermination = false
 
   static func permitTermination(reason: String) {
     allowTermination = true
-    terminationReason = reason
   }
 
-  // Remember how the previous run ended, so the next launch can tell a clean quit
-  // from a crash, force quit, or power loss, and how long the app was gone.
-  private static let lastRunCleanExitKey = "lastRunCleanExit"
-  private static let lastRunExitReasonKey = "lastRunExitReason"
-  private static let lastRunSeenAtKey = "lastRunSeenAt"
-
-  // Flag set when app is opened via notification tap - skips video intro
-  static var pendingNotificationNavigationDestination: PendingNotificationNavigationDestination? =
-    nil
   private var statusBar: StatusBarController!
   private var recorder: ScreenRecorder!
-  private var analyticsSub: AnyCancellable?
-  private var analyticsPreferenceObserver: NSObjectProtocol?
   private var powerObserver: NSObjectProtocol?
-  private let screenshotShortcutTracker = ScreenshotShortcutTracker.shared
   private var deepLinkRouter: AppDeepLinkRouter?
   private var pendingDeepLinkURLs: [URL] = []
-  private var heartbeatTimer: Timer?
-  private var appLaunchDate: Date?
-  private var foregroundStartTime: Date?
-  private var referralUsageStartedAt: Date?
-  private var analyticsConfigured = false
 
   override init() {
-    UserDefaultsMigrator.migrateIfNeeded()
-    // Before any window exists, so no SwiftUI text layer predates it.
+    // Install before SwiftUI creates any text layers.
     FlippedTextLayerWorkaround.install()
     super.init()
   }
 
   func applicationDidFinishLaunching(_ note: Notification) {
-    // Block termination by default; only specific flows enable it.
-    AppDelegate.allowTermination = false
+    Self.allowTermination = false
     applySavedDockIconPreference()
-    #if DEBUG
-      if #available(macOS 15.0, *) { FlowDebugRecorder.shared.install() }
-    #endif
-
-    // Configure crash reporting (Sentry) from shared telemetry preference.
-    SentryHelper.setEnabled(AnalyticsService.shared.isOptedIn)
-
-    // Configure analytics (prod only; default opt-in ON)
-    let info = Bundle.main.infoDictionary
-    let POSTHOG_API_KEY = info?["PHPostHogApiKey"] as? String ?? ""
-    let POSTHOG_HOST = info?["PHPostHogHost"] as? String ?? "https://us.i.posthog.com"
-    if !POSTHOG_API_KEY.isEmpty {
-      AnalyticsService.shared.start(apiKey: POSTHOG_API_KEY, host: POSTHOG_HOST)
-      analyticsConfigured = true
-      AgentUsageTelemetryQueue.drain()
-    }
-
-    // App opened (cold start)
-    var openedProps: [String: Any] = ["cold_start": true]
-    openedProps.merge(previousRunProperties()) { _, new in new }
-    AnalyticsService.shared.capture("app_opened", openedProps)
-    markRunStarted()
-
-    // Agent access: accept CLI/MCP writes if the user enabled edits, and fix
-    // any MCP client config whose recorded path went stale (app was moved).
-    AgentBridgeServer.shared.startIfEnabled()
-    AgentClientRegistration.repairStaleRegistrations()
-
-    // Start heartbeat for DAU tracking
-    appLaunchDate = Date()
-    startHeartbeat()
-    screenshotShortcutTracker.start()
-    updateCPUMonitoring(analyticsEnabled: AnalyticsService.shared.isOptedIn)
-
-    // App updated check
-    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""
-    let lastBuild = UserDefaults.standard.string(forKey: "lastRunBuild")
-    if let last = lastBuild, last != build {
-      let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-      AnalyticsService.shared.capture(
-        "app_updated", ["from_version": last, "to_version": "\(version) (\(build))"])
-      CLIAutoUpdater.updateProviderCLIs()
-    }
-    UserDefaults.standard.set(build, forKey: "lastRunBuild")
     statusBar = StatusBarController()
-    LaunchAtLoginManager.shared.bootstrapDefaultPreference()
-    deepLinkRouter = AppDeepLinkRouter()
 
-    // Check if we've passed the screen recording permission step
-    let onboardingStep = OnboardingStepMigration.migrateIfNeeded()
-    let didOnboard = UserDefaults.standard.bool(forKey: "didOnboard")
-
-    // People who onboarded before launch at login became the default get it turned on once.
-    // New users get it when they finish onboarding instead.
-    if didOnboard {
-      LaunchAtLoginManager.shared.enableByDefaultIfNeeded(source: "existing_user")
-    }
-
-    // Seed recording flag low, then create recorder so the first
-    // transition to true will reliably start capture.
+    // Create the recorder before restoring the preference so it sees the transition.
     AppState.shared.isRecording = false
     recorder = ScreenRecorder(autoStart: true)
+    AppState.shared.enablePersistence()
 
-    // Only attempt to start recording if we're past the screen step or fully onboarded.
-    if didOnboard || OnboardingStep.hasPassedScreenRecordingStep(rawValue: onboardingStep) {
-      // Onboarding complete - enable persistence and restore user preference
-      AppState.shared.enablePersistence()
-
-      // Try to start recording, but handle permission failures gracefully
-      Task { [weak self] in
-        guard let self else { return }
-        guard ScreenRecordingPermissionNotice.isGranted else {
-          await MainActor.run {
-            AppState.shared.setRecording(
-              false,
-              analyticsReason: "auto",
-              persistPreference: false
-            )
-          }
-          if didOnboard {
-            ScreenRecordingPermissionNotice.post(reason: "launch_preflight_missing")
-          }
-          self.flushPendingDeepLinks()
-          return
-        }
-
-        // Permission granted - restore saved preference or default to ON.
-        // No extra SCShareableContent probe here: every ScreenCaptureKit call makes
-        // macOS re-check the grant (issue #381), and the recorder's own start
-        // retries with backoff if capture really can't begin.
-        await MainActor.run {
-          let savedPref = AppState.shared.getSavedPreference()
-          AppState.shared.setRecording(savedPref ?? true, analyticsReason: "auto")
-        }
-        let finalState = await MainActor.run { AppState.shared.isRecording }
-        AnalyticsService.shared.capture(
-          "recording_toggled", ["enabled": finalState, "reason": "auto"])
-        self.flushPendingDeepLinks()
+    if UserDefaults.standard.bool(forKey: "didOnboard") {
+      if ScreenRecordingPermissionNotice.isGranted {
+        AppState.shared.setRecording(AppState.shared.getSavedPreference() ?? true)
+      } else {
+        AppState.shared.setRecording(false, persistPreference: false)
+        ScreenRecordingPermissionNotice.post(reason: "launch_preflight_missing")
       }
-    } else {
-      // Still in early onboarding, don't enable persistence yet
-      // Keep recording off and don't persist this state
-      AppState.shared.isRecording = false
-      flushPendingDeepLinks()
     }
-
-    // Start the provider-routed analysis background job
-    setupTimelineAnalysis()
-
-    // Start inactivity monitoring for idle reset
-    InactivityMonitor.shared.start()
-
-    // Start Daily and Weekly notifications and retire legacy Journal reminders
     NotificationService.shared.start()
-    DayflowAuthManager.shared.loadStoredSessionIfNeeded()
-    SupportChatSession.shared.start()
-    SupportChatSession.startFlowWaitlistMonitoring()
+    TargetStore.shared.retryPendingEvaluations()
 
-    // Start daily recap generation scheduler (checks every 5 minutes)
-    DailyRecapScheduler.shared.start()
-
-    // Flow desktop overlay (creature toasts/nudges) tracks the session mirror
-    FlowOverlayController.shared.start()
-    FlowEarlyBirdController.shared.start()
-    DailyBriefMenuBarNotice.shared.start()
-
-    // Observe recording state
-    analyticsSub = AppState.shared.$isRecording
-      .removeDuplicates()
-      .sink { enabled in
-        let reason = AppState.shared.consumePendingRecordingAnalyticsReason() ?? "unknown"
-        self.trackReferralUsageRecordingChange(enabled: enabled)
-        guard reason != "auto" else { return }
-        AnalyticsService.shared.capture(
-          "recording_toggled", ["enabled": enabled, "reason": reason])
-        AnalyticsService.shared.setPersonProperties(["recording_enabled": enabled])
-      }
-    if AppState.shared.isRecording {
-      referralUsageStartedAt = Date()
-    }
+    deepLinkRouter = AppDeepLinkRouter()
+    flushPendingDeepLinks()
+    setupTimelineAnalysis()
+    InactivityMonitor.shared.start()
 
     powerObserver = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.willPowerOffNotification,
@@ -216,76 +75,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         AppDelegate.permitTermination(reason: "power_off_or_logout")
       }
     }
-
-    analyticsPreferenceObserver = NotificationCenter.default.addObserver(
-      forName: .analyticsPreferenceChanged,
-      object: nil,
-      queue: .main
-    ) { [weak self] notification in
-      MainActor.assumeIsolated {
-        guard let self else { return }
-        let enabled =
-          notification.userInfo?["enabled"] as? Bool ?? AnalyticsService.shared.isOptedIn
-        self.updateCPUMonitoring(analyticsEnabled: enabled)
-        if enabled, self.analyticsConfigured {
-          AgentUsageTelemetryQueue.drain()
-        } else if !enabled {
-          AgentUsageTelemetryQueue.discard()
-        }
-      }
-    }
-
-    // Track foreground sessions for engagement analytics
-    setupForegroundTracking()
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     if Self.allowTermination {
       return .terminateNow
     }
-    // Soft-quit: hide windows and remove Dock icon, but keep status item + background tasks
     NSApp.hide(nil)
     NSApp.setActivationPolicy(.accessory)
     return .terminateCancel
   }
 
-  // MARK: - Foreground Tracking
-
-  private func setupForegroundTracking() {
-    // Initialize with current state (app is active at launch)
-    foregroundStartTime = Date()
-
-    NotificationCenter.default.addObserver(
-      forName: NSApplication.didBecomeActiveNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      MainActor.assumeIsolated {
-        guard let self else { return }
-        self.foregroundStartTime = Date()
-        if self.analyticsConfigured {
-          AgentUsageTelemetryQueue.drain()
-        }
-      }
-    }
-
-    NotificationCenter.default.addObserver(
-      forName: NSApplication.didResignActiveNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      MainActor.assumeIsolated {
-        guard let self, let startTime = self.foregroundStartTime else { return }
-        let duration = Date().timeIntervalSince(startTime)
-        self.foregroundStartTime = nil
-
-        AnalyticsService.shared.capture(
-          "app_foreground_session",
-          [
-            "duration_seconds": round(duration * 10) / 10  // 1 decimal place
-          ])
-      }
-    }
+  func applicationShouldHandleReopen(
+    _ sender: NSApplication, hasVisibleWindows flag: Bool
+  ) -> Bool {
+    applySavedDockIconPreference()
+    sender.unhide(nil)
+    MainWindowController.shared.showMainWindow()
+    sender.activate(ignoringOtherApps: true)
+    return false
   }
 
   private func applySavedDockIconPreference() {
@@ -293,112 +101,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)
   }
 
-  // Start timeline analysis as a background task
   private func setupTimelineAnalysis() {
-    // Perform after a short delay to ensure other initialization completes
     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
       AnalysisManager.shared.startAnalysisJob()
-      print("AppDelegate: LLM analysis job started")
-      let providerID = (try? LLMProviderRoutingStore.load())?.primary
-      AnalyticsService.shared.capture(
-        "analysis_job_started",
-        [
-          "provider": providerID?.analyticsName ?? "unknown",
-          "provider_id": providerID?.rawValue ?? "unknown",
-        ])
     }
   }
 
   func application(_ application: NSApplication, open urls: [URL]) {
-    if deepLinkRouter == nil {
+    guard let deepLinkRouter else {
       pendingDeepLinkURLs.append(contentsOf: urls)
       return
     }
 
     for url in urls {
-      _ = deepLinkRouter?.handle(url)
+      deepLinkRouter.handle(url)
     }
   }
 
   func applicationWillTerminate(_ notification: Notification) {
-    // Checkpoint WAL to persist any pending database changes before quit
-    // Using .truncate to also reset the WAL file for a clean state
     StorageManager.shared.checkpoint(mode: .truncate)
-
-    heartbeatTimer?.invalidate()
-    heartbeatTimer = nil
-    ProcessCPUMonitor.shared.stop()
-    screenshotShortcutTracker.stop()
-
+    InactivityMonitor.shared.stop()
     if let observer = powerObserver {
       NSWorkspace.shared.notificationCenter.removeObserver(observer)
       powerObserver = nil
     }
-    if let observer = analyticsPreferenceObserver {
-      NotificationCenter.default.removeObserver(observer)
-      analyticsPreferenceObserver = nil
-    }
-    DailyRecapScheduler.shared.stop()
-    flushReferralUsage(reason: "terminate")
-    // If onboarding not completed, mark abandoned with last step
-    let didOnboard = UserDefaults.standard.bool(forKey: "didOnboard")
-    if !didOnboard {
-      let stepIdx = OnboardingStepMigration.migrateIfNeeded()
-      let stepName = OnboardingStep(rawValue: stepIdx)?.analyticsName ?? "unknown"
-      AnalyticsService.shared.capture("onboarding_abandoned", ["last_step": stepName])
-    }
-    var terminatedProps: [String: Any] = ["reason": Self.terminationReason]
-    if let launch = appLaunchDate {
-      terminatedProps["session_hours"] = round(Date().timeIntervalSince(launch) / 360) / 10
-    }
-    AnalyticsService.shared.capture("app_terminated", terminatedProps)
-    AnalyticsService.shared.flush()
-
-    let defaults = UserDefaults.standard
-    defaults.set(true, forKey: Self.lastRunCleanExitKey)
-    defaults.set(Self.terminationReason, forKey: Self.lastRunExitReasonKey)
-    defaults.set(Date(), forKey: Self.lastRunSeenAtKey)
-  }
-
-  // MARK: - Previous run
-
-  /// Describes how the last run ended, for `app_opened`:
-  /// - previous_exit: "clean" (went through normal quit), "unclean" (crash, force quit,
-  ///   power loss), or "first_run"
-  /// - previous_exit_reason: the quit reason when the exit was clean
-  /// - hours_since_previous_run: time since the last run was last seen alive
-  /// - system_uptime_minutes: a small number means the app opened right after the Mac
-  ///   started, which is how a launch-at-login start looks
-  private func previousRunProperties() -> [String: Any] {
-    let defaults = UserDefaults.standard
-    var props: [String: Any] = [
-      "system_uptime_minutes": Int(ProcessInfo.processInfo.systemUptime / 60)
-    ]
-
-    guard defaults.object(forKey: Self.lastRunCleanExitKey) != nil else {
-      props["previous_exit"] = "first_run"
-      return props
-    }
-
-    let wasClean = defaults.bool(forKey: Self.lastRunCleanExitKey)
-    props["previous_exit"] = wasClean ? "clean" : "unclean"
-    if wasClean {
-      props["previous_exit_reason"] =
-        defaults.string(forKey: Self.lastRunExitReasonKey) ?? "unknown"
-    }
-    if let lastSeen = defaults.object(forKey: Self.lastRunSeenAtKey) as? Date {
-      props["hours_since_previous_run"] = round(Date().timeIntervalSince(lastSeen) / 360) / 10
-    }
-    return props
-  }
-
-  /// Marks this run as in progress. If it never reaches applicationWillTerminate,
-  /// the next launch reports it as unclean.
-  private func markRunStarted() {
-    let defaults = UserDefaults.standard
-    defaults.set(false, forKey: Self.lastRunCleanExitKey)
-    defaults.removeObject(forKey: Self.lastRunExitReasonKey)
-    defaults.set(Date(), forKey: Self.lastRunSeenAtKey)
   }
 
   private func flushPendingDeepLinks() {
@@ -406,105 +132,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let urls = pendingDeepLinkURLs
     pendingDeepLinkURLs.removeAll()
     for url in urls {
-      _ = router.handle(url)
-    }
-  }
-
-  // MARK: - Heartbeat
-
-  private func startHeartbeat() {
-    // Send initial heartbeat
-    sendHeartbeat()
-
-    // Schedule repeating timer every hour
-    heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 60 * 60, repeats: true) {
-      [weak self] _ in
-      MainActor.assumeIsolated {
-        self?.sendHeartbeat()
-      }
-    }
-  }
-
-  private func sendHeartbeat() {
-    if analyticsConfigured {
-      AgentUsageTelemetryQueue.drain()
-      CLIVersionTelemetry.refreshIfStale()
-    }
-    var props: [String: Any] = [:]
-    let appearance =
-      DayflowAppearance(
-        rawValue: UserDefaults.standard.string(forKey: DayflowAppearance.storageKey) ?? ""
-      ) ?? .system
-    // Match the app root, including onboarding's forced light appearance.
-    let effectiveColorScheme =
-      UserDefaults.standard.bool(forKey: "didOnboard")
-      ? appearance.colorScheme(system: SystemAppearanceObserver.currentColorScheme) : .light
-    props["appearance"] = appearance.rawValue
-    props["effective_appearance"] = effectiveColorScheme == .dark ? "dark" : "light"
-    if let launch = appLaunchDate {
-      let sessionHours = Date().timeIntervalSince(launch) / 3600
-      props["session_hours"] = round(sessionHours * 10) / 10  // 1 decimal place
-    }
-    if let cpuSnapshot = ProcessCPUMonitor.shared.heartbeatSnapshotAndReset() {
-      props["cpu_current_pct_bucket"] = AnalyticsService.shared.cpuPercentBucket(
-        cpuSnapshot.currentCPUPercent)
-      props["cpu_avg_pct_bucket"] = AnalyticsService.shared.cpuPercentBucket(
-        cpuSnapshot.averageCPUPercent)
-      props["cpu_peak_pct_bucket"] = AnalyticsService.shared.cpuPercentBucket(
-        cpuSnapshot.peakCPUPercent)
-      props["cpu_sample_count"] = cpuSnapshot.sampleCount
-      props["cpu_sampler_interval_s"] = Int(cpuSnapshot.samplerInterval)
-    }
-    if let currentTab = AppState.shared.currentTabName {
-      props["current_tab"] = currentTab
-      if currentTab == "timeline", let timelineMode = AppState.shared.currentTimelineMode {
-        props["timeline_mode"] = timelineMode
-      }
-    }
-    props.merge(ScreenCaptureMonitor.shared.heartbeatPropertiesAndReset()) { _, new in new }
-    props["launch_at_login"] = LaunchAtLoginManager.shared.statusName
-    AnalyticsService.shared.capture("app_heartbeat", props)
-    flushReferralUsage(reason: "heartbeat")
-    // Re-read so the next heartbeat reflects changes made in System Settings.
-    LaunchAtLoginManager.shared.refreshStatusInBackground()
-    UserDefaults.standard.set(Date(), forKey: Self.lastRunSeenAtKey)
-  }
-
-  private func trackReferralUsageRecordingChange(enabled: Bool) {
-    if enabled {
-      referralUsageStartedAt = Date()
-    } else {
-      flushReferralUsage(reason: "recording_stopped")
-    }
-  }
-
-  private func flushReferralUsage(reason: String) {
-    guard AppState.shared.isRecording || reason != "heartbeat" else { return }
-    guard let startedAt = referralUsageStartedAt else {
-      if AppState.shared.isRecording {
-        referralUsageStartedAt = Date()
-      }
-      return
-    }
-
-    let seconds = Int(Date().timeIntervalSince(startedAt).rounded())
-    guard seconds >= 60 else { return }
-
-    referralUsageStartedAt = AppState.shared.isRecording ? Date() : nil
-    let idempotencyKey = "mac-\(reason)-\(Int(startedAt.timeIntervalSince1970))-\(seconds)"
-    Task {
-      await DayflowAuthManager.shared.reportReferralUsage(
-        seconds: seconds,
-        idempotencyKey: idempotencyKey
-      )
-    }
-  }
-
-  private func updateCPUMonitoring(analyticsEnabled: Bool) {
-    if analyticsEnabled {
-      ProcessCPUMonitor.shared.start()
-    } else {
-      ProcessCPUMonitor.shared.stop()
+      router.handle(url)
     }
   }
 }

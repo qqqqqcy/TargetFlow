@@ -32,7 +32,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		C4C1D2A12DB56805007D5A55 /* Dayflow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dayflow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4C1D2A12DB56805007D5A55 /* TargetFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TargetFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4C1D2B22DB56806007D5A55 /* DayflowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayflowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4C1D2BC2DB56806007D5A55 /* DayflowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayflowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4DF00012EFB100000000001 /* Config/Dayflow.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Dayflow.xcconfig; sourceTree = "<group>"; };
@@ -94,7 +94,7 @@
 		C4C1D2A22DB56805007D5A55 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C4C1D2A12DB56805007D5A55 /* Dayflow.app */,
+				C4C1D2A12DB56805007D5A55 /* TargetFlow.app */,
 				C4C1D2B22DB56806007D5A55 /* DayflowTests.xctest */,
 				C4C1D2BC2DB56806007D5A55 /* DayflowUITests.xctest */,
 			);
@@ -111,7 +111,6 @@
 				C4C1D29D2DB56805007D5A55 /* Sources */,
 				C4C1D29E2DB56805007D5A55 /* Frameworks */,
 				C4C1D29F2DB56805007D5A55 /* Resources */,
-				C4A7E0012F1F00010000000C /* Embed Dayflow CLI */,
 			);
 			buildRules = (
 			);
@@ -129,7 +128,7 @@
 				C4AD00022F0D00010000000B /* MarkdownUI */,
 			);
 			productName = Dayflow;
-			productReference = C4C1D2A12DB56805007D5A55 /* Dayflow.app */;
+			productReference = C4C1D2A12DB56805007D5A55 /* TargetFlow.app */;
 			productType = "com.apple.product-type.application";
 		};
 		C4C1D2B12DB56806007D5A55 /* DayflowTests */ = {
@@ -257,27 +256,7 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		C4A7E0012F1F00010000000C /* Embed Dayflow CLI */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Embed Dayflow CLI";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Build the SwiftPM CLI and place it next to the app executable.\n# env -i strips Xcode's SDK/arch variables, which confuse swift-build.\nset -euo pipefail\nCLI_DIR=\"${SRCROOT}/../tools/dayflow-cli\"\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  env -i DEVELOPER_DIR=\"${DEVELOPER_DIR}\" HOME=\"$HOME\" PATH=\"/usr/bin:/bin:/usr/sbin:/sbin\" /usr/bin/swift build -c release --package-path \"$CLI_DIR\" --arch arm64 --arch x86_64\n  BIN=\"$CLI_DIR/.build/apple/Products/Release/dayflow\"\nelse\n  env -i DEVELOPER_DIR=\"${DEVELOPER_DIR}\" HOME=\"$HOME\" PATH=\"/usr/bin:/bin:/usr/sbin:/sbin\" /usr/bin/swift build -c release --package-path \"$CLI_DIR\"\n  BIN=\"$CLI_DIR/.build/release/dayflow\"\nfi\nDEST_DIR=\"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Helpers\"\nDEST=\"$DEST_DIR/dayflow\"\nmkdir -p \"$DEST_DIR\"\ncp -f \"$BIN\" \"$DEST\"\n# Nested executables must match the app's signing identity or the app's\n# seal fails validation and RunningBoard refuses to launch it. Falls back\n# to adhoc (-) when signing is disabled.\ncodesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY:--}\" \"$DEST\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
+
 
 /* Begin PBXSourcesBuildPhase section */
 		C4C1D29D2DB56805007D5A55 /* Sources */ = {
@@ -449,7 +428,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 139;
 				DEVELOPMENT_ASSET_PATHS = "\"Dayflow/Preview Content\"";
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -463,8 +442,9 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.Dayflow;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.app;
+				PRODUCT_MODULE_NAME = Dayflow;
+				PRODUCT_NAME = TargetFlow;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -485,7 +465,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 139;
 				DEVELOPMENT_ASSET_PATHS = "\"Dayflow/Preview Content\"";
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -499,8 +479,9 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.Dayflow;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.app;
+				PRODUCT_MODULE_NAME = Dayflow;
+				PRODUCT_NAME = TargetFlow;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -513,15 +494,15 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 139;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
 				MARKETING_VERSION = 2.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.AmiTimeTests;
+				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dayflow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dayflow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TargetFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TargetFlow";
 			};
 			name = Debug;
 		};
@@ -531,15 +512,15 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 139;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
 				MARKETING_VERSION = 2.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.AmiTimeTests;
+				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dayflow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dayflow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TargetFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TargetFlow";
 			};
 			name = Release;
 		};
@@ -548,10 +529,10 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 139;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.AmiTimeUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -564,10 +545,10 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 139;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.7.5;
-				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.AmiTimeUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;

@@ -39,6 +39,7 @@ extension ClaudeProvider {
         <ongoing_segmentation>
         Rewrite the full connected span from the supplied evidence. Previous cards preserve content only; their boundaries, titles, and categories are provisional.
         Group time by the person's immediate activity. App switches within one task belong together. Sustained different activities deserve separate cards. Each card must be 10–60 minutes. Absorb interruptions under five minutes; a distinct 5–9-minute episode may borrow the minimum neighboring minutes to reach ten if the neighboring cards remain at least ten. Cover all observed time without overlaps and preserve real source gaps. A broad project or continuous computer session does not by itself make one activity.
+        If the entire connected span is under 10 minutes, return exactly one provisional card covering that span. Never invent time to reach ten minutes; later batches will extend it.
         </ongoing_segmentation>
         """
     } else {

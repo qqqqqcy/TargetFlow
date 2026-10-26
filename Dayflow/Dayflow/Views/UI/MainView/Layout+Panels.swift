@@ -64,44 +64,21 @@ extension MainView {
     // Right column: Main white panel including header + content
     ZStack {
       switch selectedIcon {
+      case .target:
+        TargetView()
       case .settings:
         SettingsView()
-          .padding(15)
-      case .chat:
-        ChatPanelView()
-      case .flow:
-        Color.clear
-      case .agents:
-        AgentPlaybackView()
-      case .daily:
-        DailyView(selectedDate: $selectedDate)
-      case .weekly:
-        WeeklyView()
-      case .bug:
-        BugReportView()
           .padding(15)
       case .timeline:
         GeometryReader { geo in
           timelinePanel(geo: geo)
         }
       }
-
-      // Outside the switch so it keeps its web view while another tab shows.
-      if flowAlive || selectedIcon == .flow {
-        FlowView()
-          .opacity(selectedIcon == .flow ? 1 : 0)
-          .allowsHitTesting(selectedIcon == .flow)
-          .accessibilityHidden(selectedIcon != .flow)
-      }
     }
     .padding(0)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    .background {
-      if selectedIcon != .agents || !theme.isDark {
-        mainPanelBackground
-      }
-    }
+    .background { mainPanelBackground }
   }
 
   private var mainPanelBackground: some View {
@@ -132,11 +109,8 @@ extension MainView {
     .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
     .coordinateSpace(name: "TimelinePanel")
     .overlay(alignment: .topLeading) {
-      if goalFlowPresentation == nil {
-        timelineCalendarPopoverOverlay(panelWidth: geo.size.width)
-      }
+      timelineCalendarPopoverOverlay(panelWidth: geo.size.width)
     }
-    .animation(.spring(response: 0.32, dampingFraction: 0.9), value: goalFlowPresentation?.id)
     .onPreferenceChange(TimelineCalendarButtonFramePreferenceKey.self) { frame in
       timelineCalendarButtonFrame = frame
     }
@@ -325,12 +299,6 @@ extension MainView {
         .transition(.opacity.combined(with: .scale(scale: 0.98)))
     } else {
       VStack(spacing: 0) {
-        GettingStartedChecklistCard(onOpenTab: { tab in
-          withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-            selectedIcon = tab
-          }
-        })
-
         daySummary(reviewPromptCount: reviewPromptCount)
       }
       .transition(.opacity.combined(with: .scale(scale: 0.98)))
@@ -348,19 +316,10 @@ extension MainView {
         appState: appState,
         pauseManager: pauseManager
       ),
-      goalPromptDay: pendingGoalPromptDay,
-      onGoalPromptHandled: { day in
-        markDailyGoalPromptHandled(day: day)
-      },
       onReviewTap: {
         guard reviewPromptCount > 0 else { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
           showTimelineReview = true
-        }
-      },
-      onShowGoalFlow: { presentation in
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
-          goalFlowPresentation = presentation
         }
       }
     )

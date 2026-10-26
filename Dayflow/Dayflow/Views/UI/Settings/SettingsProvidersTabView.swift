@@ -3,22 +3,9 @@ import SwiftUI
 
 struct SettingsProvidersTabView: View {
   @ObservedObject var viewModel: ProvidersSettingsViewModel
-  @ObservedObject private var authManager = DayflowAuthManager.shared
 
   var body: some View {
     VStack(alignment: .leading, spacing: SettingsStyle.sectionSpacing) {
-      if viewModel.currentProvider == .local, viewModel.showLocalModelUpgradeBanner {
-        LocalModelUpgradeBanner(
-          preset: .qwen3VL4B,
-          onKeepLegacy: { viewModel.markUpgradeBannerKeepLegacy() },
-          onUpgrade: {
-            viewModel.markUpgradeBannerUpgrade()
-            viewModel.isShowingLocalModelUpgradeSheet = true
-          }
-        )
-        .transition(.opacity)
-      }
-
       if let status = viewModel.upgradeStatusMessage {
         Text(status)
           .font(.custom("Figtree", size: 13))
@@ -57,10 +44,12 @@ struct SettingsProvidersTabView: View {
         summaryRows
 
         HStack(spacing: 8) {
-          SettingsSecondaryButton(
-            title: String(localized: "Edit configuration"),
-            action: { viewModel.editProviderConfiguration(viewModel.primaryRoutingProviderId) }
-          )
+          if viewModel.primaryRoutingProviderId != .dayflow {
+            SettingsSecondaryButton(
+              title: String(localized: "Edit configuration"),
+              action: { viewModel.editProviderConfiguration(viewModel.primaryRoutingProviderId) }
+            )
+          }
 
           if viewModel.currentProvider == .local {
             SettingsSecondaryButton(
@@ -229,7 +218,7 @@ struct SettingsProvidersTabView: View {
       subtitle: String(localized: "Choose primary and secondary providers.")
     ) {
       VStack(alignment: .leading, spacing: 0) {
-        let providers = viewModel.routingProviders
+        let providers = viewModel.routingProviders.filter { $0.id != .dayflow }
         ForEach(Array(providers.enumerated()), id: \.element.id) { index, provider in
           routingRow(
             provider: provider,
@@ -286,63 +275,34 @@ struct SettingsProvidersTabView: View {
         .fixedSize(horizontal: false, vertical: true)
 
       HStack(spacing: 8) {
-        if viewModel.shouldShowDayflowUpgradeAction(for: provider.id) {
-          SettingsPrimaryButton(
-            title: String(localized: "Upgrade account"), systemImage: "sparkles"
-          ) {
-            viewModel.openDayflowUpgradeAccount(from: provider.id)
+        if !isConfigured {
+          SettingsSecondaryButton(title: String(localized: "Setup")) {
+            viewModel.beginProviderSetup(provider.id, role: .setupOnly)
           }
-        } else if provider.id == .dayflow {
-          if !isPrimary {
-            SettingsSecondaryButton(
-              title: String(localized: "Set primary"),
-              isDisabled: !viewModel.canModifyRouting
-            ) {
-              viewModel.setPrimaryOrSetup(provider.id)
-            }
-          }
+        }
 
-          if !isSecondary {
-            SettingsSecondaryButton(
-              title: String(localized: "Set secondary"), isDisabled: !canSetSecondary
-            ) {
-              viewModel.setSecondaryOrSetup(provider.id)
-            }
-          } else {
-            SettingsSecondaryButton(title: String(localized: "Unset secondary")) {
-              viewModel.clearBackupProvider()
-            }
+        SettingsSecondaryButton(title: String(localized: "Edit configuration")) {
+          viewModel.editProviderConfiguration(provider.id)
+        }
+
+        if !isPrimary {
+          SettingsSecondaryButton(
+            title: String(localized: "Set primary"),
+            isDisabled: !viewModel.canModifyRouting
+          ) {
+            viewModel.setPrimaryOrSetup(provider.id)
+          }
+        }
+
+        if !isSecondary {
+          SettingsSecondaryButton(
+            title: String(localized: "Set secondary"), isDisabled: !canSetSecondary
+          ) {
+            viewModel.setSecondaryOrSetup(provider.id)
           }
         } else {
-          if !isConfigured {
-            SettingsSecondaryButton(title: String(localized: "Setup")) {
-              viewModel.beginProviderSetup(provider.id, role: .setupOnly)
-            }
-          }
-
-          SettingsSecondaryButton(title: String(localized: "Edit configuration")) {
-            viewModel.editProviderConfiguration(provider.id)
-          }
-
-          if !isPrimary {
-            SettingsSecondaryButton(
-              title: String(localized: "Set primary"),
-              isDisabled: !viewModel.canModifyRouting
-            ) {
-              viewModel.setPrimaryOrSetup(provider.id)
-            }
-          }
-
-          if !isSecondary {
-            SettingsSecondaryButton(
-              title: String(localized: "Set secondary"), isDisabled: !canSetSecondary
-            ) {
-              viewModel.setSecondaryOrSetup(provider.id)
-            }
-          } else {
-            SettingsSecondaryButton(title: String(localized: "Unset secondary")) {
-              viewModel.clearBackupProvider()
-            }
+          SettingsSecondaryButton(title: String(localized: "Unset secondary")) {
+            viewModel.clearBackupProvider()
           }
         }
       }
@@ -627,95 +587,7 @@ struct SettingsProvidersTabView: View {
   }
 }
 
-// MARK: - Upgrade banner (kept as an exception — it's a promotional unit)
-//
-// This is the one dark surface on the settings page. Semantically it's
-// advertising, not configuration, so it gets to play by different rules.
-
-private struct LocalModelUpgradeBanner: View {
-  let preset: LocalModelPreset
-  let onKeepLegacy: () -> Void
-  let onUpgrade: () -> Void
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      HStack(spacing: 10) {
-        Image(systemName: "sparkles")
-          .foregroundStyle(Color.white)
-          .padding(8)
-          .background(Color(red: 0.12, green: 0.09, blue: 0.02))
-          .clipShape(RoundedRectangle(cornerRadius: 8))
-        VStack(alignment: .leading, spacing: 4) {
-          Text("Upgrade to \(preset.displayName)")
-            .font(.custom("Figtree", size: 16))
-            .fontWeight(.semibold)
-            .foregroundColor(.white)
-          Text("Upgrade to Qwen3VL for a big improvement in quality.")
-            .font(.custom("Figtree", size: 13))
-            .foregroundColor(.white.opacity(0.8))
-        }
-        Spacer()
-      }
-
-      VStack(alignment: .leading, spacing: 6) {
-        ForEach(preset.highlightBullets, id: \.self) { bullet in
-          HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-              .font(.system(size: 12))
-              .foregroundColor(Color(red: 0.76, green: 1, blue: 0.74))
-              .padding(.top, 2)
-            Text(bullet)
-              .font(.custom("Figtree", size: 13))
-              .foregroundColor(.white.opacity(0.85))
-          }
-        }
-      }
-
-      HStack(spacing: 12) {
-        Button(action: onKeepLegacy) {
-          Text("Keep Qwen2.5")
-            .font(.custom("Figtree", size: 13))
-            .fontWeight(.semibold)
-            .foregroundColor(.white)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 9)
-            .background(
-              RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.12))
-            )
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-
-        Button(action: onUpgrade) {
-          HStack(spacing: 6) {
-            Text("Upgrade now")
-              .font(.custom("Figtree", size: 13))
-              .fontWeight(.semibold)
-            Image(systemName: "arrow.right")
-              .font(.system(size: 12, weight: .semibold))
-          }
-          .foregroundColor(.black)
-          .padding(.horizontal, 18)
-          .padding(.vertical, 9)
-          .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-              .fill(Color.white)
-          )
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-      }
-    }
-    .padding(20)
-    .background(
-      RoundedRectangle(cornerRadius: 14, style: .continuous)
-        .fill(Color(red: 0.16, green: 0.11, blue: 0))
-    )
-  }
-}
-
-// MARK: - Upgrade sheet (unchanged — it's a modal, not a settings surface)
+// MARK: - Local model upgrade sheet
 
 struct LocalModelUpgradeSheet: View {
   let preset: LocalModelPreset

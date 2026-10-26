@@ -98,7 +98,6 @@ final class AnalysisManager: AnalysisManaging {
   }
 
   func triggerAnalysisNow() {
-    guard !isProcessing else { return }
     queue.async { [weak self] in self?.processRecordings() }
   }
 
@@ -559,7 +558,7 @@ final class AnalysisManager: AnalysisManaging {
       return
     }
 
-    let minimumDurationSeconds: TimeInterval = 300.0  // 5 minutes
+    let minimumDurationSeconds = ScreenshotBatcher.minimumDuration
 
     if totalDurationSeconds < minimumDurationSeconds {
       print(
@@ -644,6 +643,9 @@ final class AnalysisManager: AnalysisManaging {
 
         // Mark batch as completed immediately
         self.updateBatchStatus(batchId: batchId, status: "completed")
+        Task { @MainActor in
+          TargetStore.shared.enqueue(cardIDs: cardIds)
+        }
         self.enqueueSavedTimelapseGenerationIfNeeded(
           cardIds: cardIds,
           cardCount: activityCards.count,
@@ -736,82 +738,16 @@ final class AnalysisManager: AnalysisManaging {
 
   // MARK: - Screenshot-based Batching
 
-  private struct ScreenshotBatch {
-    let screenshots: [Screenshot]
-    let start: Int
-    let end: Int
-
-    /// Duration covered by this batch (based on timestamp range)
-    var duration: TimeInterval {
-      TimeInterval(end - start)
-    }
-
-    /// Number of screenshots in the batch
-    var count: Int { screenshots.count }
-  }
-
   private func fetchUnprocessedScreenshots() -> [Screenshot] {
     let oldest = Int(Date().timeIntervalSince1970) - Int(maxLookback)
     return store.fetchUnprocessedScreenshots(since: oldest)
   }
 
   private func createScreenshotBatches(from screenshots: [Screenshot]) -> [ScreenshotBatch] {
-    guard !screenshots.isEmpty else { return [] }
-
-    let ordered = screenshots.sorted { $0.capturedAt < $1.capturedAt }
     let config = llmService.batchingConfig
-    let maxGap: TimeInterval = config.maxGap
-    let maxBatchDuration: TimeInterval = config.targetDuration
+    return ScreenshotBatcher.batches(
+      from: screenshots, targetDuration: config.targetDuration, maxGap: config.maxGap)
 
-    var batches: [ScreenshotBatch] = []
-    var bucket: [Screenshot] = []
-
-    for screenshot in ordered {
-      if bucket.isEmpty {
-        bucket.append(screenshot)
-        continue
-      }
-
-      let prev = bucket.last!
-      let gap = TimeInterval(screenshot.capturedAt - prev.capturedAt)
-      let currentDuration = TimeInterval(screenshot.capturedAt - bucket.first!.capturedAt)
-      let wouldBurst = currentDuration > maxBatchDuration
-
-      if gap > maxGap || wouldBurst {
-        // Close current batch
-        batches.append(
-          ScreenshotBatch(
-            screenshots: bucket,
-            start: bucket.first!.capturedAt,
-            end: bucket.last!.capturedAt
-          )
-        )
-        // Start new bucket
-        bucket = [screenshot]
-      } else {
-        bucket.append(screenshot)
-      }
-    }
-
-    // Flush any leftover bucket
-    if !bucket.isEmpty {
-      batches.append(
-        ScreenshotBatch(
-          screenshots: bucket,
-          start: bucket.first!.capturedAt,
-          end: bucket.last!.capturedAt
-        )
-      )
-    }
-
-    // Drop the most-recent batch if incomplete (not enough data yet)
-    if let last = batches.last {
-      if last.duration < maxBatchDuration {
-        batches.removeLast()
-      }
-    }
-
-    return batches
   }
 
   private func saveScreenshotBatch(_ batch: ScreenshotBatch) -> Int64? {
@@ -895,6 +831,9 @@ final class AnalysisManager: AnalysisManaging {
       try? FileManager.default.removeItem(at: url)
     }
 
+    Task { @MainActor in
+      TargetStore.shared.enqueue(cardIDs: [savedCardId])
+    }
     StorageManager.shared.updateBatch(batchId, status: "analyzed", reason: "idle_shortcut_applied")
     StorageManager.shared.checkpoint(mode: .passive)
 

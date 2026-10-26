@@ -15,9 +15,6 @@ struct GettingStartedChecklistCard: View {
   @Environment(\.dayflowTheme) private var theme
   @EnvironmentObject private var appState: AppState
 
-  /// Switches the main sidebar tab (Daily, Chat).
-  let onOpenTab: (SidebarIcon) -> Void
-
   @AppStorage(GettingStarted.Keys.isActive) private var isActive = false
   @AppStorage(GettingStarted.Keys.checklistDismissed) private var isDismissed = false
   @AppStorage(GettingStarted.Keys.checklistCollapsed) private var isCollapsed = false
@@ -51,16 +48,8 @@ struct GettingStartedChecklistCard: View {
     firstCardsFlag
   }
 
-  private var dailyUnlocked: Bool {
-    completedBatchCount >= FeatureAccessRequirements.dailyRequiredBatchCount
-  }
-
-  private var chatUnlocked: Bool {
-    completedBatchCount >= FeatureAccessRequirements.chatRequiredBatchCount
-  }
-
   private var completedSteps: [Bool] {
-    [hasFirstCards, hasOpenedCard, notificationsEnabled, dailyUnlocked, chatUnlocked]
+    [hasFirstCards, hasOpenedCard, notificationsEnabled]
   }
 
   private var completedStepCount: Int {
@@ -85,20 +74,6 @@ struct GettingStartedChecklistCard: View {
             firstCardsRow
             openCardRow
             notificationsRow
-            unlockRow(
-              title: String(localized: "Unlock your Daily recap"),
-              requiredHours: FeatureAccessRequirements.dailyRequiredHours,
-              requiredBatches: FeatureAccessRequirements.dailyRequiredBatchCount,
-              isUnlocked: dailyUnlocked,
-              tab: .daily
-            )
-            unlockRow(
-              title: String(localized: "Unlock Chat"),
-              requiredHours: FeatureAccessRequirements.chatRequiredHours,
-              requiredBatches: FeatureAccessRequirements.chatRequiredBatchCount,
-              isUnlocked: chatUnlocked,
-              tab: .chat
-            )
           }
         }
         .padding(.top, 10)
@@ -202,38 +177,10 @@ struct GettingStartedChecklistCard: View {
     ChecklistRow(
       status: notificationsEnabled ? .done : .todo,
       title: String(localized: "Turn on notifications"),
-      subtitle: String(localized: "Hear when your first cards and daily recap are ready")
+      subtitle: String(localized: "Hear when your first timeline cards are ready")
     ) {
       if !notificationsEnabled {
         rowButton(title: String(localized: "Turn on"), action: enableNotifications)
-      }
-    }
-  }
-
-  private func unlockRow(
-    title: String,
-    requiredHours: Int,
-    requiredBatches: Int,
-    isUnlocked: Bool,
-    tab: SidebarIcon
-  ) -> some View {
-    let progress = min(Double(completedBatchCount) / Double(max(requiredBatches, 1)), 1)
-    let progressText = FeatureAccessRequirements.progressText(
-      completedBatchCount: completedBatchCount, requiredHours: requiredHours)
-
-    return ChecklistRow(
-      status: isUnlocked ? .done : .progress(progress),
-      title: title,
-      subtitle: isUnlocked
-        ? String(localized: "Ready to open")
-        : String(localized: "\(progressText) recorded")
-    ) {
-      if isUnlocked {
-        rowButton(title: String(localized: "Open")) {
-          AnalyticsService.shared.capture(
-            "getting_started_checklist_open_tab", ["tab": tab.analyticsTabName])
-          onOpenTab(tab)
-        }
       }
     }
   }

@@ -85,6 +85,7 @@ protocol LLMServicing {
     _ batchId: Int64, progressHandler: ((LLMProcessingStep) -> Void)?,
     completion: @escaping (Result<ProcessedBatchResult, Error>) -> Void)
   func generateText(prompt: String) async throws -> String
+  func generateTargetEvaluation(prompt: String) async throws -> String
   func generateTextStreaming(prompt: String) -> AsyncThrowingStream<String, Error>
   /// Rich chat streaming with thinking, tool calls, and text events.
   /// - Parameter sessionId: Optional session ID to resume a previous conversation
@@ -166,23 +167,6 @@ final class LLMService: LLMServicing {
     }
     print("❌ [LLMService] Failed to retrieve Gemini API key for Gemma fallback")
     return nil
-  }
-
-  private func makeDayflowProvider(endpoint: String) -> DayflowBackendProvider? {
-    let token = DayflowAuthManager.storedSessionToken()?
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let token, !token.isEmpty else {
-      print("❌ [LLMService] Dayflow provider unavailable: missing session token")
-      return nil
-    }
-    print(
-      "🔐 [LLMService] Dayflow provider ready endpoint=\(endpoint) token_length=\(token.count)"
-    )
-    return DayflowBackendProvider(token: token, endpoint: endpoint)
-  }
-
-  private func resolvedDayflowEndpoint(savedEndpoint: String?) -> String? {
-    DayflowBackendConfiguration.endpoint(legacySavedEndpoint: savedEndpoint)
   }
 
   private func makeOllamaProvider(endpoint: String) -> OllamaProvider {
@@ -274,23 +258,7 @@ final class LLMService: LLMServicing {
         ), fallbackState: fallbackState
       )
     case .dayflow:
-      let savedEndpoint = DayflowEndpointPreferences.load()
-      guard let endpoint = resolvedDayflowEndpoint(savedEndpoint: savedEndpoint) else {
-        throw noProviderError()
-      }
-      guard let provider = makeDayflowProvider(endpoint: endpoint) else { throw noProviderError() }
-      return (
-        actions: BatchProviderActions(
-          transcribeScreenshots: provider.transcribeScreenshots,
-          generateActivityCards: Self.rewritingWholeWindow(provider.generateActivityCards),
-          // The backend is shown every card in the window, like rewritingWholeWindow providers.
-          generateTimeline: { screenshots, context, batchId in
-            let result = try await provider.generateTimeline(
-              screenshots: screenshots, context: context, batchId: batchId)
-            return (result.cards, result.observations, nil, result.log)
-          }
-        ), fallbackState: nil
-      )
+      throw noProviderError()
     case .local:
       let provider = makeOllamaProvider(endpoint: localProviderEndpoint())
       return (
@@ -543,7 +511,7 @@ final class LLMService: LLMServicing {
     }
   }
 
-  private func makeTextProvider() throws -> TextProviderActions {
+  private func makeTextProvider(disableTools: Bool = false) throws -> TextProviderActions {
     let providerID = try LLMProviderRoutingStore.load().primary
     switch providerID {
     case .gemini:
@@ -555,21 +523,7 @@ final class LLMService: LLMServicing {
         generateTextStreaming: nil
       )
     case .dayflow:
-      guard
-        let resolvedEndpoint = resolvedDayflowEndpoint(
-          savedEndpoint: DayflowEndpointPreferences.load())
-      else {
-        throw noProviderError()
-      }
-      guard let provider = makeDayflowProvider(endpoint: resolvedEndpoint) else {
-        throw noProviderError()
-      }
-      return TextProviderActions(
-        generateText: { prompt in
-          try await provider.generateText(prompt: prompt)
-        },
-        generateTextStreaming: nil
-      )
+      throw noProviderError()
     case .local:
       let provider = makeOllamaProvider(endpoint: localProviderEndpoint())
       return TextProviderActions(
@@ -590,7 +544,13 @@ final class LLMService: LLMServicing {
       let provider = CodexProvider()
       return TextProviderActions(
         generateText: { prompt in
-          try await provider.generateText(prompt: prompt)
+          if disableTools {
+            let configuration = CodexProvider.timelineModelConfiguration()
+            return try await provider.generateText(
+              prompt: prompt, model: configuration.model,
+              reasoningEffort: configuration.reasoningEffort, disableTools: true)
+          }
+          return try await provider.generateText(prompt: prompt)
         },
         generateTextStreaming: provider.generateTextStreaming
       )
@@ -598,7 +558,8 @@ final class LLMService: LLMServicing {
       let provider = ClaudeProvider()
       return TextProviderActions(
         generateText: { prompt in
-          try await provider.generateText(prompt: prompt)
+          try await provider.generateText(
+            prompt: prompt, model: "sonnet", reasoningEffort: "high", disableTools: disableTools)
         },
         generateTextStreaming: provider.generateTextStreaming
       )
@@ -1164,6 +1125,11 @@ final class LLMService: LLMServicing {
     let textProvider = try makeTextProvider()
     let (text, _) = try await textProvider.generateText(prompt)
     return text
+  }
+
+  func generateTargetEvaluation(prompt: String) async throws -> String {
+    let provider = try makeTextProvider(disableTools: true)
+    return try await provider.generateText(prompt).text
   }
 
   // MARK: - Streaming Text Generation

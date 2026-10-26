@@ -4,15 +4,11 @@ import GRDB
 extension StorageManager {
   func migrateLegacyChunkPathsIfNeeded() {
     guard let bundleID = Bundle.main.bundleIdentifier else { return }
-    guard
-      let appSupport = fileMgr.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-    else { return }
-
     let legacyBase = fileMgr.homeDirectoryForCurrentUser
       .appendingPathComponent(
-        "Library/Containers/\(bundleID)/Data/Library/Application Support/Dayflow", isDirectory: true
+        "Library/Containers/\(bundleID)/Data/Library/Application Support/TargetFlow", isDirectory: true
       )
-    let newBase = appSupport.appendingPathComponent("Dayflow", isDirectory: true)
+    let newBase = AppStoragePaths.applicationSupport
 
     guard legacyBase.path != newBase.path else { return }
 

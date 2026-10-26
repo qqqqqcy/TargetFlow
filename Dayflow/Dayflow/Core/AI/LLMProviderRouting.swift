@@ -37,7 +37,9 @@ enum LLMProviderRoutingStore {
     defer { lock.unlock() }
 
     if defaults.object(forKey: storageKey) != nil {
-      return try decodeStoredRouting(from: defaults)
+      let stored = try decodeStoredRouting(from: defaults)
+      let normalized = supportedRouting(stored)
+      return stored == normalized ? stored : try saveLocked(normalized, to: defaults)
     }
 
     let migration = try migrateLegacyArtifacts(from: defaults)
@@ -106,6 +108,16 @@ enum LLMProviderRoutingStore {
     return value.isEmpty ? nil : value
   }
 
+  private static func supportedRouting(_ routing: LLMProviderRouting) -> LLMProviderRouting {
+    // Keep legacy IDs decodable without ever routing to the account-backed service.
+    // Gemini still requires the user's API key; no credentials are provisioned here.
+    LLMProviderRouting(
+      schemaVersion: routing.schemaVersion,
+      primary: routing.primary == .dayflow ? .gemini : routing.primary,
+      secondary: routing.secondary == .dayflow ? nil : routing.secondary
+    )
+  }
+
   private static func saveLocked(
     _ routing: LLMProviderRouting,
     to defaults: UserDefaults
@@ -114,11 +126,7 @@ enum LLMProviderRoutingStore {
       throw LLMProviderRoutingStoreError.unsupportedSchemaVersion(routing.schemaVersion)
     }
 
-    let normalized = LLMProviderRouting(
-      schemaVersion: routing.schemaVersion,
-      primary: routing.primary,
-      secondary: routing.secondary
-    )
+    let normalized = supportedRouting(routing)
 
     let encoded: Data
     do {

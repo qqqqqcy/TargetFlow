@@ -147,8 +147,6 @@ struct DaySummaryView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      todayTargetsSection
-
       ScrollView {
         VStack(alignment: .leading, spacing: Design.sectionSpacing) {
           daySoFarSection

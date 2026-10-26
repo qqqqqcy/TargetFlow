@@ -5,6 +5,21 @@ import XCTest
 final class ClaudeActivityCardBoundaryTests: XCTestCase {
   private let provider = ClaudeProvider()
 
+  func testConnectedOneMinuteBatchesAllowOneProvisionalCardUntilTenMinutes() {
+    for endMinute in [2, 5, 10] {
+      let current = observation(
+        batchId: 2, start: localTimestamp(hour: 9, minute: 1),
+        end: localTimestamp(hour: 9, minute: endMinute), text: "Continued work")
+      let context = generationContext(
+        batchObservations: [current],
+        existingCards: [card(start: "9:00 AM", end: "9:01 AM", title: "Work")],
+        hasPreviousCardWithinFiveMinutes: true)
+      let plan = provider.makeClaudeCardGenerationPlan(observations: [current], context: context)
+      XCTAssertEqual(plan.allowsSingleShortCard, endMinute < 10)
+      XCTAssertEqual(plan.rewriteSpan?.lowerBound, localTimestamp(hour: 9, minute: 0))
+    }
+  }
+
   func testFreshSegmentUsesOnlyCurrentBatchAndOmitsDisconnectedCardsFromPrompt() {
     let oldObservation = observation(batchId: 1, start: 1_000, end: 1_900, text: "Old work")
     let currentObservation = observation(

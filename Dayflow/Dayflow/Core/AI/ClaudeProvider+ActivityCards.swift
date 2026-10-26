@@ -286,7 +286,7 @@ extension TimelineOutputSupporting {
         observations: relevantObservations,
         context: ongoingContext,
         requiresSingleCard: false,
-        allowsSingleShortCard: false,
+        allowsSingleShortCard: relevantEnd - relevantStart < 10 * 60,
         expectedStartTime: formatTimestampForPrompt(relevantStart),
         expectedEndTime: formatTimestampForPrompt(relevantEnd),
         rewriteSpan: relevantStart..<relevantEnd
