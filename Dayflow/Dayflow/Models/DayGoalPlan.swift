@@ -110,15 +110,8 @@ struct DayGoalPlan: Equatable, Sendable {
       .filter { $0.isSystem == false && $0.isIdle == false }
       .sorted { $0.order < $1.order }
 
-    let distraction = selectable.filter {
-      let normalized = $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-      return normalized == "distraction" || normalized == "distractions"
-    }
-
-    let focusCandidates = selectable.filter { category in
-      let normalized = category.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-      return normalized != "distraction" && normalized != "distractions"
-    }
+    let focusCandidates = selectable.filter(\.isCurrentTarget)
+    let distraction = selectable.filter { !$0.isCurrentTarget }
 
     return DayGoalPlan(
       day: day,

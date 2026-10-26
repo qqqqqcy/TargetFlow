@@ -27,16 +27,21 @@ enum SidebarIcon: String, CaseIterable {
 
 struct SidebarView: View {
   @Binding var selectedIcon: SidebarIcon
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Namespace private var selectionNamespace
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       ForEach(SidebarIcon.allCases, id: \.self) { icon in
-        SidebarIconButton(icon: icon, isSelected: selectedIcon == icon) {
+        SidebarIconButton(
+          icon: icon, isSelected: selectedIcon == icon, selectionNamespace: selectionNamespace
+        ) {
           selectedIcon = icon
         }
       }
     }
     .padding(.leading, 14)
+    .animation(reduceMotion ? nil : DayflowMotion.selection, value: selectedIcon)
   }
 }
 
@@ -45,6 +50,7 @@ struct SidebarIconButton: View {
   let icon: SidebarIcon
   let isSelected: Bool
   var showBadge = false
+  var selectionNamespace: Namespace.ID? = nil
   let action: () -> Void
 
   var body: some View {
@@ -64,9 +70,16 @@ struct SidebarIconButton: View {
       .frame(height: 46)
       .background {
         if isSelected {
-          SidebarSelectionShape()
-            .fill(theme.panelSolid)
-            .allowsHitTesting(false)
+          if let selectionNamespace {
+            SidebarSelectionShape()
+              .fill(theme.panelSolid)
+              .matchedGeometryEffect(id: "sidebarSelection", in: selectionNamespace)
+              .allowsHitTesting(false)
+          } else {
+            SidebarSelectionShape()
+              .fill(theme.panelSolid)
+              .allowsHitTesting(false)
+          }
         }
       }
       .contentShape(Rectangle())

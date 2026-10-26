@@ -23,6 +23,7 @@ struct ColorOrganizerRoot: View {
   var analyticsSurface: String? = nil
   @EnvironmentObject private var categoryStore: CategoryStore
   @Environment(\.dayflowTheme) private var theme
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   private enum CategorySetupStage: String, Hashable {
     case details
@@ -149,8 +150,10 @@ struct ColorOrganizerRoot: View {
                 Image(systemName: "xmark")
                   .font(.system(size: 11, weight: .semibold))
                   .foregroundStyle(theme.textTertiary)
-                  .frame(width: 28, height: 28)
-                  .background(theme.panelSolid, in: RoundedRectangle(cornerRadius: 8))
+                  .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+                  .background(
+                    theme.panelSolid,
+                    in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
               }
               .buttonStyle(.plain)
               .pointingHandCursor()
@@ -162,37 +165,42 @@ struct ColorOrganizerRoot: View {
         }
 
         ScrollView {
-          Group {
-            if stage == .details {
-              if sideBySide {
-                HStack(alignment: .top, spacing: 28) {
-                  instructionsPanel(isCompact: isCompact, showTitles: showsTitles)
-                    .frame(width: isCompact ? 210 : 240, alignment: .leading)
-                  categoryEditorPanel(isCompact: isCompact)
+          ZStack(alignment: .topLeading) {
+            Group {
+              if stage == .details {
+                if sideBySide {
+                  HStack(alignment: .top, spacing: 28) {
+                    instructionsPanel(isCompact: isCompact, showTitles: showsTitles)
+                      .frame(width: isCompact ? 210 : 240, alignment: .leading)
+                    categoryEditorPanel(isCompact: isCompact)
+                  }
+                } else {
+                  VStack(alignment: .leading, spacing: 20) {
+                    instructionsPanel(isCompact: true, showTitles: showsTitles)
+                    categoryEditorPanel(isCompact: true)
+                  }
                 }
               } else {
-                VStack(alignment: .leading, spacing: 20) {
-                  instructionsPanel(isCompact: true, showTitles: showsTitles)
-                  categoryEditorPanel(isCompact: true)
-                }
-              }
-            } else {
-              if sideBySide {
-                HStack(alignment: .top, spacing: 28) {
-                  colorPickerPanel(isCompact: isCompact, showTitles: showsTitles)
-                    .frame(width: 240, alignment: .leading)
-                  colorAssignmentPanel(isCompact: isCompact)
-                }
-              } else {
-                VStack(alignment: .leading, spacing: 20) {
-                  colorPickerPanel(isCompact: true, showTitles: showsTitles)
-                  colorAssignmentPanel(isCompact: true)
+                if sideBySide {
+                  HStack(alignment: .top, spacing: 28) {
+                    colorPickerPanel(isCompact: isCompact, showTitles: showsTitles)
+                      .frame(width: 240, alignment: .leading)
+                    colorAssignmentPanel(isCompact: isCompact)
+                  }
+                } else {
+                  VStack(alignment: .leading, spacing: 20) {
+                    colorPickerPanel(isCompact: true, showTitles: showsTitles)
+                    colorAssignmentPanel(isCompact: true)
+                  }
                 }
               }
             }
+            .id(stage)
+            .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
           }
           .padding(24)
           .frame(maxWidth: .infinity, alignment: .topLeading)
+          .animation(reduceMotion ? .easeOut(duration: 0.12) : DayflowMotion.content, value: stage)
         }
 
         if presentationStyle == .sheet {
@@ -368,35 +376,11 @@ struct ColorOrganizerRoot: View {
   }
 
   private var addCategoryButton: some View {
-    Button {
+    SettingsSecondaryButton(
+      title: "添加事件", systemImage: "plus", isDisabled: !canAddMoreCategories
+    ) {
       createNewCategory()
-    } label: {
-      HStack(spacing: 8) {
-        Image(systemName: "plus")
-          .font(.system(size: 10, weight: .bold))
-          .foregroundColor(theme.controlText)
-
-        Text("添加事件")
-          .font(Font.system(size: 14).weight(.regular))
-          .foregroundColor(theme.controlText)
-      }
-      .padding(.horizontal, 14)
-      .padding(.vertical, 6)
-      .background(theme.controlFill)
-      .cornerRadius(9)
-      .overlay(
-        RoundedRectangle(cornerRadius: 9)
-          .inset(by: 0.5)
-          .stroke(theme.controlBorder, lineWidth: 1)
-      )
-      .overlay(
-        InnerGlow(
-          shape: RoundedRectangle(cornerRadius: 9), color: theme.controlInnerGlow, radius: 3)
-      )
-      .opacity(canAddMoreCategories ? 1 : 0.45)
     }
-    .buttonStyle(.plain)
-    .disabled(!canAddMoreCategories)
     .scaleEffect(isAddButtonHovered ? 1.02 : 1.0)
     .animation(.easeOut(duration: 0.18), value: isAddButtonHovered)
     .shadow(
@@ -473,24 +457,27 @@ struct ColorOrganizerRoot: View {
 
       if stage == .details {
         if supportsDetailsStage == false, let onBack {
-          SetupSecondaryButton(title: String(localized: "Back")) {
+          SettingsSecondaryButton(title: String(localized: "Back")) {
             commitPendingEditsIfNeeded()
             onBack()
           }
         }
 
         if presentationStyle == .sheet {
-          SetupSecondaryButton(title: "调整颜色") {
+          SettingsSecondaryButton(title: "调整颜色") {
             commitPendingEditsIfNeeded()
             withAnimation(.easeInOut(duration: 0.25)) { stage = .colors }
           }
-          SetupContinueButton(title: completionButtonTitle ?? "完成", isEnabled: true) {
+          SettingsPrimaryButton(title: completionButtonTitle ?? "完成") {
             commitPendingEditsIfNeeded()
             categoryStore.persist()
             onDismiss?()
           }
         } else {
-          SetupContinueButton(title: String(localized: "Next"), isEnabled: !categories.isEmpty) {
+          SettingsPrimaryButton(
+            title: String(localized: "Next"), systemImage: "chevron.right",
+            isDisabled: categories.isEmpty
+          ) {
             commitPendingEditsIfNeeded()
             trackDetailsCompletion()
             categoryStore.persist()
@@ -500,7 +487,7 @@ struct ColorOrganizerRoot: View {
           }
         }
       } else {
-        SetupSecondaryButton(title: String(localized: "Back")) {
+        SettingsSecondaryButton(title: String(localized: "Back")) {
           if supportsDetailsStage {
             withAnimation(.easeInOut(duration: 0.25)) {
               isDraggingColor = false
@@ -511,8 +498,9 @@ struct ColorOrganizerRoot: View {
           }
         }
 
-        SetupContinueButton(
-          title: completionButtonTitle ?? String(localized: "Next"), isEnabled: !categories.isEmpty
+        SettingsPrimaryButton(
+          title: completionButtonTitle ?? String(localized: "Next"), systemImage: "chevron.right",
+          isDisabled: categories.isEmpty
         ) {
           trackColorsCompletion()
           categoryStore.persist()
@@ -612,68 +600,6 @@ struct ColorOrganizerRoot: View {
     case .sheet:
       theme.sheetOverlay
         .ignoresSafeArea()
-    }
-  }
-
-  private struct SetupSecondaryButton: View {
-    let title: String
-    let isEnabled: Bool
-    let action: () -> Void
-
-    @Environment(\.dayflowTheme) private var theme
-    @State private var isPressed = false
-    @State private var isHovered = false
-
-    init(title: String, isEnabled: Bool = true, action: @escaping () -> Void) {
-      self.title = title
-      self.isEnabled = isEnabled
-      self.action = action
-    }
-
-    var body: some View {
-      Button(action: isEnabled ? action : {}) {
-        Text(title)
-          .font(Font.system(size: 14).weight(.medium))
-          .tracking(-0.48)
-          .foregroundColor(
-            theme.secondaryButtonText
-          )
-          .padding(.horizontal, 20)
-          .frame(height: 36)
-          .background(
-            RoundedRectangle(cornerRadius: 9)
-              .fill(theme.secondaryButtonFill)
-              .overlay(
-                RoundedRectangle(cornerRadius: 9)
-                  .stroke(
-                    theme.secondaryButtonBorder,
-                    lineWidth: 1)
-              )
-          )
-          .opacity(isEnabled ? 1.0 : 0.4)
-      }
-      .buttonStyle(.plain)
-      .scaleEffect(isPressed ? 0.96 : (isHovered && isEnabled ? 1.02 : 1.0))
-      .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isPressed)
-      .animation(.easeOut(duration: 0.2), value: isHovered)
-      .onHover { hovering in
-        if isEnabled {
-          isHovered = hovering
-        }
-      }
-      .simultaneousGesture(
-        DragGesture(minimumDistance: 0)
-          .onChanged { _ in
-            if isEnabled {
-              isPressed = true
-            }
-          }
-          .onEnded { _ in
-            isPressed = false
-          }
-      )
-      .disabled(!isEnabled)
-      .pointingHandCursor(enabled: isEnabled)
     }
   }
 

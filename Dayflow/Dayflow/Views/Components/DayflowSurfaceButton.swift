@@ -19,9 +19,10 @@ struct DayflowSurfaceButton<Content: View>: View {
   var borderColor: Color = Color.dayflowAdaptive(
     light: NSColor(red: 233 / 255, green: 237 / 255, blue: 243 / 255, alpha: 1),
     dark: NSColor(red: 49 / 255, green: 64 / 255, blue: 89 / 255, alpha: 1))
-  var cornerRadius: CGFloat = 8
-  var horizontalPadding: CGFloat = 18
-  var verticalPadding: CGFloat = 12
+  var cornerRadius: CGFloat = DayflowLayout.buttonRadius
+  var horizontalPadding: CGFloat = DayflowLayout.buttonHorizontalInset
+  // Explicit padding keeps content-sized layouts unless a fixed height is also supplied.
+  var verticalPadding: CGFloat? = nil
   var minWidth: CGFloat? = nil
   var fixedHeight: CGFloat? = nil  // Fixed button height (vertical padding still applies to content)
   var showShadow: Bool = true
@@ -30,28 +31,22 @@ struct DayflowSurfaceButton<Content: View>: View {
   var innerGlowColor: Color? = nil  // Soft inset glow (Figma "inset box-shadow")
 
   @State private var isHovered = false
-  @State private var isPressed = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   private let hoverAnim = Animation.spring(response: 0.22, dampingFraction: 0.85)
   private let pressAnim = Animation.spring(response: 0.26, dampingFraction: 0.75)
 
   var body: some View {
-    Button(action: {
-      withAnimation(pressAnim) { isPressed = true }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-        withAnimation(pressAnim) { isPressed = false }
-        action()
-      }
-    }) {
+    Button(action: action) {
       HStack(spacing: 10) {
         content()
           .foregroundColor(foreground)
       }
+      .font(.system(size: 13))
       .padding(.horizontal, horizontalPadding)
-      .padding(.vertical, verticalPadding)
+      .padding(.vertical, verticalPadding ?? 0)
       .frame(minWidth: minWidth)
-      .frame(height: fixedHeight)
+      .frame(height: fixedHeight ?? (verticalPadding == nil ? DayflowLayout.buttonHeight : nil))
       .background(background)
       .overlay(
         Group {
@@ -97,16 +92,12 @@ struct DayflowSurfaceButton<Content: View>: View {
             radius: isHovered ? 2 : 1, x: 0, y: 1)
       }
       .brightness(isHovered ? 0.02 : 0)
-      .dayflowPressScale(
-        isPressed,
-        enabled: !reduceMotion,
-        pressedScale: 0.985,
-        animation: pressAnim
-      )
       .scaleEffect(reduceMotion ? 1.0 : (isHovered ? 1.02 : 1.0))
       .offset(y: reduceMotion ? 0 : (isHovered ? -1 : 0))
     }
-    .buttonStyle(.plain)
+    .buttonStyle(
+      DayflowPressScaleButtonStyle(pressedScale: 0.985, animation: pressAnim)
+    )
     .onHover { hovering in
       withAnimation(hoverAnim) { isHovered = hovering }
     }

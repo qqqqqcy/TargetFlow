@@ -28,7 +28,13 @@ extension MainView {
       .overlay { overlayContent }
       .overlay(alignment: .bottomTrailing) { timelineFailureToastOverlayContent }
       .overlay(alignment: .bottomTrailing) { screenRecordingPermissionNoticeOverlayContent }
-      .overlay { categoryEditorOverlay }
+      .overlay {
+        categoryEditorOverlay
+          .animation(
+            reduceMotion ? .easeOut(duration: 0.12) : DayflowMotion.presentation,
+            value: showCategoryEditor
+          )
+      }
   }
 
   // Layer 2: sheet + lifecycle + notifications + state-change reactions.
@@ -403,6 +409,7 @@ extension MainView {
         showsTitles: true
       )
       .environmentObject(categoryStore)
+      .transition(.opacity)
       // Removed .contentShape(Rectangle()) and .onTapGesture to allow keyboard input
     }
   }

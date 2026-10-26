@@ -82,19 +82,10 @@ struct CategoryPickerOverlay: View {
       Image(systemName: "checkmark")
         .font(.system(size: 11, weight: .bold))
         .foregroundColor(theme.accent)
-        .frame(width: 26, height: 26)
+        .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
         .background(
-          theme.accent.opacity(0.08)
-        )
-        .clipShape(
-          UnevenRoundedRectangle(
-            cornerRadii: .init(
-              topLeading: 0,
-              bottomLeading: 8,
-              bottomTrailing: 0,
-              topTrailing: 6
-            )
-          )
+          theme.accent.opacity(0.08),
+          in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
         )
     }
     .buttonStyle(.plain)
@@ -191,16 +182,16 @@ private struct CategoryPickerPill: View {
         .foregroundColor(textColor)
         .lineLimit(1)
     }
-    .padding(.horizontal, 6)
-    .padding(.vertical, 5)
+    .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+    .frame(height: DayflowLayout.buttonHeight)
     .background(background)
     .overlay(
-      RoundedRectangle(cornerRadius: 9)
+      RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
         .inset(by: 0.25)
         .stroke(style: strokeStyle)
         .foregroundColor(borderColor)
     )
-    .cornerRadius(9)
+    .cornerRadius(DayflowLayout.buttonRadius)
   }
 
   private var strokeStyle: StrokeStyle {

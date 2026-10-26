@@ -226,16 +226,18 @@ struct ReferralMiniButton: View {
   var body: some View {
     Button(action: action) {
       Text(title)
-        .font(.custom(stylePreviewAfter ? "Figtree" : "Nunito", size: 12))
+        .font(.custom(stylePreviewAfter ? "Figtree" : "Nunito", size: 13))
+        .fontWeight(.semibold)
         .foregroundColor(foreground.opacity(isDisabled ? 0.45 : 1))
-        .frame(minWidth: 64, minHeight: 28)
-        .padding(.horizontal, 18)
+        .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+        .frame(minWidth: 64)
+        .frame(height: DayflowLayout.buttonHeight)
         .background(
-          RoundedRectangle(cornerRadius: 4, style: .continuous)
+          RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
             .fill(background.opacity(isDisabled ? 0.45 : 1))
         )
         .overlay(
-          RoundedRectangle(cornerRadius: 4, style: .continuous)
+          RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
             .stroke(border.opacity(isDisabled ? 0.45 : 1), lineWidth: style == .copy ? 1 : 0)
         )
     }

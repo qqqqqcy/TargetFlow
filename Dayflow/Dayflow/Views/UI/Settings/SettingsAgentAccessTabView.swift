@@ -206,18 +206,17 @@ private struct SettingsCommandBlock: View {
           Image(systemName: copied ? "checkmark" : "doc.on.doc")
             .font(.system(size: 11, weight: .medium))
           Text(copied ? String(localized: "Copied") : String(localized: "Copy"))
-            .font(.custom("Figtree", size: 12))
-            .fontWeight(.medium)
+            .font(.system(size: 13, weight: .semibold))
         }
         .foregroundColor(copied ? SettingsStyle.statusGood : SettingsStyle.ink.opacity(0.72))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+        .frame(height: DayflowLayout.buttonHeight)
         .background(
-          RoundedRectangle(cornerRadius: 6, style: .continuous)
+          RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
             .fill(Color.white.opacity(0.92))
         )
         .overlay(
-          RoundedRectangle(cornerRadius: 6, style: .continuous)
+          RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
             .stroke(Color.black.opacity(0.11), lineWidth: 1)
         )
       }

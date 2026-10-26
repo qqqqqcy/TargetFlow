@@ -11,11 +11,10 @@ import SwiftUI
 struct DayflowButton: View {
   let title: String
   let action: () -> Void
-  var width: CGFloat = 160
-  var fontSize: CGFloat = 16
+  var width: CGFloat? = nil
+  var fontSize: CGFloat = 13
   var isSubtle: Bool = false
 
-  @State private var isPressed = false
   @State private var isHovered = false
   @State private var showPulse = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -30,11 +29,6 @@ struct DayflowButton: View {
 
   var body: some View {
     Button(action: {
-      // Trigger pulse animation
-      withAnimation(.easeOut(duration: 0.1)) {
-        isPressed = true
-      }
-
       // Haptic feedback on macOS 11+
       if #available(macOS 11.0, *) {
         NSHapticFeedbackManager.defaultPerformer.perform(
@@ -43,25 +37,20 @@ struct DayflowButton: View {
         )
       }
 
-      // Reset and call action
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        withAnimation(pressAnimation) {
-          isPressed = false
-          showPulse = true
-        }
-        action()
-
-        // Reset pulse
+      if !reduceMotion {
+        withAnimation(pressAnimation) { showPulse = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
           showPulse = false
         }
       }
+      action()
     }) {
       Text(title)
         .font(.system(size: fontSize))
         .fontWeight(.semibold)
         .foregroundColor(isSubtle ? theme.secondaryButtonText : theme.primaryButtonText)
-        .frame(width: width, height: 56, alignment: .center)
+        .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+        .frame(width: width, height: DayflowLayout.buttonHeight, alignment: .center)
         .background(
           ZStack {
             // Main background
@@ -87,7 +76,7 @@ struct DayflowButton: View {
             }
           }
         )
-        .cornerRadius(12)
+        .cornerRadius(DayflowLayout.buttonRadius)
         .shadow(
           color: theme.accent.opacity(isSubtle ? 0 : (isHovered ? 0.16 : 0.10)),
           radius: isHovered ? 8 : 5,
@@ -95,24 +84,18 @@ struct DayflowButton: View {
           y: 3
         )
         .overlay(
-          RoundedRectangle(cornerRadius: 12)
+          RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
             .strokeBorder(
               isSubtle ? theme.secondaryButtonBorder : theme.primaryButtonBorder,
               lineWidth: 1
             )
         )
         .opacity(isEnabled ? 1 : 0.5)
-        .dayflowPressScale(
-          isPressed,
-          enabled: !reduceMotion,
-          pressedScale: 0.97,
-          animation: pressAnimation
-        )
         .scaleEffect(reduceMotion ? 1.0 : (isHovered ? 1.02 : 1.0))
         .offset(y: reduceMotion ? 0 : (isHovered ? (isSubtle ? -1 : -2) : 0))
         .brightness(isHovered ? (isSubtle ? 0.05 : 0.08) : 0)
     }
-    .buttonStyle(.plain)  // Remove default button styling
+    .buttonStyle(DayflowPressScaleButtonStyle(pressedScale: 0.97, animation: pressAnimation))
     .pointingHandCursor()
     .onHover { hovering in
       withAnimation(hoverAnimation) {

@@ -18,7 +18,7 @@ struct TabFilterBar: View {
   @State private var chipRowWidth: CGFloat = 0
   @State private var draggedCategoryID: UUID?
 
-  private let chipRowHeight: CGFloat = 26
+  private let chipRowHeight = DayflowLayout.buttonHeight
 
   var body: some View {
     if isVertical {
@@ -103,18 +103,17 @@ struct TabFilterBar: View {
         }
 
         Text(category.name)
-          .font(Font.system(size: 11).weight(.regular))
+          .font(Font.system(size: 13).weight(.medium))
           .foregroundColor(theme.chipText)
           .lineLimit(1)
           .fixedSize()
       }
-      .padding(.horizontal, 8)
-      .padding(.vertical, 5)
-      .frame(height: 26)
+      .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+      .frame(height: DayflowLayout.buttonHeight)
       .background(theme.chipFill)
-      .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+      .clipShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous))
       .overlay(
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
           .strokeBorder(theme.chipBorder, lineWidth: 0.5)
       )
     }

@@ -51,6 +51,37 @@ final class EventGoalTests: XCTestCase {
     XCTAssertEqual(restored.currentTargets.count, 1)
   }
 
+  func testSummaryDefaultsFollowCurrentTargetSwitchesInsteadOfNames() {
+    let enabled = TimelineCategory(
+      name: "Distraction", colorHex: "#FFFFFF", order: 2, targetEnabled: true)
+    let disabled = TimelineCategory(name: "Work", colorHex: "#FFFFFF", order: 0)
+    let otherEnabled = TimelineCategory(
+      name: "准备面试", colorHex: "#FFFFFF", order: 1, targetEnabled: true)
+    let idle = TimelineCategory(
+      name: "Idle", colorHex: "#FFFFFF", order: 3, isIdle: true, targetEnabled: true)
+    let system = TimelineCategory(
+      name: "System", colorHex: "#FFFFFF", order: 4, isSystem: true)
+
+    let plan = DayGoalPlan.defaultPlan(
+      day: "2026-10-27", categories: [enabled, disabled, idle, system, otherEnabled])
+
+    XCTAssertEqual(
+      plan.focusCategories.map(\.categoryID), [otherEnabled, enabled].map { $0.id.uuidString })
+    XCTAssertEqual(plan.distractionCategories.map(\.categoryID), [disabled.id.uuidString])
+  }
+
+  func testSummaryDefaultsWithNoCurrentTargetsSelectAllEditableEventsAsDistractions() {
+    var event = TimelineCategory(name: "Work", colorHex: "#FFFFFF", order: 0)
+    let offPlan = DayGoalPlan.defaultPlan(day: "2026-10-27", categories: [event])
+    XCTAssertTrue(offPlan.focusCategories.isEmpty)
+    XCTAssertEqual(offPlan.distractionCategories.map(\.categoryID), [event.id.uuidString])
+
+    event.targetEnabled = true
+    let onPlan = DayGoalPlan.defaultPlan(day: "2026-10-27", categories: [event])
+    XCTAssertEqual(onPlan.focusCategories.map(\.categoryID), [event.id.uuidString])
+    XCTAssertTrue(onPlan.distractionCategories.isEmpty)
+  }
+
   func testOldEventJSONDecodesWithGoalOff() throws {
     let original = TimelineCategory(name: "已有事件", colorHex: "#FFFFFF", order: 0)
     var object = try XCTUnwrap(

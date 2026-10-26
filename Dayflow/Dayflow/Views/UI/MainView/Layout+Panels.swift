@@ -22,7 +22,7 @@ enum TimelineAlignment {
 
 enum TimelineNavigationLayout {
   static let arrowSize: CGFloat = 24
-  static let hoverCircleSize: CGFloat = 30
+  static let hoverCircleSize = DayflowLayout.buttonHeight
   static let calendarGap: CGFloat = 4
 }
 
@@ -83,6 +83,7 @@ extension MainView {
     }
     .frame(width: 166)
     .frame(maxHeight: .infinity)
+    .background { TopographicFlowBackground() }
   }
 
   @ViewBuilder
@@ -92,13 +93,15 @@ extension MainView {
       switch selectedIcon {
       case .settings:
         SettingsView()
-          .padding(20)
+          .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
       case .timeline:
         GeometryReader { geo in
           timelinePanel(geo: geo)
         }
+        .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
       }
     }
+    .animation(reduceMotion ? .easeOut(duration: 0.12) : DayflowMotion.content, value: selectedIcon)
     .padding(0)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -121,9 +124,9 @@ extension MainView {
 
   private func timelinePanel(geo: GeometryProxy) -> some View {
     let showsCalendar = geo.size.width >= 1020 && timelineMode == .day
-    return VStack(alignment: .leading, spacing: 16) {
+    return VStack(alignment: .leading, spacing: DayflowLayout.sectionSpacing) {
       HStack(alignment: .center) {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 6) {
           Text("时间线")
             .font(.system(size: 25, weight: .bold))
             .foregroundStyle(theme.textPrimary)
@@ -137,7 +140,7 @@ extension MainView {
 
       CurrentGoalsStatusView(onManageEvents: { showCategoryEditor = true })
 
-      HStack(alignment: .top, spacing: 12) {
+      HStack(alignment: .top, spacing: DayflowLayout.columnSpacing) {
         if showsCalendar {
           timelineCalendarRail
         }
@@ -149,8 +152,9 @@ extension MainView {
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    .padding(18)
-    .padding(.top, 12)
+    .padding(.horizontal, DayflowLayout.pageHorizontalInset)
+    .padding(.top, DayflowLayout.pageTopInset)
+    .padding(.bottom, DayflowLayout.pageBottomInset)
     .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
     .coordinateSpace(name: "TimelinePanel")
     .overlay(alignment: .topLeading) {
@@ -252,11 +256,8 @@ extension MainView {
             cardPressedScale: TimelineCardLayout.pressedScale,
             mutedCategoryKeys: mutedCategoryKeys
           )
-          // Day is the zoomed-IN view (1/7 of a week). Entering Day feels
-          // like diving into a single column: grow from 0.95 → 1 + fade in.
-          // Exiting Day (to Week) shrinks 1 → 0.95 + fade out, matching the
-          // "pull back to see more" feel when Week slides in behind it.
-          .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .center)))
+          // Keep the day/week zoom subtle so text stays steady during the switch.
+          .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
           .zIndex(timelineMode == .day ? 1 : 0)
 
         case .week:
@@ -281,11 +282,8 @@ extension MainView {
               )
             }
           }
-          // Week is the zoomed-OUT view (7 days). Entering Week from Day
-          // feels like pulling back: start at 1.05 (slightly too large) and
-          // settle to 1 + fade in. Exiting Week grows to 1.05 + fade out,
-          // matching the "dive in" feel when Day settles to 1 behind it.
-          .transition(.opacity.combined(with: .scale(scale: 1.05, anchor: .center)))
+          // The inverse zoom preserves the sense of pulling back to see a week.
+          .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 1.02)))
           .zIndex(timelineMode == .week ? 1 : 0)
         }
       }
@@ -346,6 +344,10 @@ extension MainView {
       switch timelineMode {
       case .day:
         dayTimelineInspectorContent(geo: geo)
+          .animation(
+            reduceMotion ? .easeOut(duration: 0.12) : DayflowMotion.content,
+            value: selectedActivity?.id
+          )
       case .week:
         weekTimelineInspectorContent(geo: geo)
       }
@@ -374,12 +376,12 @@ extension MainView {
 
     if let activity = selectedActivity {
       timelineActivityInspector(activity: activity, geo: geo)
-        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+        .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
     } else {
       VStack(spacing: 0) {
         daySummary(reviewPromptCount: reviewPromptCount)
       }
-      .transition(.opacity.combined(with: .scale(scale: 0.98)))
+      .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
     }
   }
 
@@ -427,7 +429,11 @@ extension MainView {
           clearTimelineSelection()
         } label: {
           Image(systemName: "xmark").font(.system(size: 11, weight: .semibold))
-            .frame(width: 24, height: 24)
+            .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+            .background(
+              theme.surfaceMuted,
+              in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
+            )
         }
         .buttonStyle(.plain)
         .help("关闭事件详情")
@@ -552,7 +558,7 @@ extension MainView {
             Image(systemName: "checkmark")
               .font(.system(size: 11.5, weight: .medium))
             Text("Copied")
-              .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 11.5).weight(.medium))
+              .font(Font.system(size: 13, weight: .semibold))
           }
           .transition(.asymmetric(insertion: enterTransition, removal: exitTransition))
         } else {
@@ -564,16 +570,15 @@ extension MainView {
               .scaledToFit()
               .frame(width: 11.5, height: 11.5)
             Text("Copy timeline")
-              .font(Font.custom("Figtree", size: stylePreviewAfter ? 14 : 11.5).weight(.medium))
+              .font(Font.system(size: 13, weight: .semibold))
           }
           .transition(.asymmetric(insertion: enterTransition, removal: exitTransition))
         }
       }
       .animation(.spring(response: 0.3, dampingFraction: 0.85), value: copyTimelineState)
       .fixedSize(horizontal: true, vertical: false)
-      .padding(.horizontal, 8)
-      .frame(minWidth: stylePreviewAfter ? 122 : 104)
-      .frame(height: stylePreviewAfter ? 26 : 23)
+      .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+      .frame(height: DayflowLayout.buttonHeight)
       .foregroundColor(textColor)
       .background(background)
       .background {
@@ -581,9 +586,9 @@ extension MainView {
           Rectangle().fill(.ultraThinMaterial)
         }
       }
-      .clipShape(RoundedRectangle(cornerRadius: 7))
+      .clipShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
       .overlay(
-        RoundedRectangle(cornerRadius: 7)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
           .strokeBorder(stroke, lineWidth: 1)
       )
       .contentShape(Rectangle())

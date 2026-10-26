@@ -33,11 +33,12 @@ import SwiftUI
     let scale: CGFloat
     let animation: Animation
     @State private var isHovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
       content
-        .scaleEffect(isHovering ? scale : 1)
-        .animation(animation, value: isHovering)
+        .scaleEffect(isHovering && !reduceMotion ? scale : 1)
+        .animation(reduceMotion ? nil : animation, value: isHovering)
         .onHover { hovering in
           isHovering = enabled ? hovering : false
         }
@@ -46,6 +47,20 @@ import SwiftUI
             isHovering = false
           }
         }
+    }
+  }
+
+  private struct PressScaleModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let isPressed: Bool
+    let enabled: Bool
+    let scale: CGFloat
+    let animation: Animation
+
+    func body(content: Content) -> some View {
+      content
+        .scaleEffect(enabled && isPressed && !reduceMotion ? scale : 1)
+        .animation(reduceMotion ? nil : animation, value: isPressed)
     }
   }
 
@@ -91,8 +106,10 @@ import SwiftUI
       pressedScale: CGFloat = 0.97,
       animation: Animation = .spring(response: 0.24, dampingFraction: 0.82)
     ) -> some View {
-      scaleEffect(enabled && isPressed ? pressedScale : 1)
-        .animation(animation, value: isPressed)
+      modifier(
+        PressScaleModifier(
+          isPressed: isPressed, enabled: enabled, scale: pressedScale, animation: animation)
+      )
     }
 
     func pointingHandCursorWithHoverScale(

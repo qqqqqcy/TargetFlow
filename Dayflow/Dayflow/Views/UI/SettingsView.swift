@@ -35,6 +35,7 @@ struct SettingsView: View {
 
   @AppStorage(DayflowAppearance.storageKey) private var appearance: DayflowAppearance = .system
   @State private var selectedTab: SettingsTab = .storage
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   @Namespace private var sidebarSelectionNamespace
 
@@ -113,28 +114,28 @@ struct SettingsView: View {
     }
     .onReceive(NotificationCenter.default.publisher(for: .openProvidersSettings)) { _ in
       guard selectedTab != .providers else { return }
-      withAnimation(.easeOut(duration: 0.18)) {
+      withAnimation(reduceMotion ? .easeOut(duration: 0.12) : DayflowMotion.selection) {
         selectedTab = .providers
       }
     }
   }
 
   private var mainContent: some View {
-    VStack(alignment: .leading, spacing: 18) {
+    VStack(alignment: .leading, spacing: DayflowLayout.sectionSpacing) {
       pageHeader
       navigationTabs
       settingsContent
     }
-    .padding(.horizontal, 24)
-    .padding(.top, 24)
-    .padding(.bottom, 16)
+    .padding(.horizontal, DayflowLayout.pageHorizontalInset)
+    .padding(.top, DayflowLayout.pageTopInset)
+    .padding(.bottom, DayflowLayout.pageBottomInset)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .tint(SettingsStyle.primaryButtonFill)
   }
 
   private var pageHeader: some View {
     HStack(alignment: .center, spacing: 16) {
-      VStack(alignment: .leading, spacing: 7) {
+      VStack(alignment: .leading, spacing: 6) {
         Text("Settings")
           .font(.system(size: 25, weight: .bold))
           .foregroundStyle(SettingsStyle.text)
@@ -175,7 +176,7 @@ struct SettingsView: View {
     HStack(spacing: 6) {
       ForEach(SettingsTab.allCases) { tab in
         Button {
-          withAnimation(.easeOut(duration: 0.18)) {
+          withAnimation(reduceMotion ? .easeOut(duration: 0.12) : DayflowMotion.selection) {
             selectedTab = tab
           }
         } label: {
@@ -206,22 +207,28 @@ struct SettingsView: View {
     .background(SettingsStyle.subtleFill, in: RoundedRectangle(cornerRadius: 12))
   }
 
-  @ViewBuilder
   private var settingsContent: some View {
-    if selectedTab == .privacy {
-      tabContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    } else {
-      ScrollView(.vertical, showsIndicators: true) {
-        VStack(alignment: .leading, spacing: SettingsStyle.sectionSpacing) {
+    ZStack(alignment: .topLeading) {
+      Group {
+        if selectedTab == .privacy {
           tabContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } else {
+          ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: SettingsStyle.sectionSpacing) {
+              tabContent
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 8)
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: 920, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, 8)
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+      .id(selectedTab)
+      .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
     }
+    .clipped()
+    .animation(reduceMotion ? .easeOut(duration: 0.12) : DayflowMotion.content, value: selectedTab)
   }
 
   @ViewBuilder
@@ -237,8 +244,6 @@ struct SettingsView: View {
         SettingsProvidersTabView(viewModel: providersViewModel)
       }
     }
-    .id(selectedTab)
-    .transition(.opacity)
   }
 }
 

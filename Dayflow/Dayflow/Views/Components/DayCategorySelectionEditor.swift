@@ -37,7 +37,7 @@ struct DayCategorySelectionEditor: View {
           }
         }
       }
-      .padding(.trailing, 32)
+      .padding(.trailing, DayflowLayout.buttonHeight + DayflowLayout.actionSpacing)
       .frame(maxWidth: .infinity, alignment: .leading)
 
       Rectangle()
@@ -61,21 +61,13 @@ struct DayCategorySelectionEditor: View {
         Image(systemName: "checkmark")
           .font(.system(size: 11, weight: .bold))
           .foregroundColor(theme.textPrimary)
-          .frame(width: 26, height: 26)
-          .background(theme.chipFill)
-          .clipShape(
-            UnevenRoundedRectangle(
-              cornerRadii: .init(
-                topLeading: 0,
-                bottomLeading: 8,
-                bottomTrailing: 0,
-                topTrailing: Design.cornerRadius
-              )
-            )
-          )
+          .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+          .background(
+            theme.chipFill, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
       }
       .buttonStyle(.plain)
       .pointingHandCursorOnHover(reassertOnPressEnd: true)
+      .accessibilityLabel(String(localized: "Done"))
     }
     .shadow(color: Color.black.opacity(0.08), radius: 18, x: 0, y: 10)
   }

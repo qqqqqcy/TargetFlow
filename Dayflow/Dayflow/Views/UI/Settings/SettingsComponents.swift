@@ -4,7 +4,7 @@ import SwiftUI
 
 // Shared blue accents, neutral surfaces, and readable light/dark text.
 enum SettingsStyle {
-  static let sectionSpacing: CGFloat = 16
+  static let sectionSpacing = DayflowLayout.sectionSpacing
   static let rowVerticalPadding: CGFloat = 13
 
   private static func adaptive(_ light: UInt32, _ dark: UInt32) -> Color {
@@ -80,11 +80,14 @@ struct SettingsSection<Content: View, Trailing: View>: View {
 
       content()
     }
-    .padding(20)
+    .padding(DayflowLayout.cardInset)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(SettingsStyle.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .background(
+      SettingsStyle.surface,
+      in: RoundedRectangle(cornerRadius: DayflowLayout.cardRadius, style: .continuous)
+    )
     .overlay {
-      RoundedRectangle(cornerRadius: 14, style: .continuous)
+      RoundedRectangle(cornerRadius: DayflowLayout.cardRadius, style: .continuous)
         .strokeBorder(SettingsStyle.divider, lineWidth: 1)
     }
   }
@@ -186,10 +189,10 @@ struct SettingsPrimaryButton: View {
           .fontWeight(.semibold)
       }
       .foregroundColor(.white)
-      .padding(.horizontal, 18)
-      .padding(.vertical, 9)
+      .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+      .frame(height: DayflowLayout.buttonHeight)
       .background(
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
           .fill(SettingsStyle.primaryButtonFill.opacity(isDisabled ? 0.4 : 1))
       )
     }
@@ -217,14 +220,14 @@ struct SettingsSecondaryButton: View {
           .fontWeight(.semibold)
       }
       .foregroundColor(SettingsStyle.secondary.opacity(isDisabled ? 0.4 : 1))
-      .padding(.horizontal, 12)
-      .padding(.vertical, 7)
+      .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+      .frame(height: DayflowLayout.buttonHeight)
       .background(
-        RoundedRectangle(cornerRadius: 7, style: .continuous)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
           .fill(SettingsStyle.surface.opacity(isDisabled ? 0.4 : 1))
       )
       .overlay {
-        RoundedRectangle(cornerRadius: 7, style: .continuous)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
           .strokeBorder(SettingsStyle.divider, lineWidth: 1)
       }
     }

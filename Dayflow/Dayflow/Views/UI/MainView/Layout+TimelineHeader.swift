@@ -65,7 +65,7 @@ private struct TimelineNavigationButton: View {
       action()
     }) {
       ZStack {
-        Circle()
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
           .fill(theme.accentSoft)
           .frame(width: hoverCircleSize, height: hoverCircleSize)
           .opacity(isHovering && isEnabled ? 1 : 0)
@@ -79,7 +79,7 @@ private struct TimelineNavigationButton: View {
           .opacity(isEnabled ? 1 : 0.35)
       }
       .frame(width: max(arrowSize, hoverCircleSize), height: max(arrowSize, hoverCircleSize))
-      .contentShape(Circle())
+      .contentShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
     }
     .buttonStyle(DayflowPressScaleButtonStyle(enabled: isEnabled))
     .disabled(!isEnabled)
@@ -156,7 +156,7 @@ extension MainView {
 
     // Matches the pinned widths of each control (Figma-spec accurate).
     let chevronsWidth = (TimelineNavigationLayout.hoverCircleSize * 2) + 2
-    let calendarWidth: CGFloat = 36
+    let calendarWidth = DayflowLayout.buttonHeight
     let dayWeekWidth: CGFloat = 104
     let todayWidth: CGFloat = 56
     let gap = TimelineNavigationLayout.calendarGap
@@ -199,7 +199,7 @@ extension MainView {
   // in-file comments on `timelineModeSwitch` and `timelineCalendarButton`
   // for the history of that decision).
   //
-  // `.frame(height: 30)` on the HStack pins its vertical dimension to the
+  // `.frame(height: DayflowLayout.buttonHeight)` on the HStack pins its vertical dimension to the
   // pill height so the date label (which has a ~31pt natural line height
   // at InstrumentSerif 26pt) can't grow the HStack when it appears. Without
   // this pin, the pills visibly shifted by ~0.5pt when the date entered.
@@ -222,7 +222,7 @@ extension MainView {
           .padding(.leading, 10)
       }
     }
-    .frame(height: 30)
+    .frame(height: DayflowLayout.buttonHeight)
     .offset(x: timelineOffset)
     .opacity(timelineOpacity)
   }
@@ -284,8 +284,8 @@ extension MainView {
           .foregroundColor(theme.controlText)
           .frame(width: 16, height: 16)
       }
-      .frame(width: 36, height: 30)
-      .contentShape(Capsule(style: .continuous))
+      .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+      .contentShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous))
     }
     .buttonStyle(
       DayflowPressScaleButtonStyle(
@@ -301,7 +301,7 @@ extension MainView {
   /// The peach "glass" capsule shared by the calendar pill and the selected
   /// Day/Week segment: translucent fill, hairline border, soft inner glow.
   private func glassControlBackground(isEmphasized: Bool = false) -> some View {
-    let shape = Capsule(style: .continuous)
+    let shape = RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
     return
       shape
       .fill(theme.controlFill)
@@ -432,9 +432,9 @@ extension MainView {
               // ideal width as ~0 and collapsed the cream background +
               // "Day" label. Three independent parallel investigations
               // converged on this exact change.
-              .frame(width: 52, height: 30)
+              .frame(width: 52, height: DayflowLayout.buttonHeight)
           }
-          .contentShape(Capsule(style: .continuous))
+          .contentShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous))
         }
         // Reverted to PlainButtonStyle: DayflowPressScaleButtonStyle — even
         // with `enabled: false` — still wraps the label in `.animation(...)`,
@@ -446,11 +446,11 @@ extension MainView {
         .pointingHandCursorOnHover(reassertOnPressEnd: true)
       }
     }
-    .frame(width: 104, height: 30)
+    .frame(width: 104, height: DayflowLayout.buttonHeight)
     .background(theme.segmentTrackFill)
-    .clipShape(Capsule(style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous))
     .overlay(
-      Capsule(style: .continuous)
+      RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
         .strokeBorder(theme.segmentTrackBorder, lineWidth: 0.75)
     )
     .animation(timelineModeSwitchAnimation, value: timelineMode)
@@ -469,11 +469,11 @@ extension MainView {
         // inside a `ViewThatFits`, implicit widths can resolve to unstable
         // values mid-transition, nudging the Day/Week toggle's position and
         // desyncing its `matchedGeometryEffect` anchors during a mode flip.
-        .frame(width: 56, height: 30)
+        .frame(width: 56, height: DayflowLayout.buttonHeight)
         .background(theme.segmentTrackFill)
-        .clipShape(Capsule(style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous))
         .overlay(
-          Capsule(style: .continuous)
+          RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius, style: .continuous)
             .strokeBorder(theme.segmentTrackBorder, lineWidth: 0.75)
         )
     }

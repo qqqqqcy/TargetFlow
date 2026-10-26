@@ -110,7 +110,7 @@ struct PausePillView: View {
 
       pill
     }
-    .frame(height: 32)
+    .frame(height: DayflowLayout.buttonHeight)
     .fixedSize(horizontal: true, vertical: false)
     .onAppear(perform: syncOnAppear)
     .onDisappear { cancelStatusVisibilityTask() }
@@ -135,9 +135,9 @@ struct PausePillView: View {
       .animation(.easeInOut(duration: 0.35), value: phase)
 
       ZStack {
-        InnerGlow(shape: Capsule(), color: theme.controlInnerGlow, radius: 3)
+        InnerGlow(shape: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius), color: theme.controlInnerGlow, radius: 3)
           .opacity(phase == .paused ? 0 : 1)
-        InnerGlow(shape: Capsule(), color: theme.primaryButtonInnerGlow, radius: 3)
+        InnerGlow(shape: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius), color: theme.primaryButtonInnerGlow, radius: 3)
           .opacity(phase == .paused ? 1 : 0)
       }
       .allowsHitTesting(false)
@@ -163,7 +163,7 @@ struct PausePillView: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
       }
 
-      Capsule()
+      RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
         .strokeBorder(
           phase == .paused ? theme.primaryButtonBorder : theme.controlBorder,
           lineWidth: 1
@@ -171,9 +171,9 @@ struct PausePillView: View {
         .allowsHitTesting(false)
         .animation(.easeInOut(duration: 0.35), value: phase)
     }
-    .frame(width: pillWidth, height: 32)
-    .clipShape(Capsule())
-    .contentShape(Capsule())
+    .frame(width: pillWidth, height: DayflowLayout.buttonHeight)
+    .clipShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
+    .contentShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
     .onTapGesture(perform: handlePillTap)
     .simultaneousGesture(
       DragGesture(minimumDistance: 0)
@@ -239,9 +239,9 @@ struct PausePillView: View {
       startPause(chip.duration)
     } label: {
       ZStack {
-        Capsule().fill(theme.chipFill)
-        Capsule().fill(theme.primaryButtonFill).opacity(hovered ? 1 : 0)
-        Capsule().strokeBorder(hovered ? theme.primaryButtonBorder : theme.chipBorder, lineWidth: 1)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius).fill(theme.chipFill)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius).fill(theme.primaryButtonFill).opacity(hovered ? 1 : 0)
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius).strokeBorder(hovered ? theme.primaryButtonBorder : theme.chipBorder, lineWidth: 1)
         Text(chip.label)
           .font(
             chip.isInf
@@ -251,7 +251,7 @@ struct PausePillView: View {
           .foregroundColor(hovered ? theme.primaryButtonText : theme.textPrimary)
       }
       .frame(width: 42, height: 20)
-      .contentShape(Capsule())
+      .contentShape(RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
     }
     .buttonStyle(PillChipButtonStyle())
     .opacity(chipOpacity[i])

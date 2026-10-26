@@ -43,7 +43,7 @@ struct SettingsProvidersTabView: View {
       VStack(alignment: .leading, spacing: 0) {
         summaryRows
 
-        HStack(spacing: 8) {
+        ActionFlowLayout {
           if viewModel.primaryRoutingProviderId != .dayflow {
             SettingsSecondaryButton(
               title: String(localized: "Edit configuration"),
@@ -274,7 +274,7 @@ struct SettingsProvidersTabView: View {
         .foregroundColor(SettingsStyle.secondary)
         .fixedSize(horizontal: false, vertical: true)
 
-      HStack(spacing: 8) {
+      ActionFlowLayout {
         if !isConfigured {
           SettingsSecondaryButton(title: String(localized: "Setup")) {
             viewModel.beginProviderSetup(provider.id, role: .setupOnly)
@@ -328,8 +328,9 @@ struct SettingsProvidersTabView: View {
             Text(model.displayName).tag(model)
           }
         }
-        .pickerStyle(.segmented)
+        .pickerStyle(.menu)
         .labelsHidden()
+        .controlSize(.large)
         .onChange(of: viewModel.selectedGeminiModel) { _, newValue in
           viewModel.persistGeminiModelSelection(newValue, source: "settings")
         }

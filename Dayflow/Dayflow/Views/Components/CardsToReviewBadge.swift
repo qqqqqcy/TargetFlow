@@ -23,13 +23,13 @@ struct CardsToReviewBadge: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text("\(count) cards to review"))
-    .padding(.horizontal, 12)
-    .padding(.vertical, 10)
+    .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+    .frame(height: DayflowLayout.buttonHeight)
     .background(theme.primaryButtonFill)
-    .cornerRadius(8)
+    .cornerRadius(DayflowLayout.buttonRadius)
     .shadow(color: theme.accent.opacity(0.12), radius: 4, x: 0, y: 2)
     .overlay(
-      RoundedRectangle(cornerRadius: 8)
+      RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
         .strokeBorder(theme.primaryButtonBorder, lineWidth: 1)
     )
   }

@@ -145,14 +145,18 @@ struct EditableCategoryCard: View {
         if !category.isSystem {
           Button(action: onStartEdit) {
             Image(systemName: "pencil")
-              .frame(width: 26, height: 26)
+              .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+              .background(
+                theme.chipFill, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
           }
           .foregroundStyle(theme.textSecondary)
           .accessibilityLabel("编辑事件")
 
           Button(action: onDelete) {
             Image(systemName: "trash")
-              .frame(width: 26, height: 26)
+              .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+              .background(
+                theme.chipFill, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
           }
           .foregroundStyle(theme.textTertiary)
           .accessibilityLabel("删除事件")

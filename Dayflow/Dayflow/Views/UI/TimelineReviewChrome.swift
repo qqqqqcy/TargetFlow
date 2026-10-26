@@ -15,10 +15,10 @@ struct TimelineReviewSpeedChip: View {
       Text(playbackState.speedLabel)
         .font(.system(size: 14, weight: .semibold))
         .foregroundColor(.white)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+        .frame(height: DayflowLayout.buttonHeight)
         .background(Color.black.opacity(0.8))
-        .cornerRadius(4)
+        .cornerRadius(DayflowLayout.buttonRadius)
     }
     .buttonStyle(.plain)
     .pointingHandCursor()
@@ -168,7 +168,7 @@ struct TimelineReviewRatingRow: View {
   let onSelect: (TimelineReviewRating) -> Void
 
   var body: some View {
-    HStack(spacing: 44) {
+    HStack(spacing: DayflowLayout.actionSpacing) {
       undoButton
       ratingButton(.distracted)
       ratingButton(.neutral)
@@ -180,11 +180,18 @@ struct TimelineReviewRatingRow: View {
     Button {
       onUndo()
     } label: {
-      VStack(spacing: 6) {
+      HStack(spacing: 6) {
         ZUndoIcon(size: 16)
         Text("Undo")
           .font(.system(size: 12).weight(.medium))
           .foregroundColor(theme.textSecondary)
+      }
+      .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+      .frame(height: DayflowLayout.buttonHeight)
+      .background(theme.surfaceMuted, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
+      .overlay {
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
+          .strokeBorder(theme.separator, lineWidth: 1)
       }
     }
     .buttonStyle(.plain)
@@ -195,11 +202,18 @@ struct TimelineReviewRatingRow: View {
     Button {
       onSelect(rating)
     } label: {
-      VStack(spacing: 6) {
+      HStack(spacing: 6) {
         TimelineReviewFooterIcon(rating: rating, size: 16)
         Text(rating.title)
           .font(.system(size: 12).weight(.medium))
           .foregroundColor(theme.textSecondary)
+      }
+      .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+      .frame(height: DayflowLayout.buttonHeight)
+      .background(theme.surfaceMuted, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
+      .overlay {
+        RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius)
+          .strokeBorder(theme.separator, lineWidth: 1)
       }
     }
     .buttonStyle(.plain)

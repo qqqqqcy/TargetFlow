@@ -25,7 +25,7 @@ struct DayDistractionSummarySection: View {
 
   private enum Design {
     static let sectionSpacing: CGFloat = 16
-    static let editButtonSize: CGFloat = 20
+    static let editButtonSize = DayflowLayout.buttonHeight
     static let editorOffsetY: CGFloat = 28
   }
 

@@ -201,7 +201,7 @@ struct DaySummaryView: View {
       loadData()
     }
     .onChange(of: categories) {
-      recomputeCachedStatsForCategoryChange()
+      loadData()
     }
     .contentShape(Rectangle())
     .onTapGesture {

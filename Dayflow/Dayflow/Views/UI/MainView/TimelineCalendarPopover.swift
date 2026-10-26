@@ -118,7 +118,7 @@ struct TimelineCalendarPopover: View {
         monthNavButton(systemName: "chevron.right") { shiftMonth(by: 1) }
       }
     }
-    .frame(height: 20)
+    .frame(height: DayflowLayout.buttonHeight)
   }
 
   // Figma nav chevrons are plain gray glyphs, not the app's orange header
@@ -132,7 +132,8 @@ struct TimelineCalendarPopover: View {
       Image(systemName: systemName)
         .font(.system(size: 16, weight: .medium))
         .foregroundColor(theme.textMuted)
-        .frame(width: 20, height: 20)
+        .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+        .background(theme.surfaceMuted, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)

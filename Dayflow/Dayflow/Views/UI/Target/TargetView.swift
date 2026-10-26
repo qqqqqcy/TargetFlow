@@ -47,12 +47,14 @@ struct CurrentGoalsStatusView: View {
         }
         Button(action: onManageEvents) {
           Label("事件与目标", systemImage: "slider.horizontal.3")
-            .font(.system(size: 12, weight: .medium))
+            .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(theme.primaryButtonText)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background(theme.primaryButtonFill, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.primaryButtonBorder))
+            .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
+            .frame(height: DayflowLayout.buttonHeight)
+            .background(
+              theme.primaryButtonFill, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
+            .overlay(
+              RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius).stroke(theme.primaryButtonBorder))
         }
         .buttonStyle(.plain)
         .pointingHandCursor()
@@ -63,9 +65,7 @@ struct CurrentGoalsStatusView: View {
         HStack(alignment: .top, spacing: 10) {
           Label(error, systemImage: "exclamationmark.circle")
             .foregroundStyle(SettingsStyle.destructive)
-          Button("重试评估") { store.retryPendingEvaluations() }
-            .buttonStyle(.plain)
-            .foregroundStyle(theme.accent)
+          DayflowButton(title: "重试评估", action: { store.retryPendingEvaluations() }, isSubtle: true)
             .fixedSize()
         }
         .font(.system(size: 12))
