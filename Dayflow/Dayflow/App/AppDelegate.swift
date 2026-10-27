@@ -42,6 +42,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ note: Notification) {
+    // Load the bundled icon directly so Dock does not reuse an older registered icon.
+    if let iconURL = Bundle.main.url(forResource: "TargetFlowAppIcon", withExtension: "icns"),
+      let icon = NSImage(contentsOf: iconURL)
+    {
+      NSApp.applicationIconImage = icon
+    }
     if AppStoragePaths.isUIPreview {
       Self.allowTermination = true
       NSApp.setActivationPolicy(.regular)

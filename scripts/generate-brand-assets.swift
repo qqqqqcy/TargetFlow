@@ -5,6 +5,7 @@ import CoreVideo
 
 // Regenerate with: swift scripts/generate-brand-assets.swift
 // Primary icon only: swift scripts/generate-brand-assets.swift --icons-only
+// Menu bar icons only: swift scripts/generate-brand-assets.swift --menu-icons-only
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let assets = root.appendingPathComponent("Dayflow/Dayflow/Assets.xcassets")
 let fm = FileManager.default
@@ -86,6 +87,48 @@ func imageSet(_ name: String, filename: String, size: NSSize, template: Bool = f
     .write(to: directory.appendingPathComponent("Contents.json"))
 }
 
+func menuBarIcons() throws {
+  // A solid target and arrow match the new app icon and stay crisp at menu-bar size.
+  for active in [false, true] {
+    try imageSet(active ? "MenuBarOnIcon" : "MenuBarOffIcon", filename: "target-flow-menu.png",
+      size: NSSize(width: 88, height: 72), template: true) {
+        NSColor.black.setStroke()
+        NSColor.black.setFill()
+        let ring = NSBezierPath()
+        ring.appendArc(withCenter: NSPoint(x: 35, y: 35), radius: 24,
+          startAngle: 72, endAngle: 378)
+        ring.lineWidth = 12
+        ring.stroke()
+        NSBezierPath(ovalIn: NSRect(x: 26, y: 26, width: 18, height: 18)).fill()
+        let shaft = NSBezierPath()
+        shaft.move(to: NSPoint(x: 35, y: 35))
+        shaft.line(to: NSPoint(x: 55, y: 55))
+        shaft.lineWidth = 8
+        shaft.stroke()
+        let arrow = NSBezierPath()
+        arrow.move(to: NSPoint(x: 47, y: 51))
+        arrow.line(to: NSPoint(x: 47, y: 61))
+        arrow.line(to: NSPoint(x: 59, y: 72))
+        arrow.line(to: NSPoint(x: 61, y: 61))
+        arrow.line(to: NSPoint(x: 72, y: 59))
+        arrow.line(to: NSPoint(x: 61, y: 47))
+        arrow.line(to: NSPoint(x: 51, y: 47))
+        arrow.close()
+        arrow.fill()
+        if active {
+          NSColor.black.setFill()
+          NSBezierPath(ovalIn: NSRect(x: 77, y: 5, width: 9, height: 9)).fill()
+        }
+      }
+  }
+}
+
+if CommandLine.arguments.contains("--menu-icons-only") {
+  try menuBarIcons()
+  print("Generated menu bar target-and-arrow icons.")
+  exit(0)
+}
+
 let iconDirectory = assets.appendingPathComponent("TargetFlowAppIcon.appiconset")
 var iconEntries: [[String: String]] = []
 for points in [16, 32, 128, 256, 512] {
@@ -120,16 +163,7 @@ try imageSet("TargetFlowLaunch", filename: "target-flow-launch.png", size: NSSiz
   appIcon(in: NSRect(x: 80, y: 160, width: 400, height: 400))
   text("Target Flow", at: NSPoint(x: 102, y: 82), size: 64, color: .white)
 }
-for active in [false, true] {
-  try imageSet(active ? "MenuBarOnIcon" : "MenuBarOffIcon", filename: "target-flow-menu.png",
-    size: NSSize(width: 88, height: 72), template: true) {
-      mark(in: NSRect(x: 8, y: 0, width: 72, height: 72), color: .black, active: active)
-      if active {
-        NSColor.black.setFill()
-        NSBezierPath(ovalIn: NSRect(x: 77, y: 5, width: 9, height: 9)).fill()
-      }
-    }
-}
+try menuBarIcons()
 
 // A neutral permission illustration avoids baking the old product into a system screenshot.
 try imageSet("ScreenRecordingPermissions", filename: "target-flow-screen-recording.png", size: NSSize(width: 1000, height: 620)) {
