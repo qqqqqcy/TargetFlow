@@ -1,14 +1,34 @@
-# Target Flow
+<div align="center">
 
-[English](README.md) | 简体中文
+<img src="docs/images/target-flow-logo.png" alt="Target Flow 应用标志" width="96" height="96">
 
-**偏离时，提醒你回到当前目标。**
+<h1>Target Flow</h1>
 
-本来打算准备面试，回过神来却已经浏览了很久的资讯。Target Flow 是一款 macOS 目标提醒应用：记住你此刻想推进的事情，结合屏幕活动判断实际发生了什么，在偏离时提醒你，并给出一个回到目标的具体步骤。
+<p><strong>偏离时，提醒你回到当前目标。</strong></p>
+
+<p>一款 macOS 目标提醒应用：自动整理屏幕活动，识别与当前目标的偏离，<br>给你一个具体的小步骤，重新开始。</p>
+
+<p><a href="README.md">English</a> · <strong>简体中文</strong></p>
+
+<h3>下载 macOS 测试版</h3>
+
+<p>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-arm64.dmg"><strong>↓ Apple 芯片（M 系列）</strong></a>
+  &nbsp; · &nbsp;
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-x86_64.dmg"><strong>↓ Intel Mac</strong></a>
+</p>
+
+<p>macOS 14+ · v0.0.1 Test 1 · 免费开源</p>
+
+<p><sub>临时签名测试版，未经 Apple 公证。若首次打开被阻止，请尝试启动后前往<br>「系统设置 → 隐私与安全性 → 仍要打开」并确认。</sub></p>
+
+<p><a href="https://github.com/qqqqqcy/TargetFlow/releases/tag/v0.0.1-test.1">版本说明与校验文件</a> · <a href="docs/test-release-install.txt">安装帮助</a></p>
+
+</div>
+
+---
 
 **选定当前目标 → 自动识别事件 → 发现偏离 → 提醒你回来。**
-
-当前版本：**0.0.1**（构建号 1）。
 
 ## 偏离时，提醒你回来
 

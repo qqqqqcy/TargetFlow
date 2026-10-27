@@ -1,14 +1,34 @@
-# Target Flow
+<div align="center">
 
-English | [简体中文](README.zh-CN.md)
+<img src="docs/images/target-flow-logo.png" alt="Target Flow logo" width="96" height="96">
 
-**A reminder to return to your current goal when you drift away.**
+<h1>Target Flow</h1>
 
-You meant to prepare for an interview, but suddenly realize you have spent a long time browsing the news. Target Flow is a macOS goal reminder app: it remembers what you want to work on right now, uses screen activity to understand what actually happened, and reminds you when you drift away, with a concrete step to get back to your goal.
+<p><strong>A gentle nudge back to what you meant to do.</strong></p>
+
+<p>A macOS app that turns screen activity into an automatic timeline,<br>spots detours from your current goals, and suggests one concrete step back.</p>
+
+<p><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
+
+<h3>Download for macOS</h3>
+
+<p>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-arm64.dmg"><strong>↓ Apple silicon (M-series)</strong></a>
+  &nbsp; · &nbsp;
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-x86_64.dmg"><strong>↓ Intel Mac</strong></a>
+</p>
+
+<p>macOS 14+ · v0.0.1 Test 1 · Free &amp; open source</p>
+
+<p><sub>Ad-hoc signed test build, not notarized by Apple. If blocked on first launch,<br>go to System Settings → Privacy &amp; Security → Open Anyway after attempting to open the app.</sub></p>
+
+<p><a href="https://github.com/qqqqqcy/TargetFlow/releases/tag/v0.0.1-test.1">Release notes &amp; checksums</a> · <a href="docs/test-release-install.txt">Installation help</a></p>
+
+</div>
+
+---
 
 **Choose your current goal → Automatically identify events → Detect a detour → Remind you to return.**
-
-Current version: **0.0.1** (build 1).
 
 ## A reminder when you drift away
 
