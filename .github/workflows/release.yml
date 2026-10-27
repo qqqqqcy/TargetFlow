@@ -61,6 +61,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.commit }}
       - name: Import persistent signing identity into temporary keychain
+        timeout-minutes: 3
         env:
           CERTIFICATE: ${{ secrets.TARGETFLOW_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.TARGETFLOW_CERTIFICATE_PASSWORD }}
@@ -75,7 +76,7 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
           security find-certificate -c 'Activity Journal Local Signing' -p "$KEYCHAIN" > "$RUNNER_TEMP/signing.cer"
-          security add-trusted-cert -r trustRoot -p codeSign -k "$KEYCHAIN" "$RUNNER_TEMP/signing.cer"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/signing.cer"
           rm "$RUNNER_TEMP/signing.p12"
       - name: Build and verify DMG
         env:
