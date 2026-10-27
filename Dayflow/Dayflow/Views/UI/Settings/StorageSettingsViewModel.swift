@@ -8,6 +8,7 @@ final class StorageSettingsViewModel: ObservableObject {
   @Published var isRefreshingStorage = false
   @Published var storagePermissionGranted: Bool?
   @Published var lastStorageCheck: Date?
+  @Published var statusCheckCompleted = false
   @Published var recordingsUsageBytes: Int64 = 0
   @Published var timelapseUsageBytes: Int64 = 0
   @Published var recordingsLimitBytes: Int64
@@ -39,31 +40,23 @@ final class StorageSettingsViewModel: ObservableObject {
     timelapsesLimitIndex = Self.indexForLimit(timelapseLimit)
   }
 
+  func refreshRecordingPermission() {
+    storagePermissionGranted = ScreenRecordingPermissionNotice.isGranted
+  }
+
   func refreshStorageIfNeeded(isStorageTab: Bool) {
-    if storagePermissionGranted == nil && isStorageTab {
+    if lastStorageCheck == nil && isStorageTab {
       refreshStorageMetrics()
     }
   }
 
   func runStorageStatusCheck() {
     guard !isRefreshingStorage else { return }
-    isRefreshingStorage = true
-
-    let group = DispatchGroup()
-    group.enter()
-    StorageManager.shared.purgeNow {
-      group.leave()
-    }
-    group.enter()
-    TimelapseStorageManager.shared.purgeNow {
-      group.leave()
-    }
-    group.notify(queue: .main) { [weak self] in
-      self?.refreshStorageMetrics(force: true)
-    }
+    statusCheckCompleted = false
+    refreshStorageMetrics(reportStatus: true)
   }
 
-  func refreshStorageMetrics(force: Bool = false) {
+  func refreshStorageMetrics(force: Bool = false, reportStatus: Bool = false) {
     if !force {
       guard !isRefreshingStorage else { return }
     }
@@ -72,7 +65,6 @@ final class StorageSettingsViewModel: ObservableObject {
     }
 
     Task.detached(priority: .utility) { [weak self] in
-      let permission = CGPreflightScreenCaptureAccess()
       let recordingsURL = StorageManager.shared.recordingsRoot
 
       let recordingsSize = StorageSettingsViewModel.directorySize(at: recordingsURL)
@@ -82,12 +74,13 @@ final class StorageSettingsViewModel: ObservableObject {
 
       await MainActor.run {
         guard let self else { return }
-        self.storagePermissionGranted = permission
+        self.refreshRecordingPermission()
         self.recordingsUsageBytes = recordingsSize
         self.timelapseUsageBytes = timelapseSize
         self.observedBytesPerHour = observedRate
         self.lastStorageCheck = Date()
         self.isRefreshingStorage = false
+        if reportStatus { self.statusCheckCompleted = true }
 
         let recordingsLimit = StoragePreferences.recordingsLimitBytes
         let timelapseLimit = StoragePreferences.timelapsesLimitBytes

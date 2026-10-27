@@ -1,6 +1,7 @@
 Target Flow — Test Build / 测试版
 
-This build is ad-hoc signed and has not been notarized by Apple.
+New test builds use a persistent code-signing certificate and have not been
+notarized by Apple. The original Test 1 download used an ad-hoc signature.
 Requires macOS 14 or later. Download the package matching your Mac:
 arm64 = Apple silicon (M-series); x86_64 = Intel.
 
@@ -13,12 +14,16 @@ arm64 = Apple silicon (M-series); x86_64 = Intel.
 4. Choose English or 简体中文 in the Settings header. Fully quit and reopen
    the app after changing the language.
 
-An ad-hoc signature changes when the app is rebuilt. After installing a new
-build, macOS may ask you to grant Screen Recording permission again.
+Keep installing updates from the same signer into /Applications/TargetFlow.app.
+Moving from the original ad-hoc Test 1 build to a certificate-signed build may
+require granting Screen Recording permission once more. Later builds retain
+the same signing requirement when the same certificate is used. macOS still
+controls permission prompts; this does not bypass Gatekeeper or notarization.
 This package does not include model API keys or a paid AI subscription.
 To fully exit, use Quit Completely in the menu bar.
 
-此构建使用临时签名，未经 Apple 公证。
+新的测试构建使用固定代码签名证书，未经 Apple 公证。
+最初发布的 Test 1 下载包使用临时签名。
 要求 macOS 14 或更高版本。请下载符合 Mac 芯片类型的包：
 arm64 对应 Apple 芯片（M 系列）；x86_64 对应 Intel。
 
@@ -29,6 +34,9 @@ arm64 对应 Apple 芯片（M 系列）；x86_64 对应 Intel。
 3. 配置自己的 AI 提供商，并授予屏幕录制权限。
 4. 在设置页顶部选择简体中文或 English，完全退出并重新打开后生效。
 
-临时签名会随重新构建改变。更新测试版本后，可能需要重新授予屏幕录制权限。
+后续更新应使用同一签名证书，并覆盖安装到 /Applications/TargetFlow.app。
+从原临时签名 Test 1 迁移到固定证书签名版时，可能需要再授权一次录屏。
+之后使用同一证书构建的版本保持相同签名要求；系统仍有权要求确认权限。
+固定签名不等于 Apple 公证，也不会绕过 macOS 的安全检查。
 安装包不包含模型 API 密钥或付费 AI 订阅。
 需要完全退出应用时，请使用菜单栏的 Quit Completely。

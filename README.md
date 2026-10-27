@@ -139,7 +139,7 @@ bash scripts/package-test.sh
 TARGETFLOW_TEST_ARCH=x86_64 bash scripts/package-test.sh
 ```
 
-The script creates an ad-hoc signed DMG and SHA-256 checksum in `dist/`. It does not publish a release or install the app. Move an existing package aside before rebuilding the same version and architecture.
+The script requires a persistent signing certificate via `TARGETFLOW_SIGNING_IDENTITY` or `scripts/local-signing-identity` and creates a signed DMG and SHA-256 checksum in `dist/`. A self-signed code-signing certificate works without Developer ID. Keep using the same certificate and private key for future versions; the script rejects ad-hoc signatures and checks for a stable certificate-based signing requirement. Migration from the original Test 1 package may require one more Screen Recording authorization. The script does not publish a release or install the app. Move an existing package aside before rebuilding the same version and architecture.
 
 Source builds require full Xcode: Command Line Tools alone cannot build this macOS app. The app deployment target is macOS 14, and the test target requires macOS 15.1.
 

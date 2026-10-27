@@ -139,7 +139,7 @@ bash scripts/package-test.sh
 TARGETFLOW_TEST_ARCH=x86_64 bash scripts/package-test.sh
 ```
 
-脚本在 `dist/` 中生成临时签名 DMG 和 SHA-256 校验文件，不会发布 Release 或安装应用。重新打包相同版本和架构前，请先移走已有安装包。
+脚本要求通过 `TARGETFLOW_SIGNING_IDENTITY` 或 `scripts/local-signing-identity` 配置固定签名证书，在 `dist/` 中生成签名 DMG 和 SHA-256 校验文件。可以使用自签名代码签名证书，无需 Developer ID。后续版本必须沿用同一证书及私钥；脚本拒绝临时签名，并验证签名要求绑定固定证书。从最初的 Test 1 包迁移时，可能需要最后一次重新授权录屏。脚本不会发布 Release 或安装应用。重新打包相同版本和架构前，请先移走已有安装包。
 
 源码构建需要完整 Xcode，仅安装 Command Line Tools 无法构建此 macOS 应用。应用部署目标为 macOS 14，测试目标为 macOS 15.1。
 

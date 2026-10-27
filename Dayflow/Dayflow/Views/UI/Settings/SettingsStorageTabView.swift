@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsStorageTabView: View {
@@ -9,6 +10,12 @@ struct SettingsStorageTabView: View {
       recordingQualitySection
       timelineGenerationSection
       diskUsageSection
+    }
+    .onAppear {
+      viewModel.refreshRecordingPermission()
+    }
+    .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+      viewModel.refreshRecordingPermission()
     }
     .alert(isPresented: $viewModel.showLimitConfirmation) {
       guard let pending = viewModel.pendingLimit,
@@ -71,7 +78,21 @@ struct SettingsStorageTabView: View {
           )
         }
 
+        if !permissionGranted {
+          Text("Enable Target Flow in System Settings → Privacy & Security → Screen & System Audio Recording. Return here to check the status. If access still does not work, quit Target Flow completely and reopen it.")
+            .font(.system(size: 12))
+            .foregroundStyle(SettingsStyle.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 12)
+        }
+
         HStack(spacing: 14) {
+          SettingsSecondaryButton(
+            title: String(localized: "Open screen recording settings"),
+            action: ScreenRecordingPermissionNotice.openSystemSettings
+          )
+          .accessibilityIdentifier("settings.openScreenRecordingSettings")
+
           SettingsPrimaryButton(
             title: viewModel.isRefreshingStorage
               ? String(localized: "Checking…") : String(localized: "Run status check"),
@@ -84,8 +105,31 @@ struct SettingsStorageTabView: View {
           }
         }
         .padding(.top, 18)
+
+        if viewModel.statusCheckCompleted {
+          Label {
+            Text(statusCheckResult)
+              .fixedSize(horizontal: false, vertical: true)
+          } icon: {
+            Image(systemName: permissionGranted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+          }
+          .font(.system(size: 12))
+          .foregroundStyle(permissionGranted ? SettingsStyle.secondary : SettingsStyle.destructive)
+          .padding(.top, 12)
+          .accessibilityIdentifier("settings.recordingStatusResult")
+        }
       }
     }
+  }
+
+  private var statusCheckResult: String {
+    guard viewModel.storagePermissionGranted == true else {
+      return String(localized: "Check complete: screen recording permission is missing. Click Open screen recording settings to grant access.")
+    }
+    if AppState.shared.isRecording {
+      return String(localized: "Check complete: screen recording permission is granted and recording is enabled. This check does not verify captured frames.")
+    }
+    return String(localized: "Check complete: screen recording permission is granted. Recording is paused; use Resume on the timeline to start.")
   }
 
   // MARK: - Recording quality

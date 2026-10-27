@@ -1,6 +1,56 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Check complete: screen recording permission is missing. Click Open screen recording settings to grant access." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查完成：尚未获得录屏权限。请点击「打开录屏设置」进行授权。"
+          }
+        }
+      }
+    },
+    "Check complete: screen recording permission is granted and recording is enabled. This check does not verify captured frames." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查完成：已获得录屏权限，录制开关已开启。本次检查不验证实际截屏是否成功。"
+          }
+        }
+      }
+    },
+    "Check complete: screen recording permission is granted. Recording is paused; use Resume on the timeline to start." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "检查完成：已获得录屏权限，当前录制已暂停。请在时间线点击「继续」开始录制。"
+          }
+        }
+      }
+    },
+    "Open screen recording settings" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开录屏设置"
+          }
+        }
+      }
+    },
+    "Enable Target Flow in System Settings → Privacy & Security → Screen & System Audio Recording. Return here to check the status. If access still does not work, quit Target Flow completely and reopen it." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在「系统设置 → 隐私与安全性 → 屏幕与系统音频录制」中开启 Target Flow，返回此处会自动检查授权状态。如果仍无法录制，请完全退出 Target Flow 后重新打开。"
+          }
+        }
+      }
+    },
     "Events and Goals": {
       "localizations": {
         "zh-Hans": {
