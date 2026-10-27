@@ -63,11 +63,8 @@ final class OllamaProvider {
     return nil
   }
 
-  var promptOverrides: OllamaPromptOverrides {
-    guard injectedRuntimeConfiguration == nil else {
-      return OllamaPromptOverrides()
-    }
-    return OllamaPromptPreferences.load()
+  var promptOverrides: ActivityCardPromptOverrides {
+    ActivityCardPromptPreferences.load()
   }
 
   init(endpoint: String = "http://localhost:1234") {
@@ -135,7 +132,7 @@ final class OllamaProvider {
       subcategory: "",
       title: titleSummary.title,
       summary: titleSummary.summary,
-      detailedSummary: "",
+      detailedSummary: titleSummary.detailedSummary ?? "",
       distractions: nil,
       appSites: titleSummary.appSites
     )

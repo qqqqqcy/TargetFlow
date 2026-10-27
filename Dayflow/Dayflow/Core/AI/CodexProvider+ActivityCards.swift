@@ -155,10 +155,13 @@ extension CodexProvider {
     throw finalError
   }
 
-  static func activityCardModelConfiguration() -> (
+  static func activityCardModelConfiguration(defaults: UserDefaults = .standard) -> (
     model: String, reasoningEffort: String?
   ) {
-    return (model: "gpt-6.1-sol", reasoningEffort: "low")
+    return ModelPreferences.resolve(
+      provider: .chatGPT, feature: .activityCards,
+      defaultModel: "gpt-6.1-sol", defaultEffort: "low", defaults: defaults
+    ).tuple
   }
 
   private func codexRunResultFromStreamingError(

@@ -58,71 +58,25 @@ final class ProvidersSettingsViewModel: ObservableObject {
   @Published private(set) var claudeCLIInstalled = false
   @Published private(set) var isCheckingCLIReadiness = false
 
-  @Published var geminiPromptOverridesLoaded = false
-  @Published var isUpdatingGeminiPromptState = false
-  @Published var useCustomGeminiTitlePrompt = false {
-    didSet { persistGeminiPromptOverridesIfReady() }
+  @Published var sharedPromptOverridesLoaded = false
+  var isUpdatingSharedPromptState = false
+  @Published var useCustomTitlePrompt = false {
+    didSet { persistSharedPromptOverridesIfReady() }
   }
-  @Published var useCustomGeminiSummaryPrompt = false {
-    didSet { persistGeminiPromptOverridesIfReady() }
+  @Published var useCustomSummaryPrompt = false {
+    didSet { persistSharedPromptOverridesIfReady() }
   }
-  @Published var useCustomGeminiDetailedPrompt = false {
-    didSet { persistGeminiPromptOverridesIfReady() }
+  @Published var useCustomDetailedPrompt = false {
+    didSet { persistSharedPromptOverridesIfReady() }
   }
-  @Published var geminiTitlePromptText = GeminiPromptDefaults.titleBlock {
-    didSet { persistGeminiPromptOverridesIfReady() }
+  @Published var titlePromptText = CodexPromptDefaults.titleBlock {
+    didSet { persistSharedPromptOverridesIfReady() }
   }
-  @Published var geminiSummaryPromptText = GeminiPromptDefaults.summaryBlock {
-    didSet { persistGeminiPromptOverridesIfReady() }
+  @Published var summaryPromptText = CodexPromptDefaults.summaryBlock {
+    didSet { persistSharedPromptOverridesIfReady() }
   }
-  @Published var geminiDetailedPromptText = GeminiPromptDefaults.detailedSummaryBlock {
-    didSet { persistGeminiPromptOverridesIfReady() }
-  }
-
-  @Published var ollamaPromptOverridesLoaded = false
-  @Published var isUpdatingOllamaPromptState = false
-  @Published var useCustomOllamaTitlePrompt = false {
-    didSet { persistOllamaPromptOverridesIfReady() }
-  }
-  @Published var useCustomOllamaSummaryPrompt = false {
-    didSet { persistOllamaPromptOverridesIfReady() }
-  }
-  @Published var ollamaTitlePromptText = OllamaPromptDefaults.titleBlock {
-    didSet { persistOllamaPromptOverridesIfReady() }
-  }
-  @Published var ollamaSummaryPromptText = OllamaPromptDefaults.summaryBlock {
-    didSet { persistOllamaPromptOverridesIfReady() }
-  }
-
-  @Published var agentPromptOverridesLoaded = false
-  @Published var isUpdatingAgentPromptState = false
-  @Published var useCustomAgentTitlePrompt = false {
-    didSet { persistAgentPromptOverridesIfReady() }
-  }
-  @Published var useCustomAgentSummaryPrompt = false {
-    didSet { persistAgentPromptOverridesIfReady() }
-  }
-  @Published var useCustomAgentDetailedPrompt = false {
-    didSet { persistAgentPromptOverridesIfReady() }
-  }
-  @Published var agentTitlePromptText = CodexPromptDefaults.titleBlock {
-    didSet { persistAgentPromptOverridesIfReady() }
-  }
-  @Published var agentSummaryPromptText = CodexPromptDefaults.summaryBlock {
-    didSet { persistAgentPromptOverridesIfReady() }
-  }
-  @Published var agentDetailedPromptText = CodexPromptDefaults.detailedSummaryBlock {
-    didSet { persistAgentPromptOverridesIfReady() }
-  }
-  @Published var selectedAgentPromptProvider: LLMProviderID = .chatGPT {
-    didSet {
-      guard oldValue != selectedAgentPromptProvider else { return }
-      guard selectedAgentPromptProvider == .chatGPT || selectedAgentPromptProvider == .claude else {
-        selectedAgentPromptProvider = oldValue
-        return
-      }
-      loadAgentPromptOverridesIfNeeded(force: true)
-    }
+  @Published var detailedPromptText = CodexPromptDefaults.detailedSummaryBlock {
+    didSet { persistSharedPromptOverridesIfReady() }
   }
 
   private var savedGeminiModel: GeminiModel
@@ -158,7 +112,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
       openAICompatibleModelID = configuration.modelID
     }
     openAICompatibleAPIKey =
-      KeychainManager.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider) ?? ""
+      LocalProviderCredentialStore.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider) ?? ""
   }
 
   func handleOnAppear() {
@@ -168,13 +122,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
     refreshCLIReadiness()
     LocalModelPreferences.syncPreset(for: localEngine, modelId: localModelId)
     refreshUpgradeBannerState()
-    loadGeminiPromptOverridesIfNeeded()
-    loadOllamaPromptOverridesIfNeeded()
-    if currentProvider == .chatGPT || currentProvider == .claude {
-      selectedAgentPromptProvider = currentProvider
-    } else {
-      loadAgentPromptOverridesIfNeeded()
-    }
+    loadSharedPromptOverridesIfNeeded()
   }
 
   func handleLocalTestCompletion(success: Bool) {
@@ -202,14 +150,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
   func applyProviderChangeSideEffects(for provider: LLMProviderID) {
     reloadLocalProviderSettings()
     reloadOpenAICompatibleSettings()
-    if provider == .gemini {
-      loadGeminiPromptOverridesIfNeeded(force: true)
-    } else if provider == .local {
-      loadOllamaPromptOverridesIfNeeded(force: true)
-    } else if provider == .chatGPT || provider == .claude {
-      selectedAgentPromptProvider = provider
-      loadAgentPromptOverridesIfNeeded(force: true)
-    }
+    loadSharedPromptOverridesIfNeeded(force: true)
     refreshUpgradeBannerState()
   }
 
@@ -231,7 +172,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
     openAICompatibleBaseURL = configuration.baseURL
     openAICompatibleModelID = configuration.modelID
     openAICompatibleAPIKey =
-      KeychainManager.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider) ?? ""
+      LocalProviderCredentialStore.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider) ?? ""
   }
 
   func refreshCLIReadiness() {
@@ -568,7 +509,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
     case .dayflow:
       return false
     case .gemini:
-      let key = KeychainManager.shared.retrieve(for: "gemini") ?? ""
+      let key = LocalProviderCredentialStore.shared.retrieve(for: "gemini") ?? ""
       return !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     case .chatGPT:
       return codexCLIInstalled && LLMProviderSetupPreferences.isComplete(.chatGPT)
@@ -582,7 +523,7 @@ final class ProvidersSettingsViewModel: ObservableObject {
         return true
       }
       let key =
-        KeychainManager.shared.retrieve(
+        LocalProviderCredentialStore.shared.retrieve(
           for: OpenAICompatiblePreferences.keychainProvider) ?? ""
       return !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     case .local:

@@ -55,6 +55,9 @@ struct ChatCLIRunResult {
   let finishedAt: Date
   let usage: TokenUsage?
 
+  var reportedModels: [String] { CLIReportedExecutionMetadata.parse(rawStdout).models }
+  var reportedReasoning: String? { CLIReportedExecutionMetadata.parse(rawStdout).reasoning }
+
   /// The CLI's own explanation of a failed run. Claude and Codex often print
   /// the real reason ("OAuth session expired", "usage limit") to stdout and
   /// leave stderr empty, so fall back to stdout before the bare exit code.

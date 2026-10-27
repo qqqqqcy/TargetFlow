@@ -195,7 +195,7 @@ final class DailyRecapGenerator {
 
   func availabilitySnapshot() -> [DailyRecapProvider: DailyRecapProviderAvailability] {
     let geminiKey =
-      KeychainManager.shared.retrieve(for: "gemini")?
+      LocalProviderCredentialStore.shared.retrieve(for: "gemini")?
       .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     let codexInstalled = LoginShellRunner.isInstalled("codex")
     let claudeInstalled = LoginShellRunner.isInstalled("claude")
@@ -243,26 +243,32 @@ final class DailyRecapGenerator {
       throw DailyRecapGeneratorError.emptyCards(day: context.sourceDayString)
     }
 
-    let provider = selectedProvider()
-    let metadata = DailyStandupGenerationMetadata(
-      provider: provider,
-      sourceDay: context.sourceDayString
-    )
-
-    switch provider {
-    case .dayflow:
-      return try await generateWithDayflow(context: context, metadata: metadata)
-    case .local:
-      return try await generateWithLocal(context: context, metadata: metadata)
-    case .gemini:
-      return try await generateWithGemini(context: context, metadata: metadata)
-    case .chatgpt:
-      return try await generateWithChatGPT(context: context, metadata: metadata)
-    case .claude:
-      return try await generateWithClaude(context: context, metadata: metadata)
-    case .none:
+    let configuration = try AIConfigurationStore.shared.load()
+    guard !configuration.assignments(for: .dailyRecap).isEmpty else {
       throw DailyRecapGeneratorError.noProviderSelected
     }
+    do {
+      let runtime = AIConfiguredRuntime(configuration: configuration)
+      return try await runtime.withConfiguration(feature: .dailyRecap) { provider in
+        let prompt = Self.makeLocalPrompt(day: context.sourceDayString, cards: context.cards)
+        let (rawText, _) = try await provider.generateText(prompt: prompt, feature: .dailyRecap)
+        let parsed = try Self.parseLocalResponse(rawText)
+        let selection = AIRequestContext.assignment
+        let legacyProvider: DailyRecapProvider
+        switch selection?.connection.kind {
+        case .codexCLI: legacyProvider = .chatgpt
+        case .claudeCLI: legacyProvider = .claude
+        case .gemini: legacyProvider = .gemini
+        case .hosted: legacyProvider = .dayflow
+        default: legacyProvider = .local
+        }
+        var metadata = DailyStandupGenerationMetadata(
+          provider: legacyProvider, sourceDay: context.sourceDayString)
+        metadata.modelOrTool = selection?.modelID
+        return try self.makeDraft(from: parsed, context: context, metadata: metadata)
+      }
+    }
+
   }
 
   static func makeCardsText(day: String, cards: [TimelineCard]) -> String {
@@ -403,7 +409,7 @@ final class DailyRecapGenerator {
     metadata: DailyStandupGenerationMetadata
   ) async throws -> DailyStandupDraft {
     guard
-      let apiKey = KeychainManager.shared.retrieve(for: "gemini")?
+      let apiKey = LocalProviderCredentialStore.shared.retrieve(for: "gemini")?
         .trimmingCharacters(in: .whitespacesAndNewlines),
       !apiKey.isEmpty
     else {
@@ -417,7 +423,8 @@ final class DailyRecapGenerator {
     let prompt = Self.makeLocalPrompt(day: context.sourceDayString, cards: context.cards)
     let (rawText, _) = try await provider.generateText(
       prompt: prompt,
-      maxOutputTokens: Self.localRecapMaxOutputTokens
+      maxOutputTokens: Self.localRecapMaxOutputTokens,
+      feature: .dailyRecap
     )
     let parsed = try Self.parseLocalResponse(rawText)
     return try makeDraft(from: parsed, context: context, metadata: metadata)
@@ -434,7 +441,8 @@ final class DailyRecapGenerator {
     let prompt = Self.makeLocalPrompt(day: context.sourceDayString, cards: context.cards)
     let (rawText, _) = try await provider.generateText(
       prompt: prompt,
-      maxTokens: Self.localRecapMaxOutputTokens
+      maxTokens: Self.localRecapMaxOutputTokens,
+      feature: .dailyRecap
     )
     let parsed = try Self.parseLocalResponse(rawText)
     return try makeDraft(from: parsed, context: context, metadata: metadata)
@@ -451,12 +459,15 @@ final class DailyRecapGenerator {
     let provider = CodexProvider()
     let prompt = Self.makeLocalPrompt(
       day: context.sourceDayString, cards: context.cards, provider: .chatgpt)
+    let selection = ModelPreferences.resolve(
+      provider: .chatGPT, feature: .dailyRecap,
+      defaultModel: "gpt-6.1-sol", defaultEffort: "low")
     func generate(model: String) async throws -> DailyStandupDraft {
       try Task.checkCancellation()
       let (rawText, _) = try await provider.generateText(
         prompt: prompt,
         model: model,
-        reasoningEffort: "low",
+        reasoningEffort: selection.reasoningEffort,
         disableTools: true
       )
       try Task.checkCancellation()
@@ -466,23 +477,24 @@ final class DailyRecapGenerator {
       return try makeDraft(from: parsed, context: context, metadata: actualMetadata)
     }
 
-    do {
-      return try await generate(model: "gpt-6.1-sol")
-    } catch {
-      if error is CancellationError { throw error }
-      try Task.checkCancellation()
-      AnalyticsService.shared.capture(
-        "llm_model_fallback",
-        [
-          "provider": "chat_cli",
-          "provider_id": LLMProviderID.chatGPT.rawValue,
-          "operation": "daily_recap",
-          "from_model": "gpt-6.1-sol",
-          "to_model": "gpt-5.6-sol",
-          "reason": "generation_failed",
-        ])
-      return try await generate(model: "gpt-5.6-sol")
+    let fallbacks = ModelPreferences.load(provider: .chatGPT).fallbackModels
+      ?? ["gpt-5.6-sol"]
+    let models = [selection.model] + fallbacks.filter { $0 != selection.model }
+    var lastError: Error?
+    for (index, model) in models.enumerated() {
+      do {
+        return try await generate(model: model)
+      } catch {
+        if error is CancellationError { throw error }
+        try Task.checkCancellation()
+        lastError = error
+        if index + 1 < models.count {
+          CodexProvider.recordModelFallback(
+            from: model, to: models[index + 1], operation: "daily_recap")
+        }
+      }
     }
+    throw lastError!
   }
 
   private func generateWithClaude(
@@ -496,14 +508,18 @@ final class DailyRecapGenerator {
     let provider = ClaudeProvider()
     let prompt = Self.makeLocalPrompt(
       day: context.sourceDayString, cards: context.cards, provider: .claude)
+    let selection = ModelPreferences.resolve(
+      provider: .claude, feature: .dailyRecap, defaultModel: "opus", defaultEffort: nil)
     let (rawText, _) = try await provider.generateText(
       prompt: prompt,
-      model: "opus",
-      reasoningEffort: nil,
+      model: selection.model,
+      reasoningEffort: selection.reasoningEffort,
       disableTools: true
     )
     let parsed = try Self.parseLocalResponse(rawText)
-    return try makeDraft(from: parsed, context: context, metadata: metadata)
+    var actualMetadata = metadata
+    actualMetadata.modelOrTool = selection.model
+    return try makeDraft(from: parsed, context: context, metadata: actualMetadata)
   }
 
   private func makeDayflowProvider() -> DayflowBackendProvider? {

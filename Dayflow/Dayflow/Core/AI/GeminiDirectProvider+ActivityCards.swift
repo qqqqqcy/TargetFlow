@@ -18,7 +18,7 @@ extension GeminiDirectProvider {
     encoder.outputFormatting = .prettyPrinted
     let existingCardsJSON = try encoder.encode(context.existingCards)
     let existingCardsString = String(data: existingCardsJSON, encoding: .utf8) ?? "[]"
-    let promptSections = GeminiPromptSections(overrides: GeminiPromptPreferences.load())
+    let promptSections = GeminiPromptSections(overrides: ActivityCardPromptPreferences.load())
 
     let languageBlock =
       LLMOutputLanguagePreferences.languageInstruction(forJSON: true)
@@ -160,7 +160,7 @@ extension GeminiDirectProvider {
     var finalResponse = ""
     var finalCards: [ActivityCardData] = []
 
-    var modelState = ModelRunState(models: modelPreference.orderedModels)
+    var modelState = ModelRunState(models: selectedModels(feature: .activityCards))
     let callGroupId = UUID().uuidString
 
     while attempt < maxRetries {
@@ -203,7 +203,7 @@ extension GeminiDirectProvider {
             operation: "generate_activity_cards",
             validationType: "time_coverage",
             attempt: attempt + 1,
-            model: modelState.current.rawValue,
+            model: modelState.current,
             batchId: batchId,
             errorDetail: coverageError
           )
@@ -223,7 +223,7 @@ extension GeminiDirectProvider {
             operation: "generate_activity_cards",
             validationType: "duration",
             attempt: attempt + 1,
-            model: modelState.current.rawValue,
+            model: modelState.current,
             batchId: batchId,
             errorDetail: durationError
           )
@@ -264,7 +264,7 @@ extension GeminiDirectProvider {
         {
 
           let reason = fallbackReason(for: nsError.code)
-          print("↔️ Switching to \(transition.to.rawValue) after \(nsError.code)")
+          print("↔️ Switching to \(transition.to) after \(nsError.code)")
 
           Task { @MainActor in
             AnalyticsService.shared.capture(
@@ -272,8 +272,8 @@ extension GeminiDirectProvider {
               [
                 "provider": "gemini",
                 "operation": "generate_activity_cards",
-                "from_model": transition.from.rawValue,
-                "to_model": transition.to.rawValue,
+                "from_model": transition.from,
+                "to_model": transition.to,
                 "reason": reason,
                 "batch_id": batchId as Any,
               ])
@@ -332,7 +332,7 @@ extension GeminiDirectProvider {
   }
 
   func geminiCardsRequest(
-    prompt: String, batchId: Int64?, groupId: String, model: GeminiModel, attempt: Int
+    prompt: String, batchId: Int64?, groupId: String, model: String, attempt: Int
   ) async throws -> String {
     let distractionSchema: [String: Any] = [
       "type": "OBJECT",
@@ -377,12 +377,13 @@ extension GeminiDirectProvider {
       ],
     ]
 
-    let generationConfig: [String: Any] = [
+    var generationConfig: [String: Any] = [
       "maxOutputTokens": 65536,
       "responseMimeType": "application/json",
       "responseSchema": cardSchema,
-      "thinkingConfig": ["thinkingLevel": "high"],
     ]
+
+    generationConfig["thinkingConfig"] = try thinkingConfig(feature: .activityCards, model: model)
 
     let requestBody: [String: Any] = [
       "contents": [["parts": [["text": prompt]]]],
@@ -401,6 +402,8 @@ extension GeminiDirectProvider {
       request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
       let (data, response) = try await URLSession.shared.data(for: request)
+        recordResponse(data, model: model, feature: .activityCards, startedAt: requestStart,
+          status: (response as? HTTPURLResponse)?.statusCode)
       let requestDuration = Date().timeIntervalSince(requestStart)
 
       guard let httpResponse = response as? HTTPURLResponse else {
@@ -421,7 +424,7 @@ extension GeminiDirectProvider {
           acc[k] = v.description
         }
       }
-      let modelName = model.rawValue
+      let modelName = model
       let ctx = LLMCallContext(
         batchId: batchId,
         callGroupId: groupId,
@@ -538,7 +541,7 @@ extension GeminiDirectProvider {
     } catch {
       // Only log if this is a network/transport error (not our custom GeminiError which was already logged)
       if (error as NSError).domain != "GeminiError" {
-        let modelName = model.rawValue
+        let modelName = model
         let ctx = LLMCallContext(
           batchId: batchId,
           callGroupId: groupId,

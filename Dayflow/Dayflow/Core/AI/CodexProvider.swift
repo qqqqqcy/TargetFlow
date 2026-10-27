@@ -13,6 +13,7 @@ final class CodexProvider: AgentCLISupporting {
   static func availabilityFallback(for model: String, error: Error, stderr: String? = nil)
     -> String?
   {
+    guard AIRequestContext.assignment == nil else { return nil }
     let nsError = error as NSError
     let text = [
       error.localizedDescription, stderr ?? "",
@@ -27,6 +28,12 @@ final class CodexProvider: AgentCLISupporting {
     let pattern =
       #"model_not_found|unsupported_model|unknown model|model not found|\bmodel\b[^\r\n]{0,160}(?:does not exist|not available|not supported|(?:do not|don't|not) have access)"#
     guard text.range(of: pattern, options: .regularExpression) != nil else { return nil }
+    if let fallbacks = ModelPreferences.load(provider: .chatGPT).fallbackModels {
+      if let index = fallbacks.firstIndex(of: model) {
+        return fallbacks.dropFirst(index + 1).first
+      }
+      return fallbacks.first
+    }
     switch model {
     case "gpt-6.1-sol": return "gpt-5.6-sol"
     case "gpt-6-luna": return "gpt-5.6-luna"

@@ -79,6 +79,13 @@ struct DashboardChatRequest: Sendable {
   let sessionId: String?
   let systemInstruction: String?
   let history: [DashboardChatTurn]
+  var configuredPrompts: DashboardChatConfiguredPrompts? = nil
+}
+
+struct DashboardChatConfiguredPrompts: Sendable {
+  let codex: String
+  let claude: String
+  let text: String
 }
 
 enum LLMProviderID: String, Codable, CaseIterable {

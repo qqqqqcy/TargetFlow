@@ -77,7 +77,7 @@ extension GeminiDirectProvider {
     var finalResponse = ""
     var finalObservations: [Observation] = []
 
-    var modelState = ModelRunState(models: modelPreference.orderedModels)
+    var modelState = ModelRunState(models: selectedModels(feature: .transcription))
     let callGroupId = UUID().uuidString
 
     while attempt < maxRetries {
@@ -147,7 +147,7 @@ extension GeminiDirectProvider {
             operation: "transcribe",
             validationType: "timestamp_exceeds_duration",
             attempt: attempt + 1,
-            model: activeModel.rawValue,
+            model: activeModel,
             batchId: batchId,
             errorDetail: "Observations exceeded video duration \(durationString)"
           )
@@ -167,7 +167,7 @@ extension GeminiDirectProvider {
             operation: "transcribe",
             validationType: "empty_observations",
             attempt: attempt + 1,
-            model: activeModel.rawValue,
+            model: activeModel,
             batchId: batchId,
             errorDetail: "No valid observations after filtering"
           )
@@ -196,7 +196,7 @@ extension GeminiDirectProvider {
         {
 
           let reason = fallbackReason(for: nsError.code)
-          print("↔️ Switching to \(transition.to.rawValue) after \(nsError.code)")
+          print("↔️ Switching to \(transition.to) after \(nsError.code)")
 
           Task { @MainActor in
             AnalyticsService.shared.capture(
@@ -204,8 +204,8 @@ extension GeminiDirectProvider {
               [
                 "provider": "gemini",
                 "operation": "transcribe",
-                "from_model": transition.from.rawValue,
-                "to_model": transition.to.rawValue,
+                "from_model": transition.from,
+                "to_model": transition.to,
                 "reason": reason,
                 "batch_id": batchId as Any,
               ])
@@ -258,7 +258,7 @@ extension GeminiDirectProvider {
 
   func geminiTranscribeRequest(
     fileURI: String, mimeType: String, prompt: String, batchId: Int64?, groupId: String,
-    model: GeminiModel, attempt: Int
+    model: String, attempt: Int
   ) async throws -> (String, String) {
     let transcriptionSchema: [String: Any] = [
       "type": "ARRAY",
@@ -274,13 +274,14 @@ extension GeminiDirectProvider {
       ],
     ]
 
-    let generationConfig: [String: Any] = [
+    var generationConfig: [String: Any] = [
       "maxOutputTokens": 65536,
       "mediaResolution": "MEDIA_RESOLUTION_HIGH",
       "responseMimeType": "application/json",
       "responseSchema": transcriptionSchema,
-      "thinkingConfig": ["thinkingLevel": "high"],
     ]
+
+    generationConfig["thinkingConfig"] = try thinkingConfig(feature: .transcription, model: model)
 
     let requestBody: [String: Any] = [
       "contents": [
@@ -306,6 +307,8 @@ extension GeminiDirectProvider {
       request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
       let (data, response) = try await URLSession.shared.data(for: request)
+        recordResponse(data, model: model, feature: .transcription, startedAt: requestStart,
+          status: (response as? HTTPURLResponse)?.statusCode)
       let requestDuration = Date().timeIntervalSince(requestStart)
 
       guard let httpResponse = response as? HTTPURLResponse else {
@@ -326,7 +329,7 @@ extension GeminiDirectProvider {
           acc[k] = v.description
         }
       }
-      let modelName = model.rawValue
+      let modelName = model
       let ctx = LLMCallContext(
         batchId: batchId,
         callGroupId: groupId,
@@ -358,7 +361,7 @@ extension GeminiDirectProvider {
             http: httpInfo,
             finishedAt: Date()
           )
-          return (recovered, model.rawValue)
+          return (recovered, model)
         } else if httpResponse.statusCode == 503 {
           let preview =
             String(data: data, encoding: .utf8).map { truncate($0, max: 200) } ?? "<non-UTF8 body>"
@@ -487,12 +490,12 @@ extension GeminiDirectProvider {
         finishedAt: Date()
       )
 
-      return (text, model.rawValue)
+      return (text, json["modelVersion"] as? String ?? model)
 
     } catch {
       // Only log if this is a network/transport error (not our custom GeminiError which was already logged)
       if (error as NSError).domain != "GeminiError" {
-        let modelName = model.rawValue
+        let modelName = model
         let ctx = LLMCallContext(
           batchId: batchId,
           callGroupId: groupId,

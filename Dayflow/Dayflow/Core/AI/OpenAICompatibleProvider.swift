@@ -16,7 +16,7 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
     self.completion = completion
   }
 
-  func makeRequest(content: [MessageContent]) -> ChatRequest {
+  func makeRequest(content: [MessageContent], feature: ModelFeature = .activityCards) -> ChatRequest {
     var request = ChatRequest(
       model: configuration.modelID,
       messages: [
@@ -34,7 +34,7 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
     if URL(string: configuration.endpoint)?.host?.lowercased() == "openrouter.ai" {
       request.reasoning = .init(effort: "low")
     }
-    return request
+    return transport.configuredRequest(request, feature: feature)
   }
 
   private func complete(_ request: ChatRequest, operation: String, batchId: Int64?) async throws
@@ -58,7 +58,7 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
         let request = makeRequest(
           content: [
             .init(type: "text", text: currentPrompt, image_url: nil)
-          ] + images)
+          ] + images, feature: OllamaProvider.modelFeature(for: operation))
         let output = try await complete(request, operation: operation, batchId: batchId)
         let value = try decode(output)
         return (
@@ -144,10 +144,44 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
           id: nil, batchId: batchId ?? -1,
           startTs: Int(batchStartTime.timeIntervalSince1970) + start,
           endTs: Int(batchStartTime.timeIntervalSince1970) + end,
-          observation: description, metadata: nil, llmModel: self.configuration.modelID,
+          observation: description, metadata: nil, llmModel: ModelPreferences.resolve(
+            provider: .openAICompatible, feature: .transcription,
+            defaultModel: self.configuration.modelID, defaultEffort: nil).model,
           createdAt: Date())
       }
     }
+  }
+
+  func generateTimeline(
+    screenshots: [Screenshot], context: ActivityGenerationContext, batchId: Int64?
+  ) async throws -> (cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall) {
+    let frames = try await OneStepTimelineFrames.write(screenshots, maxHeight: 1080,
+      directoryPrefix: "TargetFlow-api-timeline")
+    defer { frames.cleanup() }
+    let window = Observation(id: nil, batchId: batchId ?? -1, startTs: frames.windowStart,
+      endTs: frames.windowEnd, observation: "", metadata: nil, llmModel: configuration.modelID, createdAt: Date())
+    let plan = makeClaudeCardGenerationPlan(observations: [window], context: ActivityGenerationContext(
+      batchObservations: [window], existingCards: context.existingCards, currentTime: context.currentTime,
+      categories: context.categories, hasPreviousCardWithinFiveMinutes: context.hasPreviousCardWithinFiveMinutes))
+    let prompt = CodexProvider().buildTimelinePrompt(frames: frames,
+      previousCards: plan.context.existingCards, categories: context.categories)
+    let images: [MessageContent] = try frames.frames.map { frame in
+      .init(type: "image_url", text: nil,
+        image_url: .init(url: "data:image/jpeg;base64,\(try Data(contentsOf: frame.url).base64EncodedString())"))
+    }
+    let (cards, log) = try await generate(prompt: prompt, images: images,
+      operation: "generate_timeline", batchId: batchId) { output in
+      let decoded = try self.transport.parseJSONResponse([ActivityCardData].self,
+        from: Data(self.cleanJSON(output).utf8))
+      let cards = self.normalizeCards(decoded, descriptors: context.categories)
+      try ClaudeOutputValidator.validateActivityCards(cards,
+        existingCards: plan.context.existingCards, observations: [window])
+      return cards
+    }
+    let observations = OneStepTimelineObservations.make(from: cards,
+      windowStart: frames.windowStart, windowEnd: frames.windowEnd,
+      batchId: batchId, model: configuration.modelID)
+    return (cards, observations, nil, log)
   }
 
   func generateActivityCards(
@@ -171,7 +205,7 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
     }
   }
 
-  func generateText(prompt: String) async throws -> (text: String, log: LLMCall) {
-    try await transport.generateText(prompt: prompt)
+  func generateText(prompt: String, feature: ModelFeature = .text) async throws -> (text: String, log: LLMCall) {
+    try await transport.generateText(prompt: prompt, feature: feature)
   }
 }

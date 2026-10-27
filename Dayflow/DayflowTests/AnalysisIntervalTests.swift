@@ -8,21 +8,21 @@ final class AnalysisIntervalTests: XCTestCase {
     let defaults = UserDefaults(suiteName: suite)!
     defer { defaults.removePersistentDomain(forName: suite) }
     XCTAssertEqual(AnalysisPreferences.interval(in: defaults), 300)
-    XCTAssertEqual(AnalysisPreferences.intervalOptions, [300, 600, 900])
-    for interval in [300.0, 600, 900] {
+    XCTAssertEqual(AnalysisPreferences.intervalOptions, [60, 300, 600, 900])
+    for interval in [60.0, 300, 600, 900] {
       AnalysisPreferences.setInterval(interval, in: defaults)
       XCTAssertEqual(AnalysisPreferences.interval(in: defaults), interval)
     }
     AnalysisPreferences.setInterval(120, in: defaults)
     XCTAssertEqual(AnalysisPreferences.interval(in: defaults), 900)
-    defaults.set(60, forKey: AnalysisPreferences.intervalKey)
+    defaults.set(10, forKey: AnalysisPreferences.intervalKey)
     XCTAssertEqual(AnalysisPreferences.interval(in: defaults), 300)
     defaults.set(-1, forKey: AnalysisPreferences.intervalKey)
     XCTAssertEqual(AnalysisPreferences.interval(in: defaults), 300)
   }
 
   func testAllIntervalsCloseAtTargetAndRetainUnfinishedFrames() {
-    for target in [300, 600, 900] {
+    for target in [60, 300, 600, 900] {
       let frames = screenshots(Array(stride(from: 0, through: target - 10, by: 10)))
       XCTAssertTrue(batches(frames, target: target).isEmpty)
       let result = batches(frames + screenshots([target]), target: target)
@@ -33,7 +33,7 @@ final class AnalysisIntervalTests: XCTestCase {
   }
 
   func testCaptureJitterDoesNotCreateUndersizedBatches() {
-    for target in [300, 600, 900] {
+    for target in [60, 300, 600, 900] {
       let frames = screenshots(Array(stride(from: 0, through: target + 11, by: 11)))
       let result = batches(frames, target: target)
       XCTAssertEqual(result.count, 1)

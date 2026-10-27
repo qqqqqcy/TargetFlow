@@ -118,6 +118,77 @@ final class ProviderPromptPreferencesTests: XCTestCase {
     }
   }
 
+  func testMigrationPrefersConfiguredTimelineOverDefaultAndRetainsLegacyKeys() throws {
+    let defaults = try makeDefaults()
+    let codex = AIProviderConnection(name: "Codex", kind: .codexCLI)
+    let gemini = AIProviderConnection(name: "Gemini", kind: .gemini)
+    let configuration = AIConfiguration(
+      connections: [codex, gemini],
+      routes: [.timeline: .init(primary: .init(connectionID: gemini.id, modelID: "gemini"))],
+      defaultModel: .init(connectionID: codex.id, modelID: "codex"))
+    defaults.set(try JSONEncoder().encode(configuration), forKey: AIConfigurationStore.storageKey)
+    CodexPromptPreferences.save(.init(titleBlock: "Codex legacy"), to: defaults)
+    let expected = ActivityCardPromptOverrides(titleBlock: "Gemini legacy", detailedBlock: "Details")
+    defaults.set(try JSONEncoder().encode(expected), forKey: "geminiPromptOverrides")
+    XCTAssertEqual(ActivityCardPromptPreferences.load(from: defaults), expected)
+    XCTAssertEqual(CodexPromptPreferences.load(from: defaults).titleBlock, "Codex legacy")
+    XCTAssertNotNil(defaults.data(forKey: "geminiPromptOverrides"))
+    ActivityCardPromptPreferences.reset(in: defaults)
+    XCTAssertTrue(ActivityCardPromptPreferences.load(from: defaults).isEmpty)
+    XCTAssertNotNil(defaults.data(forKey: "geminiPromptOverrides"))
+  }
+
+  func testMigrationUsesConfiguredDefaultAndFallsBackDeterministically() throws {
+    let defaults = try makeDefaults()
+    let local = AIProviderConnection(name: "Local", kind: .local)
+    defaults.set(try JSONEncoder().encode(AIConfiguration(
+      connections: [local], defaultModel: .init(connectionID: local.id, modelID: "local"))),
+      forKey: AIConfigurationStore.storageKey)
+    CodexPromptPreferences.save(.init(titleBlock: "Codex legacy"), to: defaults)
+    defaults.set(try JSONEncoder().encode(OllamaPromptOverrides(summaryBlock: "Local summary")),
+      forKey: "ollamaPromptOverrides")
+    XCTAssertEqual(ActivityCardPromptPreferences.load(from: defaults).summaryBlock, "Local summary")
+    XCTAssertNil(ActivityCardPromptPreferences.load(from: defaults).titleBlock)
+
+    let other = try makeDefaults()
+    other.set(Data("invalid".utf8), forKey: "chatGPTPromptOverrides")
+    ClaudePromptPreferences.save(.init(titleBlock: "Claude legacy"), to: other)
+    XCTAssertEqual(ActivityCardPromptPreferences.load(from: other).titleBlock, "Claude legacy")
+  }
+
+  func testMigrationPreservesExplicitEmptyActiveProviderPreferences() throws {
+    let defaults = try makeDefaults()
+    let claude = AIProviderConnection(name: "Claude", kind: .claudeCLI)
+    defaults.set(try JSONEncoder().encode(AIConfiguration(
+      connections: [claude], defaultModel: .init(connectionID: claude.id, modelID: "sonnet"))),
+      forKey: AIConfigurationStore.storageKey)
+    ClaudePromptPreferences.save(.init(), to: defaults)
+    CodexPromptPreferences.save(.init(titleBlock: "Inactive title"), to: defaults)
+    XCTAssertTrue(ActivityCardPromptPreferences.load(from: defaults).isEmpty)
+  }
+
+  func testSharedWriteFailureIsReported() throws {
+    let defaults = try makeIgnoringDefaults()
+    defaults.ignoredWriteKeys = [ActivityCardPromptPreferences.storageKey]
+    XCTAssertThrowsError(try ActivityCardPromptPreferences.saveVerified(.init(titleBlock: "Title"), to: defaults))
+  }
+
+  func testSharedSectionsReachGeminiAndLocalWithoutChangingTheirDefaults() {
+    let overrides = ActivityCardPromptOverrides(
+      titleBlock: "SHARED_TITLE", summaryBlock: "SHARED_SUMMARY", detailedBlock: "SHARED_DETAILS")
+    let gemini = GeminiPromptSections(overrides: overrides)
+    let local = OllamaPromptSections(overrides: overrides)
+    XCTAssertTrue(gemini.title.contains("SHARED_TITLE"))
+    XCTAssertTrue(gemini.summary.contains("SHARED_SUMMARY"))
+    XCTAssertTrue(gemini.detailedSummary.contains("SHARED_DETAILS"))
+    XCTAssertTrue(local.title.contains("SHARED_TITLE"))
+    XCTAssertTrue(local.summary.contains("SHARED_SUMMARY"))
+    XCTAssertTrue(local.detailedSummary.contains("SHARED_DETAILS"))
+    XCTAssertEqual(GeminiPromptSections(overrides: .init()).title, GeminiPromptDefaults.titleBlock)
+    XCTAssertEqual(OllamaPromptSections(overrides: .init()).title, OllamaPromptDefaults.titleBlock)
+    XCTAssertTrue(overrides.instructionBlock.contains("Preserve the required output schema"))
+  }
+
   private func makeDefaults() throws -> UserDefaults {
     let suiteName = "ProviderPromptPreferencesTests.\(UUID().uuidString)"
     suiteNames.append(suiteName)

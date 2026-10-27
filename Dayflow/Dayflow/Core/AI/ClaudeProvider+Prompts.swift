@@ -23,7 +23,7 @@ extension ClaudeProvider {
     let existingCardsData = try? encoder.encode(context.existingCards)
     let existingCardsJSON = existingCardsData.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
     let promptSections = ClaudePromptSections(
-      overrides: overrides ?? ClaudePromptPreferences.load()
+      overrides: overrides ?? ActivityCardPromptPreferences.load()
     )
 
     // Build prompt with explicit string concatenation to avoid GRDB SQL interpolation pollution

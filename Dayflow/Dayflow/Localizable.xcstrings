@@ -1,6 +1,2296 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Model: %@" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "模型：%@"}}}},
+    "Reasoning effort: %@" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "推理强度：%@"}}}},
+    "Returned model: %@" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "返回模型：%@"}}}},
+    "Returned reasoning effort: %@" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "返回推理强度：%@"}}}},
+    "Screenshots → final activity cards in one call, including titles, summaries, and minute-by-minute details. Requires image input." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截图 → 最终活动卡片，一次调用生成标题、摘要和逐分钟明细。需要支持图片输入的模型。"
+          }
+        }
+      }
+    },
+    "DIRECT PATH\nScreenshots → final activity cards\n\nThis single call produces the title, summary, and detailedSummary shown on the timeline. Screenshots are sent directly to the Timeline model. It returns complete cards in one call; there is no separate transcription or card-generation model." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截图 → 最终活动卡片\n\n截图直接发送给时间线模型，一次调用生成 title（标题）、summary（摘要）和 detailedSummary（逐分钟明细）。不再单独调用转录模型或卡片生成模型。"
+          }
+        }
+      }
+    },
+    "Timeline generation method" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间线生成方式"
+          }
+        }
+      }
+    },
+    "Direct · One AI call" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直接生成 · 一次 AI 调用"
+          }
+        }
+      }
+    },
+    "Split · Transcription then cards" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分步生成 · 先转录再生成卡片"
+          }
+        }
+      }
+    },
+    "The method controls the workflow. Model selections never change it. Direct uses the Timeline model; split uses the Transcription and Activity cards models." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成方式决定流程，模型选择不会改变流程。直接生成使用“时间线”模型；分步生成使用“屏幕转录”和“活动卡片”模型。"
+          }
+        }
+      }
+    },
+    "Direct path: screenshots → final activity cards in one call. Used only when the generation method is Direct; model selections do not change the method." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直接生成：一次调用将截图整理为最终活动卡片。仅在生成方式为“直接生成”时使用，选择模型不会改变流程。"
+          }
+        }
+      }
+    },
+    "DIRECT PATH\nScreenshots → final activity cards\n\nThis single call produces the title, summary, and detailedSummary shown on the timeline. Select Direct to use this path. Select Split to use Transcription followed by Activity cards. Changing a model never changes the selected method." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直接生成路径\n截图 → 最终活动卡片\n\n一次调用生成时间线上展示的标题、摘要和逐分钟明细。选择“直接生成”使用此路径；选择“分步生成”则先转录再生成卡片。修改模型不会改变生成方式。"
+          }
+        }
+      }
+    },
+    "Not used by the current generation method. Still available for independent validation." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前生成方式不调用此步骤，仍可独立验证。"
+          }
+        }
+      }
+    },
+    "Card details shown to you · detailedSummary" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最终展示给你的卡片明细 · detailedSummary"
+          }
+        }
+      }
+    },
+    "09:00–09:05: Read the report draft.\n09:05–09:10: Revised the main section.\n09:10–09:15: Checked the report summary." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "09:00–09:05：阅读报告草稿。\n09:05–09:10：修改报告正文。\n09:10–09:15：检查报告摘要。"
+          }
+        }
+      }
+    },
+    "Image input required" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要图片输入"
+          }
+        }
+      }
+    },
+    "Text input only · No images required" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅文字输入 · 不需要图片"
+          }
+        }
+      }
+    },
+    "Where this step fits" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此步骤在流程中的位置"
+          }
+        }
+      }
+    },
+    "Direct path: screenshots → final activity cards, including titles, summaries, and minute-by-minute details. Used for Codex or Claude when neither split stage has a custom model." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直接生成：截图 → 最终活动卡片（标题、摘要、逐分钟明细）。Codex / Claude 在两个分步功能均未自定义模型时使用此路径。"
+          }
+        }
+      }
+    },
+    "Split path, step 1: screenshots → timestamped observations. These are intermediate evidence, not the card details displayed on the timeline." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分步生成 · 第 1 步：截图 → 带时间戳的观察记录。这是中间证据，并非时间线上最终展示的卡片明细。"
+          }
+        }
+      }
+    },
+    "Split path, step 2: observations → final activity cards, including titles, summaries, and minute-by-minute details. This model does not receive screenshots." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分步生成 · 第 2 步：观察记录 → 最终活动卡片（标题、摘要、逐分钟明细）。此模型不接收截图。"
+          }
+        }
+      }
+    },
+    "DIRECT PATH\nScreenshots → final activity cards\n\nThis single call produces the title, summary, and detailedSummary shown on the timeline. Codex and Claude use this path when neither Transcription nor Activity cards has a custom model. Otherwise the app uses the two split stages below." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直接生成路径\n截图 → 最终活动卡片\n\n一次调用直接生成时间线上展示的 title（标题）、summary（摘要）和 detailedSummary（逐分钟明细）。\nCodex / Claude 在“屏幕转录”和“活动卡片”均未自定义模型时使用此路径，否则使用分步生成。"
+          }
+        }
+      }
+    },
+    "SPLIT PATH · STEP 1\nScreenshots → observations → Activity cards model\n\nEach observation records what was visible during an interval. It is intermediate evidence. It does not yet choose the final card title, category, grouping, or detailedSummary." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分步生成 · 第 1 步\n截图 → observations（观察记录）→ 活动卡片模型\n\n每条观察记录描述某个时间段屏幕上发生了什么，是供下一步使用的中间证据。此步尚不决定最终卡片的标题、分类、分组和逐分钟明细。"
+          }
+        }
+      }
+    },
+    "SPLIT PATH · STEP 2\nObservations from Transcription → final activity cards\n\nThis call groups evidence and writes title, summary, and detailedSummary. The minute-by-minute lines visible in a card’s detailed view come from detailedSummary. Screenshots are not sent to this model." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分步生成 · 第 2 步\n屏幕转录提供的观察记录 → 最终活动卡片\n\n此步对观察记录进行分组，并生成 title（标题）、summary（摘要）和 detailedSummary（逐分钟明细）。\n卡片详情中“12:41–12:42 做了什么”这类逐分钟文字，来自 detailedSummary。此模型不接收截图。"
+          }
+        }
+      }
+    },
+    "Activity title and summary + current goals → alignment result. This call evaluates existing activity text; it does not read screenshots or generate timeline cards." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已有活动的标题、摘要 + 当前目标 → 目标关联评估结果。\n此步评估已有活动文字，不读取截图，也不生成时间线卡片。"
+          }
+        }
+      }
+    },
+    "How this feature uses AI" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此功能如何使用 AI"
+          }
+        }
+      }
+    },
+    "1. Input sent by the app" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. 应用提供的输入"
+          }
+        }
+      }
+    },
+    "2. Request data" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. 请求数据结构"
+          }
+        }
+      }
+    },
+    "3. Expected structured output" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. 预期的结构化输出"
+          }
+        }
+      }
+    },
+    "4. What validation checks" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. 验证通过的条件"
+          }
+        }
+      }
+    },
+    "Field names and image encoding vary by provider. This shows the feature data, not a copyable HTTP request." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不同供应商的字段封装和图片编码有所不同。这里展示功能数据结构，不能直接作为 HTTP 请求发送。"
+          }
+        }
+      }
+    },
+    "Checks every feature with its effective model, including features using the default. Each check verifies that feature’s input and output." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐项验证所有功能，包括使用默认模型的功能。每项都用实际生效的模型检查对应入参和出参。"
+          }
+        }
+      }
+    },
+    "Validate all features" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证全部功能"
+          }
+        }
+      }
+    },
+    "No model assigned" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置可用模型"
+          }
+        }
+      }
+    },
+    "Checking this feature’s input and structured output…" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查此功能的入参和结构化出参…"
+          }
+        }
+      }
+    },
+    "Validation passed: this feature returned valid output preserving the test content." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证通过：此功能返回了结构正确且保留测试内容的结果。"
+          }
+        }
+      }
+    },
+    "The images must be read successfully. Output must contain activity cards with a title, category, nonempty summary, and a valid time interval. The image marker must appear in the card content." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必须成功读取图片。返回的活动卡片须包含标题、分类、非空摘要和有效时间区间，且卡片内容中必须包含图片里的标记文字。"
+          }
+        }
+      }
+    },
+    "Output must contain timestamped observations with endTs greater than startTs. The visible image marker must appear in an observation; an HTTP success alone does not pass." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必须返回带时间戳的观察记录，结束时间 endTs 必须大于开始时间 startTs。观察记录必须包含图片里可见的标记文字；仅请求成功不算通过。"
+          }
+        }
+      }
+    },
+    "Output must contain activity cards with valid time intervals, titles, categories, and summaries. The report title from the observations must be preserved. Enabled custom card instructions also apply." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必须返回包含有效时间区间、标题、分类和摘要的活动卡片，并保留观察记录中的报告名称。已启用的自定义卡片提示词也会参与请求。"
+          }
+        }
+      }
+    },
+    "Output must be JSON with alignment, reason, and reminder. For this completed goal, alignment must be focused, reason must name the report, and reminder must be empty." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必须返回包含 alignment（关联程度）、reason（原因）、reminder（提醒）的 JSON。本例已完成目标，alignment 应为 focused，reason 必须提到报告名称，reminder 应为空字符串。"
+          }
+        }
+      }
+    },
+    "Screenshots: two images, 09:00 and 09:15, showing the synthetic report editor below.\nCategories: Work, Personal, Idle.\nPrevious cards: none.\nDescribe the activity as timeline cards with grounded timestamps and summaries." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入两张截图，时间分别为 09:00 和 09:15，内容如下方合成的报告编辑界面。\n可用分类：工作、个人、空闲。已有卡片：无。\n任务：根据截图生成活动卡片，包含有依据的时间和摘要。"
+          }
+        }
+      }
+    },
+    "Your API key is stored in a local file readable only by your macOS user and sent to your provider for requests." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥保存在仅当前 macOS 用户可读写的本地文件中，请求时发送给所选供应商。"
+          }
+        }
+      }
+    },
+    "Stored in a local file readable only by your macOS user and sent only to this endpoint as a Bearer token." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存在仅当前 macOS 用户可读写的本地文件中，并仅以 Bearer 令牌发送至此服务地址。"
+          }
+        }
+      }
+    },
+    "Couldn't save your API key locally. Check the app storage permissions and try again." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将 API 密钥保存到本地，请检查应用存储权限后重试。"
+          }
+        }
+      }
+    },
+    "API keys are stored in local files readable only by your macOS user. Subscription CLIs use your existing local sign-in." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥保存在仅当前 macOS 用户可读写的本地文件中。订阅 CLI 使用本机已有的登录状态。"
+          }
+        }
+      }
+    },
+    "Saves this connection and current feature settings. API keys are stored in local files readable only by your macOS user." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存此连接和当前功能设置。API 密钥保存在仅当前 macOS 用户可读写的本地文件中。"
+          }
+        }
+      }
+    },
+    "The connection credential could not be saved locally." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将连接凭据保存到本地。"
+          }
+        }
+      }
+    },
+    "Activity-card prompt customization" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动卡片提示词自定义"
+          }
+        }
+      }
+    },
+    "Customize card titles, summaries, and detailed summaries for all configured providers." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为所有已配置的服务自定义卡片标题、摘要和详细摘要。"
+          }
+        }
+      }
+    },
+    "Enabled instructions apply to every provider and model. Disabled sections use each provider's defaults." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用的指令适用于所有服务和模型。未启用的部分使用各服务的默认设置。"
+          }
+        }
+      }
+    },
+    "The activity-card prompts could not be saved." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存活动卡片提示词。"
+          }
+        }
+      }
+    },
+    "Custom API" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义 API"
+          }
+        }
+      }
+    },
+    "API connection" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 连接"
+          }
+        }
+      }
+    },
+    "Ultra" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "超高"
+          }
+        }
+      }
+    },
+    "Local model" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机模型"
+          }
+        }
+      }
+    },
+    "Hosted service" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "托管服务"
+          }
+        }
+      }
+    },
+    "Transcription" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕转录"
+          }
+        }
+      }
+    },
+    "Activity cards" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动卡片"
+          }
+        }
+      }
+    },
+    "Target evaluation" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标评估"
+          }
+        }
+      }
+    },
+    "Daily recap" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每日回顾"
+          }
+        }
+      }
+    },
+    "AI configuration" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 配置"
+          }
+        }
+      }
+    },
+    "Add provider connections, then choose a default model and optional feature models." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先添加供应商连接，再选择默认模型和可选的功能模型。"
+          }
+        }
+      }
+    },
+    "Unsaved changes" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有未保存的更改"
+          }
+        }
+      }
+    },
+    "Save configuration" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存配置"
+          }
+        }
+      }
+    },
+    "Delete provider connection?" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除供应商连接？"
+          }
+        }
+      }
+    },
+    "Delete connection and assignments" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除连接及相关分配"
+          }
+        }
+      }
+    },
+    "Configuration saved" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置已保存"
+          }
+        }
+      }
+    },
+    "Saved connections" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存的连接"
+          }
+        }
+      }
+    },
+    "Subscription / sign-in" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "订阅 / 登录"
+          }
+        }
+      }
+    },
+    "API / proxy" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API / 中转"
+          }
+        }
+      }
+    },
+    "Add provider" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加供应商"
+          }
+        }
+      }
+    },
+    "No provider connections yet" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有供应商连接"
+          }
+        }
+      }
+    },
+    "Add an API, subscription CLI, or local service. You can add multiple connections for the same provider." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加 API、订阅 CLI 或本地服务。同一种供应商可以添加多个连接。"
+          }
+        }
+      }
+    },
+    "API keys are stored in Keychain. Subscription CLIs use your existing local sign-in." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥保存在系统钥匙串中。订阅 CLI 使用本机已有的登录状态。"
+          }
+        }
+      }
+    },
+    "Add %@ connection" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加 %@ 连接"
+          }
+        }
+      }
+    },
+    "%@ · %lld models" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · %lld 个模型"
+          }
+        }
+      }
+    },
+    "Enable %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启用 %@"
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑"
+          }
+        }
+      }
+    },
+    "Duplicate connection" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制连接"
+          }
+        }
+      }
+    },
+    " copy" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " 副本"
+          }
+        }
+      }
+    },
+    "Delete connection" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除连接"
+          }
+        }
+      }
+    },
+    "More connection actions" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多连接操作"
+          }
+        }
+      }
+    },
+    "Validate configuration" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证配置"
+          }
+        }
+      }
+    },
+    "Checks the default and custom feature models with small synthetic requests and shows any failures." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用少量合成请求检查默认模型和自定义功能模型，并显示失败原因。"
+          }
+        }
+      }
+    },
+    "Validating configuration…" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证配置…"
+          }
+        }
+      }
+    },
+    "Save your changes before validating." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先保存更改，再验证配置。"
+          }
+        }
+      }
+    },
+    "Validation results clear when the configuration changes." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改配置后，旧的验证结果将自动清除。"
+          }
+        }
+      }
+    },
+    "Validate all models" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证全部模型"
+          }
+        }
+      }
+    },
+    "Choose a connection and model" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择连接和模型"
+          }
+        }
+      }
+    },
+    "Connection deleted" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接已删除"
+          }
+        }
+      }
+    },
+    " (disabled)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "（已停用）"
+          }
+        }
+      }
+    },
+    "Custom OpenAI-compatible API" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自定义 OpenAI 兼容 API"
+          }
+        }
+      }
+    },
+    "Claude subscription CLI" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude 订阅 CLI"
+          }
+        }
+      }
+    },
+    "Codex subscription CLI" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex 订阅 CLI"
+          }
+        }
+      }
+    },
+    "Provider connection" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "供应商连接"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称"
+          }
+        }
+      }
+    },
+    "API endpoint" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 地址"
+          }
+        }
+      }
+    },
+    "Replace saved API key" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "替换已保存的密钥"
+          }
+        }
+      }
+    },
+    "Uses the local CLI sign-in. Connections of the same kind share that sign-in, even when added separately." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用本机 CLI 的登录状态。多个同类连接共享同一 CLI 登录，不代表不同订阅账户。"
+          }
+        }
+      }
+    },
+    "Configure CLI" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置 CLI"
+          }
+        }
+      }
+    },
+    "Available models" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可选模型"
+          }
+        }
+      }
+    },
+    "Read CLI models" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取 CLI 模型"
+          }
+        }
+      }
+    },
+    "Discover models" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现模型"
+          }
+        }
+      }
+    },
+    "Discover models or add a model ID below." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现模型，或在下方手动添加模型 ID。"
+          }
+        }
+      }
+    },
+    "Reasoning effort is not supported" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不支持推理强度"
+          }
+        }
+      }
+    },
+    "Reasoning support unknown; uses provider default" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推理能力未知；使用供应商默认强度"
+          }
+        }
+      }
+    },
+    "Remove model" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除模型"
+          }
+        }
+      }
+    },
+    "Remove model %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除模型 %@"
+          }
+        }
+      }
+    },
+    "Enter a model ID manually" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手动输入模型 ID"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加"
+          }
+        }
+      }
+    },
+    "Saves this connection and current feature settings. API keys are stored in Keychain." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存此连接和当前功能配置。API 密钥写入系统钥匙串。"
+          }
+        }
+      }
+    },
+    "No models found. You can add a model ID manually." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未发现模型，可手动添加模型 ID。"
+          }
+        }
+      }
+    },
+    "Configuration steps" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置步骤"
+          }
+        }
+      }
+    },
+    "1. Providers" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. 供应商"
+          }
+        }
+      }
+    },
+    "2. Feature models" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. 功能模型"
+          }
+        }
+      }
+    },
+    "Choose a default for all features, then customize individual features if needed." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为所有功能选择默认模型，再按需自定义各项功能。"
+          }
+        }
+      }
+    },
+    "Default model" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认模型"
+          }
+        }
+      }
+    },
+    "Examples" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "示例"
+          }
+        }
+      }
+    },
+    "View examples for %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看%@的示例"
+          }
+        }
+      }
+    },
+    "Used by features without a custom model, and retried if a custom model fails." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未自定义模型的功能使用此模型；自定义模型失败时也会尝试此模型。"
+          }
+        }
+      }
+    },
+    "Reasoning effort" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推理强度"
+          }
+        }
+      }
+    },
+    "Provider default" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "供应商默认值"
+          }
+        }
+      }
+    },
+    "Use default" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用默认值"
+          }
+        }
+      }
+    },
+    "Using default: %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用默认模型：%@"
+          }
+        }
+      }
+    },
+    "Choose a default model above to enable this feature." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在上方选择默认模型以启用此功能。"
+          }
+        }
+      }
+    },
+    "No default model" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不设置默认模型"
+          }
+        }
+      }
+    },
+    "Add an enabled provider and model first." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先添加并启用供应商及模型。"
+          }
+        }
+      }
+    },
+    "Add models in the provider connection first." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请先在供应商连接中添加模型。"
+          }
+        }
+      }
+    },
+    "Choose a model" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择模型"
+          }
+        }
+      }
+    },
+    "Model for %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@的模型"
+          }
+        }
+      }
+    },
+    "Reasoning effort for %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@的推理强度"
+          }
+        }
+      }
+    },
+    "Leave blank for the provider default, or enter a supported effort. Validate to check support." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "留空以使用供应商默认值，或填写受支持的推理强度。请通过验证确认支持情况。"
+          }
+        }
+      }
+    },
+    "%@ (unavailable)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@（不可用）"
+          }
+        }
+      }
+    },
+    "This model does not support reasoning effort." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此模型不支持推理强度。"
+          }
+        }
+      }
+    },
+    "Only reasoning levels reported by this provider are listed." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅显示供应商声明支持的推理强度。"
+          }
+        }
+      }
+    },
+    "None" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无"
+          }
+        }
+      }
+    },
+    "Minimal" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最低"
+          }
+        }
+      }
+    },
+    "Low" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低"
+          }
+        }
+      }
+    },
+    "High" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高"
+          }
+        }
+      }
+    },
+    "Maximum" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最高"
+          }
+        }
+      }
+    },
+    "Extra high" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "极高"
+          }
+        }
+      }
+    },
+    "Turns captured screenshots into a timeline of activities. Requires image input." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将捕获的屏幕截图整理为活动时间线。需要图像输入能力。"
+          }
+        }
+      }
+    },
+    "Checks how recent activities align with your current goals." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评估近期活动与当前目标的关联程度。"
+          }
+        }
+      }
+    },
+    "Checks the current screen against your focus goal. Requires image input." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对照专注目标检查当前屏幕。需要图像输入能力。"
+          }
+        }
+      }
+    },
+    "Answers questions about your recent timeline and activity context." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据近期时间线和活动上下文回答问题。"
+          }
+        }
+      }
+    },
+    "Summarizes completed work and suggests the next step from your daily timeline." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据每日时间线总结已完成的工作，并建议下一步。"
+          }
+        }
+      }
+    },
+    "Reads captured screenshots into timestamped observations. Requires image input." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取捕获的屏幕截图，生成带时间戳的观察记录。需要图像输入能力。"
+          }
+        }
+      }
+    },
+    "Groups timestamped observations into readable activity cards." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将带时间戳的观察记录整理为清晰的活动卡片。"
+          }
+        }
+      }
+    },
+    "Generates text from the context supplied by the app." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据应用提供的上下文生成文本。"
+          }
+        }
+      }
+    },
+    "This connection has no model assignments. Save after deleting it." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此连接没有模型分配。删除后请保存配置。"
+          }
+        }
+      }
+    },
+    "Used by: %@. Deleting this connection clears these selections. Features without a custom model use the default model." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用此连接的项目：%@。删除此连接将清除这些选择。未自定义模型的功能使用默认模型。"
+          }
+        }
+      }
+    },
+    "Edit %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑%@"
+          }
+        }
+      }
+    },
+    "Connection name" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接名称"
+          }
+        }
+      }
+    },
+    "OpenAI (compatible API)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI（兼容 API）"
+          }
+        }
+      }
+    },
+    "DeepSeek (compatible API)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek（兼容 API）"
+          }
+        }
+      }
+    },
+    "Kimi (compatible API)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kimi（兼容 API）"
+          }
+        }
+      }
+    },
+    "Input and output examples" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入与输出示例"
+          }
+        }
+      }
+    },
+    "Close examples" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭示例"
+          }
+        }
+      }
+    },
+    "Illustrative synthetic data only. Requests include additional instructions, and formatting varies by provider. No request is sent and no personal data is used." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以下仅为合成示例数据。实际请求包含额外指令，格式因供应商而异。此处不会发送请求，也不使用个人数据。"
+          }
+        }
+      }
+    },
+    "Example input" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入示例"
+          }
+        }
+      }
+    },
+    "Example output" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输出示例"
+          }
+        }
+      }
+    },
+    "Synthetic screenshot input" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合成截图输入"
+          }
+        }
+      }
+    },
+    "Report editor · Validation report" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "报告编辑器 · 验证报告"
+          }
+        }
+      }
+    },
+    "Synthetic report screen showing DAYFLOW VISION 4729" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 DAYFLOW VISION 4729 的合成报告屏幕"
+          }
+        }
+      }
+    },
+    "Working on a validation report.\nSummary: completed the report draft." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在编写验证报告。\n摘要：已完成报告初稿。"
+          }
+        }
+      }
+    },
+    "Text task: extract the report title from ‘Completed report DAYFLOW CONTEXT 8316’.\nImage task: read the large marker from the synthetic screen below.\nReturn the requested structured result for each task." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文本任务：从“已完成报告 DAYFLOW CONTEXT 8316”中提取报告标题。\n图像任务：读取下方合成屏幕中的大号标记。\n分别返回各任务要求的结构化结果。"
+          }
+        }
+      }
+    },
+    "Screenshots: one per minute, 09:00–09:15, showing the synthetic report editor below.\nCategories: Work, Personal, Idle.\nPrevious cards: none.\nDescribe the activity as timeline cards with grounded timestamps and summaries." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕截图：09:00–09:15，每分钟一张，显示下方合成报告编辑器。\n分类：工作、个人、空闲。\n已有卡片：无。\n将活动描述为时间线卡片，时间戳和摘要须有截图依据。"
+          }
+        }
+      }
+    },
+    "Screenshots: 09:00 and 09:15, showing the synthetic report editor below.\nRead the visible text and describe the activity as timestamped observations." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕截图：09:00 和 09:15，显示下方合成报告编辑器。\n读取可见文本，以带时间戳的观察记录描述活动。"
+          }
+        }
+      }
+    },
+    "09:00–09:15: Worked on report DAYFLOW CONTEXT 8316 and completed its summary.\nCategories: Work, Personal, Idle.\nGroup these observations into an activity card." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "09:00–09:15：编写报告 DAYFLOW CONTEXT 8316，并完成摘要。\n分类：工作、个人、空闲。\n将这些观察记录整理为活动卡片。"
+          }
+        }
+      }
+    },
+    "Current goals: Complete report DAYFLOW CONTEXT 8316.\nActivity: Finished and delivered report DAYFLOW CONTEXT 8316.\nDuration: 15 minutes. Crosses target boundary: false.\nEvaluate whether this activity advances any current goal." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前目标：完成报告 DAYFLOW CONTEXT 8316。\n活动：完成并提交报告 DAYFLOW CONTEXT 8316。\n时长：15 分钟。跨越目标边界：否。\n评估此活动是否推进了任一当前目标。"
+          }
+        }
+      }
+    },
+    "Focus goal: Work on the validation report.\nCurrent screen: the synthetic report editor below.\nDecide whether the visible activity is on task and whether a reminder is needed." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注目标：编写验证报告。\n当前屏幕：下方合成报告编辑器。\n判断可见活动是否符合目标，以及是否需要提醒。"
+          }
+        }
+      }
+    },
+    "User: What report did I finish?\nRecent timeline: Completed report DAYFLOW CONTEXT 8316, 09:00–09:15.\nAnswer using the supplied timeline context." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用户：我完成了哪份报告？\n近期时间线：09:00–09:15，完成报告 DAYFLOW CONTEXT 8316。\n根据提供的时间线上下文回答。"
+          }
+        }
+      }
+    },
+    "Daily timeline: 09:00–09:15, completed and delivered report DAYFLOW CONTEXT 8316.\nSummarize completed work in up to five bullets. Include a next step only when the timeline supports one." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每日时间线：09:00–09:15，完成并提交报告 DAYFLOW CONTEXT 8316。\n用最多五条要点总结已完成的工作。仅在时间线有依据时提供下一步。"
+          }
+        }
+      }
+    },
+    "Extract the report title from: Completed report DAYFLOW CONTEXT 8316.\nReturn JSON with an answer field containing the exact title." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从“已完成报告 DAYFLOW CONTEXT 8316”中提取报告标题。\n返回 JSON，在 answer 字段中填写完整标题。"
+          }
+        }
+      }
+    },
+    "You finished report DAYFLOW CONTEXT 8316 between 09:00 and 09:15." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你在 09:00 至 09:15 之间完成了报告 DAYFLOW CONTEXT 8316。"
+          }
+        }
+      }
+    },
+    "Clear model call history" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除模型调用历史记录"
+          }
+        }
+      }
+    },
+    "Recent model call history" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近期模型调用历史记录"
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失败"
+          }
+        }
+      }
+    },
+    "Default" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认值"
+          }
+        }
+      }
+    },
+    "Validation cancelled." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证已取消。"
+          }
+        }
+      }
+    },
+    "Checking the configured model with a synthetic fixture…" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在使用模拟测试内容检查所配置的模型…"
+          }
+        }
+      }
+    },
+    "Validation passed: the model returned the expected test content." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证通过：模型返回了符合要求的测试内容。"
+          }
+        }
+      }
+    },
+    "Authentication failed or expired. Sign in again or update this connection’s API key." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身份验证失败或已过期。请重新登录或更新此连接的 API 密钥。"
+          }
+        }
+      }
+    },
+    "The selected reasoning setting was rejected by this provider or model." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此提供商或模型拒绝了所选推理设置。"
+          }
+        }
+      }
+    },
+    "The selected model is unavailable or is not accessible to this connection." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选模型不可用，或此连接无权访问该模型。"
+          }
+        }
+      }
+    },
+    "The provider CLI executable or required input could not be found. Check its installation." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到提供商的 CLI 可执行文件或所需输入。请检查安装。"
+          }
+        }
+      }
+    },
+    "Authentication failed or this model is not authorized for the connection." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身份验证失败，或此连接未获授权使用该模型。"
+          }
+        }
+      }
+    },
+    "The provider rate limit or quota was reached." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已达到提供商的速率限制或配额。"
+          }
+        }
+      }
+    },
+    "The provider request timed out." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提供商请求已超时。"
+          }
+        }
+      }
+    },
+    "The provider could not be reached. Check its endpoint and network connection." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接提供商。请检查服务地址和网络连接。"
+          }
+        }
+      }
+    },
+    "The response did not identify the marker in the image. Vision support was not verified." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "响应未识别图片中的标记，无法验证视觉能力。"
+          }
+        }
+      }
+    },
+    "The response did not contain valid activity cards preserving the fixture content." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "响应未包含保留测试内容的有效活动卡片。"
+          }
+        }
+      }
+    },
+    "The response did not match the requested JSON schema and fixture content." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "响应不符合要求的 JSON 格式或测试内容。"
+          }
+        }
+      }
+    },
+    "The synthetic validation image could not be created." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法创建模拟验证图片。"
+          }
+        }
+      }
+    },
+    "No model is assigned to this feature." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此功能尚未分配模型。"
+          }
+        }
+      }
+    },
+    "The assigned connection or model is unavailable or disabled." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分配的连接或模型不可用或已停用。"
+          }
+        }
+      }
+    },
+    "This connection needs an API key in Settings." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此连接需要在设置中填写 API 密钥。"
+          }
+        }
+      }
+    },
+    "This connection needs a valid HTTP or HTTPS endpoint." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此连接需要有效的 HTTP 或 HTTPS 服务地址。"
+          }
+        }
+      }
+    },
+    "This provider does not support configured execution." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此提供商不支持按配置执行。"
+          }
+        }
+      }
+    },
+    "Validation timed out." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "验证已超时。"
+          }
+        }
+      }
+    },
+    "The saved AI configuration could not be read." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取已保存的 AI 配置。"
+          }
+        }
+      }
+    },
+    "This AI configuration was saved by a newer app version." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此 AI 配置由较新版本的应用保存。"
+          }
+        }
+      }
+    },
+    "The AI configuration could not be saved." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存 AI 配置。"
+          }
+        }
+      }
+    },
+    "The connection credential could not be saved to Keychain." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将连接凭据保存到钥匙串。"
+          }
+        }
+      }
+    },
+    "Each connection must have a unique identifier." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个连接必须有唯一标识符。"
+          }
+        }
+      }
+    },
+    "Each model in a connection must have a unique identifier." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接中的每个模型必须有唯一标识符。"
+          }
+        }
+      }
+    },
+    "The selected connection no longer exists." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选连接已不存在。"
+          }
+        }
+      }
+    },
+    "The selected connection is disabled." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所选连接已停用。"
+          }
+        }
+      }
+    },
+    "Enter a connection name." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入连接名称。"
+          }
+        }
+      }
+    },
+    "Enter an HTTP or HTTPS endpoint without embedded credentials." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入不含凭据的 HTTP 或 HTTPS 服务地址。"
+          }
+        }
+      }
+    },
+    "Enter a model identifier without control characters." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入不含控制字符的模型标识符。"
+          }
+        }
+      }
+    },
+    "The selected reasoning effort is not supported by this model." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此模型不支持所选推理强度。"
+          }
+        }
+      }
+    },
+    "The configured provider failed to return valid content (error code %lld). Check the connection, model, and reasoning setting." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "所配置的提供商未返回有效内容（错误代码 %lld）。请检查连接、模型和推理设置。"
+          }
+        }
+      }
+    },
+    "Enter a valid HTTP or HTTPS connection endpoint." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入有效的 HTTP 或 HTTPS 服务地址。"
+          }
+        }
+      }
+    },
+    "The provider returned an unreadable model list." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "供应商返回了无法读取的模型列表。"
+          }
+        }
+      }
+    },
+    "Model discovery failed (HTTP %lld). Check the endpoint and credential." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现模型失败（HTTP %lld），请检查服务地址和凭据。"
+          }
+        }
+      }
+    },
+    "No Codex model cache was found. Open Codex once, or enter an exact model ID manually." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到 Codex 模型缓存，请先运行一次 Codex，或手动输入准确的模型 ID。"
+          }
+        }
+      }
+    },
+    "This connection does not provide model discovery. Enter an exact model ID manually." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此连接不支持发现模型，请手动输入准确的模型 ID。"
+          }
+        }
+      }
+    },
+    "The selected provider or model does not support reasoning effort ‘%@’." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "所选服务商或模型不支持推理强度“%@”。" } } } },
+    "Model names must be single lines without control characters." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型名称必须为单行，且不能包含控制字符。" } } } },
+    "Model preferences could not be saved. Please try again." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法保存模型配置，请重试。" } } } },
+    "Model configuration" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型配置" } } } },
+    "Set provider defaults and override models for individual features." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置服务商默认模型，并为各项功能单独指定模型。" } } } },
+    "Global default" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "全局默认配置" } } } },
+    "An empty model and inherited reasoning keep each feature’s existing app defaults." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型留空且推理设置为继承时，将保留各功能现有的应用默认配置。" } } } },
+    "Feature override" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "功能专属配置" } } } },
+    "Customize this feature" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自定义此功能" } } } },
+    "Model (empty to inherit)" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型（留空以继承）" } } } },
+    "Recommended models" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "推荐模型" } } } },
+    "Inherit" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继承" } } } },
+    "Reasoning" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "推理强度" } } } },
+    "Provider default (omit effort)" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "服务商默认（不传推理参数）" } } } },
+    "Available reasoning levels depend on the provider and model. Custom model names are accepted." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "可用推理强度取决于服务商和模型。支持输入自定义模型名称。" } } } },
+    "Model fallback" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型回退" } } } },
+    "Use existing fallback behavior" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "沿用现有回退策略" } } } },
+    "Disable model fallback" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "禁用模型回退" } } } },
+    "Custom fallback models" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自定义回退模型" } } } },
+    "Enter one model per line, in retry order. Model fallback stays within this provider; provider failover is configured separately." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按重试顺序每行输入一个模型。模型回退仅在当前服务商内生效；服务商故障转移需单独配置。" } } } },
+    "Edits apply after saving. Switching providers discards unsaved edits." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "修改保存后生效。切换服务商会丢弃尚未保存的修改。" } } } },
+    "Save model configuration" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保存模型配置" } } } },
+    "Enter at least one fallback model, or choose Disable model fallback." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请至少输入一个回退模型，或选择禁用模型回退。" } } } },
+    "Model configuration saved." : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型配置已保存。" } } } },
+    "Effective model" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "实际生效模型" } } } },
+    "Text generation" : { "localizations" : { "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文本生成" } } } },
+    "Recent model calls" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近期模型调用"
+          }
+        }
+      }
+    },
+    "Recent execution metadata only. Prompts and responses are never stored here." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅显示近期执行元数据。此处不会存储提示词或响应。"
+          }
+        }
+      }
+    },
+    "Latest 50 calls" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近 50 次调用"
+          }
+        }
+      }
+    },
+    "Clear history" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除历史记录"
+          }
+        }
+      }
+    },
+    "No model calls recorded yet." : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚无模型调用记录。"
+          }
+        }
+      }
+    },
+    "Succeeded" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "成功"
+          }
+        }
+      }
+    },
+    "Unknown (not reported)" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知（未报告）"
+          }
+        }
+      }
+    },
+    "CLI default" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CLI 默认值"
+          }
+        }
+      }
+    },
+    "Requested model: %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求模型：%@"
+          }
+        }
+      }
+    },
+    "Reported model: %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "报告模型：%@"
+          }
+        }
+      }
+    },
+    "Thinking requested: %@; reported: %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求推理强度：%@；报告强度：%@"
+          }
+        }
+      }
+    },
+    "Failure: %@" : {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失败：%@"
+          }
+        }
+      }
+    },
     "Check complete: screen recording permission is missing. Click Open screen recording settings to grant access." : {
       "localizations" : {
         "zh-Hans" : {
@@ -726,7 +3016,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已开启"
+            "value": "启用"
           }
         }
       }
@@ -1321,22 +3611,12 @@
         }
       }
     },
-    "This is a test goal notification. Choose a current goal and take one small, concrete step. Click to open Events & Goals.": {
+    "You spent 18 minutes on news unrelated to “Prepare for interviews.” Start with one concrete step: write the context, actions, and results of a performance optimization case.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这是一条目标测试通知。先选一个当前目标，从一个具体的小步骤继续。点击可打开事件与目标。"
-          }
-        }
-      }
-    },
-    "This is a test notch reminder. Choose a current goal and take one small, concrete step. Hover to keep it expanded, or click below to view Events & Goals.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这是一条刘海测试提醒。先选一个当前目标，从一个具体的小步骤继续。悬停可保持展开，点击下方按钮查看事件与目标。"
+            "value": "过去 18 分钟在浏览与「准备面试」无关的新闻。先做一件具体的事：写下一个性能优化案例的背景、行动和结果。"
           }
         }
       }
@@ -10837,47 +13117,47 @@
       }
     },
     "API key" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "API-Schlüssel"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "API-Schlüssel"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Clé API"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Clé API"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "APIキー"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "APIキー"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "API 키"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "API 키"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "API-ключ"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "API-ключ"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "API 密钥"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "API 金鑰"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "API 金鑰"
           }
         }
       }
@@ -13060,47 +15340,47 @@
       }
     },
     "Cancel" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Abbrechen"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Abbrechen"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Annuler"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Annuler"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "キャンセル"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "キャンセル"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "취소"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "취소"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Отмена"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Отмена"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "取消"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "取消"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "取消"
           }
         }
       }
@@ -18127,7 +20407,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "折叠"
+            "value" : "收起"
           }
         },
         "zh-Hant" : {
@@ -26716,47 +28996,47 @@
       }
     },
     "Done" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Fertig"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Fertig"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Terminé"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Terminé"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "完了"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "完了"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "완료"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "완료"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Готово"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Готово"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "完成"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "完成"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "完成"
           }
         }
       }
@@ -39509,47 +41789,47 @@
       }
     },
     "Local" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Lokal"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Lokal"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Local"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Local"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "ローカル"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ローカル"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "로컬"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "로컬"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Локально"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Локально"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "本地"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "本機"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "本機"
           }
         }
       }
@@ -40663,47 +42943,47 @@
       }
     },
     "Medium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Mittel"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Mittel"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Moyen"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Moyen"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "中"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "中"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "중간"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "중간"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Средний"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Средний"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "中等"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "中等"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "中等"
           }
         }
       }
@@ -41129,47 +43409,47 @@
       }
     },
     "Model" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Modell"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Modell"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Modèle"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Modèle"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "モデル"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "モデル"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "모델"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "모델"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Модель"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Модель"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "模型"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "模型"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "模型"
           }
         }
       }
@@ -41221,47 +43501,47 @@
       }
     },
     "Model ID" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Modell-ID"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Modell-ID"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "ID du modèle"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ID du modèle"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "モデル ID"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "モデル ID"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "모델 ID"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "모델 ID"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "ID модели"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "ID модели"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "模型 ID"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型 ID"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "模型 ID"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "模型 ID"
           }
         }
       }
@@ -46080,47 +48360,47 @@
       }
     },
     "OpenAI-compatible API" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "OpenAI-kompatible API"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "OpenAI-kompatible API"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "API compatible avec OpenAI"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "API compatible avec OpenAI"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "OpenAI互換API"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "OpenAI互換API"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "OpenAI 호환 API"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "OpenAI 호환 API"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "OpenAI-совместимый API"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "OpenAI-совместимый API"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "OpenAI 兼容 API"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI 兼容 API"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "OpenAI 相容 API"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "OpenAI 相容 API"
           }
         }
       }
@@ -53535,47 +55815,47 @@
       }
     },
     "Save" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sichern"
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Sichern"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Enregistrer"
+        "fr": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Enregistrer"
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "保存"
+        "ja": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "保存"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "저장"
+        "ko": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "저장"
           }
         },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Сохранить"
+        "ru": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "Сохранить"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "保存"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "儲存"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "儲存"
           }
         }
       }

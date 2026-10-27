@@ -107,6 +107,8 @@ final class FlowDistractionAgent: ObservableObject {
     let message: String
     let image_base64: String?
     let want_timeline: Bool
+    var model: String? = nil
+    var reasoning_effort: String? = nil
   }
 
   private struct BackendCheckResponse: Decodable {
@@ -116,6 +118,19 @@ final class FlowDistractionAgent: ObservableObject {
   private let runner = ChatCLIProcessRunner()
 
   private var engine: Engine = .codex
+  private var configuredRuntime: AIConfiguredRuntime?
+  private var activeSelection: AIRuntimeSelection?
+
+  /// Resume ids belong to an exact connection/model/effort selection.
+  nonisolated static func canResume(
+    previous: AIRuntimeSelection?, next: AIRuntimeSelection
+  ) -> Bool {
+    previous == next
+  }
+
+  nonisolated static func supportsConfiguredSelection(_ selection: AIRuntimeSelection) -> Bool {
+    selection.connection.models.first { $0.id == selection.modelID }?.supportsVision != false
+  }
   /// Codex thread id, Claude session id, or a local id for Dayflow Pro
   /// (which keeps no conversation on the server). Nil until briefed.
   private var conversationId: String?
@@ -202,7 +217,15 @@ final class FlowDistractionAgent: ObservableObject {
     #if DEBUG
       if UserDefaults.standard.bool(forKey: "flowForceProviderGate") { return false }
     #endif
-    return Engine.current() != nil
+    do {
+      let configuration = try AIConfigurationStore.shared.load()
+      if !configuration.assignments(for: .flow).isEmpty {
+        return configuration.assignments(for: .flow)
+          .compactMap { try? configuration.selection(for: $0) }
+          .contains(where: supportsConfiguredSelection)
+      }
+    } catch { return false }
+    return false
   }
   /// Debug panel: make the next tick ask for a timeline update.
   private var forceTimelineUpdate = false
@@ -217,7 +240,7 @@ final class FlowDistractionAgent: ObservableObject {
   /// them anyway — ticks should produce nothing but the JSON verdict.
   /// workspace-write lets the model edit the session timeline file that
   /// native drops into its working directory (nothing else is in there).
-  private static let codexConfigOverrides = [
+  private nonisolated static let codexConfigOverrides = [
     "model_reasoning_summary=none", "sandbox_mode=workspace-write",
   ]
 
@@ -289,6 +312,36 @@ final class FlowDistractionAgent: ObservableObject {
     consecutiveFailures = 0
     paused = false
 
+    do {
+      let configuration = try AIConfigurationStore.shared.load()
+      if !configuration.assignments(for: .flow).isEmpty {
+        let runtime = AIConfiguredRuntime(configuration: configuration)
+        let selections = configuration.assignments(for: .flow)
+          .compactMap { try? configuration.selection(for: $0) }
+        guard selections.contains(where: Self.supportsConfiguredSelection) else {
+          throw Self.configurationError("No available Flow model configured")
+        }
+        configuredRuntime = runtime
+        let directory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+          .appendingPathComponent("DayflowFlowAgent-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        workDirectory = directory
+        // The first screenshot executes the route, including fallbacks. No separate
+        // text-only briefing request is needed for stateless suppliers.
+        generation += 1
+        conversationId = UUID().uuidString
+        backendHistory = []
+        statusLine = "Watching (configured Flow models)"
+        scheduleTimer()
+        return
+      }
+      throw Self.configurationError("Choose a model for Flow in Settings")
+    } catch {
+      appendTranscript("Couldn't configure Flow: \(error.localizedDescription)")
+      statusLine = "Flow model configuration needs attention"
+      return
+    }
+
     guard let engine = Engine.current() else {
       print("[FlowAgent] Not starting: the primary provider can't run the Flow agent")
       appendTranscript(
@@ -331,8 +384,10 @@ final class FlowDistractionAgent: ObservableObject {
     }
 
     tickInFlight = true
-    let model = settings.model
-    let effort = settings.reasoningEffort
+    let selection = flowModelSelection
+    let model = selection.model
+    let effort = selection.reasoningEffort
+    let claudeProfile = configuredClaudeProfile(directory: directory, effort: effort)
     Task.detached(priority: .utility) {
       var sessionId: String?
       var replyText = ""
@@ -345,9 +400,9 @@ final class FlowDistractionAgent: ObservableObject {
             tool: .claude,
             prompt: prompt,
             workingDirectory: directory,
-            model: Self.claudeModel,
-            claudeProfile: ClaudeCLIExecutionProfile.flowAgent.allowingFlowWorkspace(
-              at: directory.path),
+            model: model,
+            reasoningEffort: effort,
+            claudeProfile: claudeProfile,
             claudeSessionMode: .start(id: id)
           )
           if result.exitCode == 0 {
@@ -449,6 +504,8 @@ final class FlowDistractionAgent: ObservableObject {
       Task.detached(priority: .utility) { ClaudeSessionCleanup(sessionID: id).cleanup() }
     }
     conversationId = nil
+    configuredRuntime = nil
+    activeSelection = nil
     backendBriefing = ""
     backendHistory = []
     paused = false
@@ -610,6 +667,10 @@ final class FlowDistractionAgent: ObservableObject {
     tickInFlight = true
     stats.checks += 1
     let gen = generation
+    if let runtime = configuredRuntime {
+      configuredTick(runtime: runtime, generation: gen, directory: directory)
+      return
+    }
     let askTimeline =
       forceTimelineUpdate || timeline.wantsUpdate(every: settings.timelineEverySeconds)
     forceTimelineUpdate = false
@@ -621,8 +682,10 @@ final class FlowDistractionAgent: ObservableObject {
     pendingNotes = []
     let runner = self.runner
     let shotURL = directory.appendingPathComponent("shot-\(Int(Date().timeIntervalSince1970)).jpg")
-    let model = settings.model
-    let effort = settings.reasoningEffort
+    let selection = flowModelSelection
+    let model = selection.model
+    let effort = selection.reasoningEffort
+    let claudeProfile = configuredClaudeProfile(directory: directory, effort: effort)
     let shotHeight = settings.screenshotHeight
     let quality = settings.jpegQuality
     let timeout = settings.tickTimeoutSeconds
@@ -671,9 +734,9 @@ final class FlowDistractionAgent: ObservableObject {
             prompt: prompt,
             workingDirectory: directory,
             imagePaths: imagePaths,
-            model: Self.claudeModel,
-            claudeProfile: ClaudeCLIExecutionProfile.flowAgent.allowingFlowWorkspace(
-              at: directory.path),
+            model: model,
+            reasoningEffort: effort,
+            claudeProfile: claudeProfile,
             claudeSessionMode: .resume(id: sessionId),
             timeoutSeconds: timeout
           )
@@ -713,6 +776,224 @@ final class FlowDistractionAgent: ObservableObject {
         let stale = await MainActor.run { FlowDistractionAgent.shared.generation != gen }
         if stale { ClaudeSessionCleanup(sessionID: sessionId).cleanup() }
       }
+    }
+  }
+
+  private func configuredTick(runtime: AIConfiguredRuntime, generation gen: Int, directory: URL) {
+    let askTimeline = forceTimelineUpdate || timeline.wantsUpdate(every: settings.timelineEverySeconds)
+    forceTimelineUpdate = false
+    let shotURL = directory.appendingPathComponent("shot-\(UUID().uuidString).jpg")
+    let display = cachedCaptureDisplay
+    let height = settings.screenshotHeight
+    let quality = settings.jpegQuality
+    let timeout = settings.tickTimeoutSeconds
+    let front = FlowSessionTimeline.frontmostApp()
+    let startedAt = Date()
+    let originalEngine = engine
+    Task {
+      var capturedDisplay: SCDisplay?
+      var sentPrompt = ""
+      var reply: String?
+      var failure: String?
+      defer { try? FileManager.default.removeItem(at: shotURL) }
+      do {
+        capturedDisplay = try await Self.captureScreenshotJPEG(
+          to: shotURL, height: height, quality: quality, display: display)
+        guard gen == generation else { return }
+        let previousSelection = activeSelection
+        let previousID = conversationId
+        let previousEngine = engine
+        let result = try await runtime.withConfiguration(feature: .flow) { provider in
+          guard gen == self.generation else { throw CancellationError() }
+          guard let selection = AIRequestContext.assignment else {
+            throw Self.configurationError("Missing Flow model selection")
+          }
+          guard Self.supportsConfiguredSelection(selection) else {
+            throw Self.configurationError("The selected Flow model does not support screenshots")
+          }
+          let candidateEngine: Engine
+          switch provider {
+          case .codex: candidateEngine = .codex
+          case .claude: candidateEngine = .claude
+          default: candidateEngine = .dayflow
+          }
+          self.engine = candidateEngine
+          if askTimeline, candidateEngine.editsTimelineFile, let file = self.timelineFileURL {
+            try self.timeline.promptTimelineJSON().write(to: file, atomically: true, encoding: .utf8)
+          }
+          let prompt = self.tickMessage(askTimeline: askTimeline) + "\n" + Self.replyReminder
+          let resumeID = Self.canResume(previous: previousSelection, next: selection) ? previousID : nil
+          let context = self.backendHistory.map { "\($0.role): \($0.content)" }.joined(separator: "\n")
+          let briefing = self.initialPrompt()
+          let fullPrompt = resumeID != nil && candidateEngine.editsTimelineFile
+            ? prompt : briefing + "\nRECENT CHECKS\n" + context + "\n" + prompt
+          // Keep the active engine tied to its active id while the request runs;
+          // stop() may need to clean up that Claude session during this await.
+          self.engine = previousEngine
+          let turn: ConfiguredTurn
+          switch provider {
+          case .codex, .claude:
+            turn = try await Self.configuredCLITurn(
+              provider: provider, selection: selection, directory: directory,
+              imageURL: shotURL, prompt: fullPrompt, resumeID: resumeID, timeout: timeout)
+          case .hosted:
+            let text = try await Self.backendCheck(
+              BackendCheckRequest(
+                briefing: briefing, history: self.backendHistory, message: prompt,
+                image_base64: try Data(contentsOf: shotURL).base64EncodedString(),
+                want_timeline: askTimeline), timeout: timeout)
+            turn = ConfiguredTurn(text: text, sessionID: UUID().uuidString)
+          default:
+            let text = try await provider.imageText(prompt: fullPrompt, imageURLs: [shotURL])
+            turn = ConfiguredTurn(text: text, sessionID: UUID().uuidString)
+          }
+          guard gen == self.generation else {
+            if candidateEngine == .claude { ClaudeSessionCleanup(sessionID: turn.sessionID).cleanup() }
+            throw CancellationError()
+          }
+          return (selection, candidateEngine, turn, prompt)
+        }
+        guard gen == generation else { return }
+        if previousEngine == .claude, previousSelection != result.0, let previousID {
+          ClaudeSessionCleanup(sessionID: previousID).cleanup()
+        }
+        activeSelection = result.0
+        engine = result.1
+        conversationId = result.2.sessionID
+        reply = result.2.text
+        sentPrompt = result.3
+        pendingNotes = []
+        statusLine = "Watching (\(result.0.modelID), \(result.0.effort ?? "provider default"))"
+      } catch {
+        guard gen == generation else { return }
+        engine = originalEngine
+        failure = error.localizedDescription
+        if capturedDisplay == nil {
+          ScreenCaptureMonitor.shared.recordFailure(error, source: .flow)
+        }
+      }
+      finishTick(
+        generation: gen, prompt: sentPrompt, reply: reply, error: failure,
+        seconds: Date().timeIntervalSince(startedAt), front: front,
+        askedTimeline: askTimeline, captureDisplay: capturedDisplay)
+    }
+  }
+
+  private struct ConfiguredTurn: Sendable {
+    let text: String
+    let sessionID: String
+  }
+
+  private nonisolated static func configurationError(_ message: String) -> NSError {
+    NSError(domain: "FlowAgent", code: -4, userInfo: [NSLocalizedDescriptionKey: message])
+  }
+
+  /// Shared by real configured turns and the settings validation probe.
+  private nonisolated static func configuredCLITurn(
+    provider: AIConfiguredProvider, selection: AIRuntimeSelection, directory: URL,
+    imageURL: URL, prompt: String, resumeID: String?, timeout: TimeInterval
+  ) async throws -> ConfiguredTurn {
+    let tool: ChatCLITool
+    switch provider {
+    case .claude: tool = .claude
+    case .codex: tool = .codex
+    default: throw configurationError("This supplier does not run CLI conversations")
+    }
+    return try await Task.detached(priority: .utility) {
+      let runner = ChatCLIProcessRunner()
+      switch tool {
+      case .claude:
+        let id = resumeID ?? UUID().uuidString.lowercased()
+        do {
+          let result = try runner.run(
+            tool: .claude, prompt: prompt, workingDirectory: directory,
+            imagePaths: [imageURL.path], model: selection.modelID, reasoningEffort: selection.effort,
+            claudeProfile: ClaudeCLIExecutionProfile.flowAgent
+              .allowingFlowWorkspace(at: directory.path).withReasoningEffort(selection.effort),
+            claudeSessionMode: resumeID == nil ? .start(id: id) : .resume(id: id),
+            timeoutSeconds: timeout)
+          guard result.exitCode == 0 else {
+            throw configurationError(result.failureMessage(toolName: "Claude CLI"))
+          }
+          return ConfiguredTurn(text: result.stdout, sessionID: id)
+        } catch {
+          if resumeID == nil { ClaudeSessionCleanup(sessionID: id).cleanup() }
+          throw error
+        }
+      case .codex:
+        if let resumeID {
+          let result = try runner.run(
+            tool: .codex, prompt: prompt, workingDirectory: directory,
+            imagePaths: [imageURL.path], model: selection.modelID, reasoningEffort: selection.effort,
+            codexResumeSessionId: resumeID, codexConfigOverrides: codexConfigOverrides,
+            timeoutSeconds: timeout)
+          guard result.exitCode == 0 else {
+            throw configurationError(result.failureMessage(toolName: "Codex CLI"))
+          }
+          return ConfiguredTurn(text: result.stdout, sessionID: resumeID)
+        }
+        var id: String?
+        var text = ""
+        var failure: String?
+        for try await event in runner.runStreaming(
+          tool: .codex,
+          prompt: "A screenshot check follows. Acknowledge with {}.\n" + prompt,
+          workingDirectory: directory,
+          model: selection.modelID, reasoningEffort: selection.effort,
+          codexConfigOverrides: codexConfigOverrides) {
+          switch event {
+          case .sessionStarted(let value): id = value
+          case .textDelta(let value): text += value
+          case .complete(let value): text = value
+          case .error(let value): failure = value
+          default: break
+          }
+        }
+        if let failure { throw configurationError(failure) }
+        guard let id else { throw configurationError("Codex returned no conversation id") }
+        // Streaming creates the thread; the normal resume path supports image
+        // attachments and enforces the per-check timeout.
+        let result = try runner.run(
+          tool: .codex, prompt: prompt, workingDirectory: directory,
+          imagePaths: [imageURL.path], model: selection.modelID, reasoningEffort: selection.effort,
+          codexResumeSessionId: id, codexConfigOverrides: codexConfigOverrides,
+          timeoutSeconds: timeout)
+        guard result.exitCode == 0 else {
+          throw configurationError(result.failureMessage(toolName: "Codex CLI"))
+        }
+        return ConfiguredTurn(text: result.stdout, sessionID: id)
+      default: throw configurationError("This supplier does not run CLI conversations")
+      }
+    }.value
+  }
+
+  nonisolated static func validateConfiguredSelection(
+    provider: AIConfiguredProvider, selection: AIRuntimeSelection, imageURL: URL, prompt: String
+  ) async throws -> String {
+    guard supportsConfiguredSelection(selection) else {
+      throw configurationError("The selected Flow model does not support screenshots")
+    }
+    switch provider {
+    case .codex, .claude:
+      let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("DayflowFlowValidation-\(UUID().uuidString)", isDirectory: true)
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      defer { try? FileManager.default.removeItem(at: directory) }
+      let imageCopy = directory.appendingPathComponent(imageURL.lastPathComponent)
+      try FileManager.default.copyItem(at: imageURL, to: imageCopy)
+      let result = try await configuredCLITurn(
+        provider: provider, selection: selection, directory: directory,
+        imageURL: imageCopy, prompt: prompt, resumeID: nil, timeout: 120)
+      if case .claude = provider { ClaudeSessionCleanup(sessionID: result.sessionID).cleanup() }
+      return result.text
+    case .hosted:
+      return try await backendCheck(
+        BackendCheckRequest(
+          briefing: "Inspect the screenshot and follow the user's request.", history: [],
+          message: prompt, image_base64: try Data(contentsOf: imageURL).base64EncodedString(),
+          want_timeline: false), timeout: 120)
+    default:
+      return try await provider.imageText(prompt: prompt, imageURLs: [imageURL])
     }
   }
 
@@ -770,7 +1051,7 @@ final class FlowDistractionAgent: ObservableObject {
     consecutiveFailures = 0
     stats.checkSeconds += seconds
     appendTranscript(reply)
-    if engine == .dayflow {
+    if engine == .dayflow || configuredRuntime != nil {
       backendHistory.append(BackendTurn(role: "user", content: prompt))
       backendHistory.append(BackendTurn(role: "assistant", content: reply))
       let limit = Self.dayflowHistoryTurns * 2
@@ -971,7 +1252,7 @@ final class FlowDistractionAgent: ObservableObject {
       "{{style_rules}}": styleBlock,
       "{{tick_seconds}}": String(Int(settings.tickSeconds)),
       "{{categories}}": Self.categoriesBlock(),
-      "{{timeline_mechanics}}": (Engine.current() ?? .codex).editsTimelineFile
+      "{{timeline_mechanics}}": engine.editsTimelineFile
         ? Self.timelineByFile : Self.timelineInline,
     ]
     for (key, value) in values {
@@ -1201,13 +1482,25 @@ final class FlowDistractionAgent: ObservableObject {
     return parts.joined(separator: "\n")
   }
 
-  /// "gpt-… , low" for Codex; the other engines choose their own model.
+  private func configuredClaudeProfile(directory: URL, effort: String?) -> ClaudeCLIExecutionProfile {
+    let profile = ClaudeCLIExecutionProfile.flowAgent.allowingFlowWorkspace(at: directory.path)
+    let preferences = ModelPreferences.load(provider: .claude)
+    let hasOverride = preferences.featureOverrides[.flow]?.reasoningEffort != nil
+      || preferences.defaultSelection.reasoningEffort != nil
+    return hasOverride ? profile.withReasoningEffort(effort) : profile
+  }
+
+  private var flowModelSelection: ModelSelection {
+    ModelPreferences.resolve(
+      provider: engine == .claude ? .claude : .chatGPT, feature: .flow,
+      defaultModel: engine == .claude ? Self.claudeModel : settings.model,
+      defaultEffort: engine == .claude ? nil : settings.reasoningEffort)
+  }
+
   private var modelLabel: String {
-    switch engine {
-    case .codex: return "\(settings.model), \(settings.reasoningEffort)"
-    case .claude: return "Claude \(Self.claudeModel)"
-    case .dayflow: return "Target Flow Pro"
-    }
+    if engine == .dayflow { return "Target Flow Pro" }
+    let selection = flowModelSelection
+    return "\(selection.model), \(selection.reasoningEffort ?? "provider default")"
   }
 
   private var engineKey: String {
@@ -1244,7 +1537,15 @@ final class FlowDistractionAgent: ObservableObject {
   private nonisolated static func backendCheck(
     _ payload: BackendCheckRequest, timeout: TimeInterval
   ) async throws -> String {
-    guard let credentials = dayflowCredentials(),
+    let selection = AIRequestContext.assignment
+    let credentials: (endpoint: String, token: String)?
+    if let selection {
+      if let endpoint = selection.connection.endpoint,
+        let token = LocalProviderCredentialStore.shared.retrieve(for: selection.connection.secretKeyID) {
+        credentials = (endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/")), token)
+      } else { credentials = nil }
+    } else { credentials = dayflowCredentials() }
+    guard let credentials,
       let url = URL(string: "\(credentials.endpoint)/v1/dayflow/flow-check")
     else {
       throw NSError(
@@ -1257,6 +1558,9 @@ final class FlowDistractionAgent: ObservableObject {
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue("application/json", forHTTPHeaderField: "Accept")
     request.setValue("Bearer \(credentials.token)", forHTTPHeaderField: "Authorization")
+    var payload = payload
+    payload.model = selection?.modelID
+    payload.reasoning_effort = selection?.effort
     request.httpBody = try JSONEncoder().encode(payload)
 
     let (data, response) = try await URLSession.shared.data(for: request)

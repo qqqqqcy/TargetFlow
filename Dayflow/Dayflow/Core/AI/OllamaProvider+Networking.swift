@@ -7,12 +7,13 @@ import Foundation
 
 extension OllamaProvider {
   struct ChatRequest: Codable {
-    let model: String
+    var model: String
     let messages: [ChatMessage]
     var temperature: Double = 0.7
     var max_tokens: Int = 4000
     var stream: Bool = false
     var reasoning: Reasoning? = nil
+    var reasoning_effort: String? = nil
 
     struct Reasoning: Codable {
       let effort: String
@@ -35,6 +36,7 @@ extension OllamaProvider {
   }
 
   struct ChatResponse: Codable {
+    var model: String? = nil
     let choices: [Choice]
 
     struct Choice: Codable {
@@ -44,6 +46,40 @@ extension OllamaProvider {
     struct ResponseMessage: Codable {
       let content: String
     }
+  }
+
+  static func modelFeature(for operation: String) -> ModelFeature {
+    switch operation {
+    case "describe_frame", "transcribe_screenshots", "segment_video_activity": return .transcription
+    case "generate_summary", "generate_title", "evaluate_card_merge", "merge_cards",
+      "generate_cards", "generate_activity_cards": return .activityCards
+    case "generate_timeline": return .timeline
+    case "dashboard_chat": return .chat
+    default: return .text
+    }
+  }
+
+  func configuredRequest(
+    _ request: ChatRequest, feature: ModelFeature, defaults: UserDefaults = .standard
+  ) -> ChatRequest {
+    let isOpenRouter = URL(string: endpoint)?.host?.lowercased() == "openrouter.ai"
+    let selection = ModelPreferences.resolve(
+      provider: providerID, feature: feature, defaultModel: request.model,
+      defaultEffort: request.reasoning?.effort, defaults: defaults)
+    var result = request
+    result.model = selection.model
+    result.reasoning = nil
+    result.reasoning_effort = nil
+    if let effort = selection.reasoningEffort, effort != "default" {
+      // Both protocols define `none`; omission keeps the server's own default.
+      let value = effort == "disabled" ? "none" : effort
+      if isOpenRouter {
+        result.reasoning = .init(effort: value)
+      } else {
+        result.reasoning_effort = value
+      }
+    }
+    return result
   }
 
   func makeChatURLRequest(
@@ -68,7 +104,8 @@ extension OllamaProvider {
   }
 
   func callChatAPI(
-    _ request: ChatRequest, operation: String, batchId: Int64? = nil, maxRetries: Int = 3
+    _ request: ChatRequest, operation: String, batchId: Int64? = nil, maxRetries: Int = 3,
+    feature: ModelFeature? = nil
   ) async throws -> ChatResponse {
     guard let url = LocalEndpointUtilities.chatCompletionsURL(baseURL: endpoint) else {
       throw NSError(
@@ -76,6 +113,30 @@ extension OllamaProvider {
         userInfo: [NSLocalizedDescriptionKey: "Invalid local endpoint URL"])
     }
 
+    let request = configuredRequest(request, feature: feature ?? Self.modelFeature(for: operation))
+    let fallbacks = AIRequestContext.assignment == nil
+      ? (ModelPreferences.load(provider: providerID).fallbackModels ?? []) : []
+    var seen: Set<String> = [request.model]
+    let models = [request.model] + fallbacks.filter { seen.insert($0).inserted }
+    for (modelIndex, model) in models.enumerated() {
+      var modelRequest = request
+      modelRequest.model = model
+      do {
+        return try await callConfiguredChatAPI(
+          modelRequest, operation: operation, batchId: batchId, maxRetries: maxRetries, url: url)
+      } catch {
+        try Task.checkCancellation()
+        if (error as NSError).code == NSURLErrorCancelled || modelIndex == models.count - 1 {
+          throw error
+        }
+      }
+    }
+    preconditionFailure("At least one model is required")
+  }
+
+  private func callConfiguredChatAPI(
+    _ request: ChatRequest, operation: String, batchId: Int64?, maxRetries: Int, url: URL
+  ) async throws -> ChatResponse {
     // Retry logic with exponential backoff
     let attempts = max(1, maxRetries)
     var lastError: Error?
@@ -87,6 +148,7 @@ extension OllamaProvider {
       var didLogTiming = false
       var apiStart: Date?
       do {
+        try Task.checkCancellation()
         let urlRequest = try makeChatURLRequest(request, url: url)
 
         let start = Date()
@@ -155,6 +217,14 @@ extension OllamaProvider {
 
         do {
           let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
+          if let reported = chatResponse.model {
+            print("[\(localEngine)] response model: \(reported) (requested: \(request.model))")
+          }
+          ModelExecutionHistory.shared.record(
+            provider: providerID.rawValue, requestedModel: request.model,
+            reportedModels: chatResponse.model.map { [$0] } ?? [],
+            requestedReasoning: request.reasoning?.effort ?? request.reasoning_effort,
+            startedAt: start, outcome: .succeeded)
           // Centralized success log
           let responseHeaders: [String: String] = httpResponse.allHeaderFields.reduce(into: [:]) {
             acc, kv in
@@ -193,6 +263,12 @@ extension OllamaProvider {
         }
 
       } catch {
+        ModelExecutionHistory.shared.record(
+          provider: providerID.rawValue, requestedModel: request.model,
+          requestedReasoning: request.reasoning?.effort ?? request.reasoning_effort,
+          startedAt: apiStart ?? Date(), outcome: .failed,
+          failureCode: "request_failed_\((error as NSError).code)")
+        if error is CancellationError || (error as NSError).code == NSURLErrorCancelled { throw error }
         lastError = error
         if !didLogTiming, let startedAt = apiStart {
           let requestDuration = Date().timeIntervalSince(startedAt)
@@ -254,7 +330,7 @@ extension OllamaProvider {
   // Helper method for text-only requests
   func callTextAPI(
     _ prompt: String, operation: String, expectJSON: Bool = false, batchId: Int64? = nil,
-    maxRetries: Int = 3, maxTokens: Int = 4000
+    maxRetries: Int = 3, maxTokens: Int = 4000, feature: ModelFeature? = nil
   ) async throws -> String {
     let systemPrompt =
       expectJSON
@@ -276,7 +352,7 @@ extension OllamaProvider {
     )
 
     let response = try await callChatAPI(
-      request, operation: operation, batchId: batchId, maxRetries: maxRetries)
+      request, operation: operation, batchId: batchId, maxRetries: maxRetries, feature: feature)
     return response.choices.first?.message.content ?? ""
   }
 
@@ -290,7 +366,7 @@ extension OllamaProvider {
 // MARK: - Text Generation
 
 extension OllamaProvider {
-  func generateText(prompt: String, maxTokens: Int = 4000) async throws
+  func generateText(prompt: String, maxTokens: Int = 4000, feature: ModelFeature = .text) async throws
     -> (text: String, log: LLMCall)
   {
     let callStart = Date()
@@ -301,7 +377,8 @@ extension OllamaProvider {
       expectJSON: false,
       batchId: nil,
       maxRetries: 3,
-      maxTokens: maxTokens
+      maxTokens: maxTokens,
+      feature: feature
     )
 
     let log = LLMCall(

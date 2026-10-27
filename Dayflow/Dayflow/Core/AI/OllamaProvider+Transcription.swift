@@ -204,7 +204,9 @@ extension OllamaProvider {
           endTs: Int(endDate.timeIntervalSince1970),
           observation: segment.description,
           metadata: nil,
-          llmModel: savedModelId,
+          llmModel: ModelPreferences.resolve(
+            provider: providerID, feature: .transcription, defaultModel: savedModelId,
+            defaultEffort: nil).model,
           createdAt: Date()
         )
       )

@@ -66,7 +66,7 @@ class ProviderSetupState: ObservableObject {
       openAICompatibleModelID = configuration.modelID
     }
     openAICompatibleAPIKey =
-      KeychainManager.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider) ?? ""
+      LocalProviderCredentialStore.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider) ?? ""
   }
 
   var currentStep: SetupStep {
@@ -179,7 +179,7 @@ class ProviderSetupState: ObservableObject {
       ]
     case .gemini, .dayflow:
       let storedGeminiKey =
-        KeychainManager.shared.retrieve(for: "gemini")?
+        LocalProviderCredentialStore.shared.retrieve(for: "gemini")?
         .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
       hasStoredGeminiAPIKey = !storedGeminiKey.isEmpty
       steps = [

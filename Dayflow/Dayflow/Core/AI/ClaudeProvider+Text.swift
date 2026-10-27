@@ -4,12 +4,14 @@ extension ClaudeProvider {
   func generateChatStreaming(prompt: String, sessionId: String? = nil) -> AsyncThrowingStream<
     ChatStreamEvent, Error
   > {
-    runner.runStreaming(
+    let selection = ModelPreferences.resolve(
+      provider: .claude, feature: .chat, defaultModel: "sonnet", defaultEffort: nil)
+    return runner.runStreaming(
       tool: .claude,
       prompt: prompt,
       workingDirectory: config.workingDirectory,
-      model: "sonnet",
-      reasoningEffort: nil,
+      model: selection.model,
+      reasoningEffort: selection.reasoningEffort,
       sessionId: sessionId
     )
   }
@@ -44,10 +46,12 @@ extension ClaudeProvider {
   }
 
   func generateText(prompt: String) async throws -> (text: String, log: LLMCall) {
-    try await generateText(
+    let selection = ModelPreferences.resolve(
+      provider: .claude, feature: .text, defaultModel: "sonnet", defaultEffort: "high")
+    return try await generateText(
       prompt: prompt,
-      model: "sonnet",
-      reasoningEffort: "high",
+      model: selection.model,
+      reasoningEffort: selection.reasoningEffort,
       disableTools: false
     )
   }

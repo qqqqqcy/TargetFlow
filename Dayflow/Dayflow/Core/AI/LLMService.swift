@@ -97,6 +97,19 @@ protocol LLMServicing {
 
 final class LLMService: LLMServicing {
   static let shared: LLMServicing = LLMService()
+  private let loadConfiguration: () throws -> AIConfiguration
+  private let configuredText: ((String, AIFeature) async throws -> String)?
+
+  init(
+    loadConfiguration: @escaping () throws -> AIConfiguration = {
+      try AIConfigurationStore.shared.load()
+    },
+    configuredText: ((String, AIFeature) async throws -> String)? = nil
+  ) {
+    self.loadConfiguration = loadConfiguration
+    self.configuredText = configuredText
+  }
+
   private static let timelineCardGenerationGate = TimelineCardGenerationGate()
   private static let timelineFailureToastLastShownDayByKindDefaultsKey =
     "timelineFailureToastLastShownDayByKind"
@@ -152,7 +165,7 @@ final class LLMService: LLMServicing {
   }
 
   private func makeGeminiProvider() -> GeminiDirectProvider? {
-    if let apiKey = KeychainManager.shared.retrieve(for: "gemini"), !apiKey.isEmpty {
+    if let apiKey = LocalProviderCredentialStore.shared.retrieve(for: "gemini"), !apiKey.isEmpty {
       let preference = GeminiModelPreference.load()
       return GeminiDirectProvider(apiKey: apiKey, preference: preference)
     } else {
@@ -162,7 +175,7 @@ final class LLMService: LLMServicing {
   }
 
   private func makeGemmaBackupProvider() -> GemmaBackupProvider? {
-    if let apiKey = KeychainManager.shared.retrieve(for: "gemini"), !apiKey.isEmpty {
+    if let apiKey = LocalProviderCredentialStore.shared.retrieve(for: "gemini"), !apiKey.isEmpty {
       return GemmaBackupProvider(apiKey: apiKey)
     }
     print("❌ [LLMService] Failed to retrieve Gemini API key for Gemma fallback")
@@ -185,7 +198,7 @@ final class LLMService: LLMServicing {
       print("❌ [LLMService] OpenAI-compatible provider unavailable: incomplete configuration")
       return nil
     }
-    let apiKey = KeychainManager.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider)
+    let apiKey = LocalProviderCredentialStore.shared.retrieve(for: OpenAICompatiblePreferences.keychainProvider)
     let runtimeConfiguration = OpenAICompatibleRuntimeConfiguration(
       configuration: configuration,
       bearerToken: apiKey
@@ -213,7 +226,8 @@ final class LLMService: LLMServicing {
     switch providerID {
     case .gemini:
       guard let provider = makeGeminiProvider() else { throw noProviderError() }
-      let gemmaProvider = makeGemmaBackupProvider()
+      let gemmaProvider = ModelPreferences.load(provider: .gemini).fallbackModels == nil
+        ? makeGemmaBackupProvider() : nil
       let fallbackState = GemmaFallbackState()
 
       return (
@@ -294,6 +308,60 @@ final class LLMService: LLMServicing {
         ), fallbackState: nil
       )
     }
+  }
+
+  private func makeConfiguredTimelineContext(_ configuration: AIConfiguration) throws
+    -> TimelineProviderContext?
+  {
+    guard let primary = configuration.assignments(for: .timeline).first else {
+      throw AIConfiguredRuntimeError.missingRoute
+    }
+    guard let connection = configuration.connections.first(where: {
+      $0.id == primary.connectionID
+    }) else { throw AIConfigurationError.missingConnection }
+    let runtime = AIConfiguredRuntime(configuration: configuration)
+    let fallbackState = GemmaFallbackState()
+    func usedFallback(for feature: AIFeature) -> Bool {
+      guard let selected = AIRequestContext.assignment,
+        let primary = configuration.assignments(for: feature).first
+      else { return false }
+      return selected.connection.id != primary.connectionID || selected.modelID != primary.modelID
+        || selected.effort != primary.effort
+    }
+    return TimelineProviderContext(
+      id: connection.kind.providerID,
+      providerLabel: connection.name,
+      actions: BatchProviderActions(
+        transcribeScreenshots: { screenshots, start, batchID in
+          try await runtime.withConfiguration(
+            feature: .transcription
+          ) { provider in
+            try await provider.transcribeScreenshots(
+              screenshots, batchStartTime: start, batchId: batchID)
+          }
+        },
+        generateActivityCards: { observations, context, batchID in
+          try await runtime.withConfiguration(
+            feature: .activityCards
+          ) { provider in
+            let result = try await provider.generateActivityCards(
+              observations: observations, context: context, batchId: batchID)
+            fallbackState.usedGemmaForCardGeneration = usedFallback(
+              for: .activityCards)
+            return result
+          }
+        },
+        generateTimeline: { screenshots, context, batchID in
+            try await runtime.withConfiguration(feature: .timeline) { provider in
+              let result = try await provider.generateTimeline(
+                screenshots: screenshots, context: context, batchId: batchID)
+              fallbackState.usedGemmaForCardGeneration = usedFallback(for: .timeline)
+              return result
+            }
+          }
+      ),
+      fallbackState: fallbackState
+    )
   }
 
   private func makeTimelineProviderContext(for providerID: LLMProviderID) throws
@@ -633,15 +701,23 @@ final class LLMService: LLMServicing {
 
       let (_, batchStartTs, batchEndTs, _) = batchInfo
       let routing: LLMProviderRouting
+      let configuredContext: TimelineProviderContext?
+      let configuration: AIConfiguration
       do {
-        routing = try LLMProviderRoutingStore.load()
+        configuration = try loadConfiguration()
+        configuredContext = try makeConfiguredTimelineContext(configuration)
+        if let configuredContext {
+          routing = LLMProviderRouting(primary: configuredContext.id, secondary: nil)
+        } else {
+          routing = try LLMProviderRoutingStore.load()
+        }
       } catch {
         completion(.failure(error))
         return
       }
       let processingStartTime = Date()
       let primaryProviderID = routing.primary
-      let primaryProviderLabel = providerLabel(for: primaryProviderID)
+      let primaryProviderLabel = configuredContext?.providerLabel ?? providerLabel(for: primaryProviderID)
       let configuredBackup = configuredBackupProvider(
         primaryProviderID: primaryProviderID,
         routing: routing
@@ -673,7 +749,8 @@ final class LLMService: LLMServicing {
           ])
 
         let primaryResult: Result<TimelineProviderContext, Error> = Result {
-          try makeTimelineProviderContext(for: primaryProviderID)
+          if let configuredContext { return configuredContext }
+          return try makeTimelineProviderContext(for: primaryProviderID)
         }
         let configuredBackupContext: TimelineProviderContext? = {
           guard let configuredBackup else { return nil }
@@ -808,6 +885,9 @@ final class LLMService: LLMServicing {
               "🧩 [LLMService] One-step timeline → \(result.cards.count) cards, "
                 + "\(observations.count) observations")
           } catch {
+            // Configured pipelines never change topology after a model failure.
+            // withConfiguration has already tried the shared default model.
+            if configuredContext != nil { throw error }
             let nsError = error as NSError
             // Sign-in and subscription rejections would fail the same way on the two-step
             // endpoints, so surface them instead of sending a second doomed request.
@@ -1121,26 +1201,32 @@ final class LLMService: LLMServicing {
 
   // MARK: - Text Generation
 
+  private func generateConfiguredText(prompt: String, feature: AIFeature) async throws -> String {
+    let configuration = try loadConfiguration()
+    guard !configuration.assignments(for: feature).isEmpty else {
+      throw AIConfiguredRuntimeError.missingRoute
+    }
+    if let configuredText { return try await configuredText(prompt, feature) }
+    return try await AIConfiguredRuntime(configuration: configuration)
+      .generateText(prompt: prompt, feature: feature).text
+  }
+
   func generateText(prompt: String) async throws -> String {
-    let textProvider = try makeTextProvider()
-    let (text, _) = try await textProvider.generateText(prompt)
-    return text
+    try await generateConfiguredText(prompt: prompt, feature: .text)
   }
 
   func generateTargetEvaluation(prompt: String) async throws -> String {
-    let provider = try makeTextProvider(disableTools: true)
-    return try await provider.generateText(prompt).text
+    try await generateConfiguredText(prompt: prompt, feature: .targetEvaluation)
   }
 
   // MARK: - Streaming Text Generation
 
   func generateTextStreaming(prompt: String) -> AsyncThrowingStream<String, Error> {
     do {
-      let textProvider = try makeTextProvider()
-      if let streaming = textProvider.generateTextStreaming {
-        return streaming(prompt)
+      guard try !loadConfiguration().assignments(for: .text).isEmpty else {
+        throw AIConfiguredRuntimeError.missingRoute
       }
-      return makeFallbackTextStream { try await textProvider.generateText(prompt).text }
+      return makeFallbackTextStream { try await self.generateText(prompt: prompt) }
     } catch {
       return makeErrorStream(error)
     }
@@ -1148,39 +1234,67 @@ final class LLMService: LLMServicing {
 
   // MARK: - Rich Chat Streaming
 
+  private func configuredChatStream(
+    request: DashboardChatRequest, configuration: AIConfiguration
+  ) -> AsyncThrowingStream<ChatStreamEvent, Error> {
+    AsyncThrowingStream { continuation in
+      let task = Task {
+        do {
+          let runtime = AIConfiguredRuntime(configuration: configuration)
+          // Buffer each attempt so a failed connection cannot leave a partial answer or
+          // a foreign CLI session attached to the successful fallback response.
+          let events = try await runtime.withConfiguration(feature: .chat) { provider in
+            let stream: AsyncThrowingStream<ChatStreamEvent, Error>
+            switch provider {
+            case .codex(let cli):
+              stream = cli.generateChatStreaming(
+                prompt: request.configuredPrompts?.codex ?? request.prompt, sessionId: nil)
+            case .claude(let cli):
+              stream = cli.generateChatStreaming(
+                prompt: request.configuredPrompts?.claude ?? request.prompt, sessionId: nil)
+            case .gemini(let gemini):
+              stream = gemini.generateDashboardChatStreaming(
+                systemInstruction: request.systemInstruction ?? "", history: request.history)
+            case .compatible, .local, .hosted:
+              guard let prompt = request.configuredPrompts?.text else {
+                throw AIConfiguredRuntimeError.invalidSelection
+              }
+              let result = try await provider.generateText(prompt: prompt, feature: .chat)
+              return [ChatStreamEvent.complete(text: result.text)]
+            }
+            var events: [ChatStreamEvent] = []
+            for try await event in stream {
+              try Task.checkCancellation()
+              if case .error(let message) = event {
+                throw NSError(domain: "ConfiguredChat", code: 1,
+                  userInfo: [NSLocalizedDescriptionKey: message])
+              }
+              // Configured requests always rebuild from history; sessions cannot migrate
+              // safely between independent connections.
+              if case .sessionStarted = event { continue }
+              events.append(event)
+            }
+            return events
+          }
+          for event in events { continuation.yield(event) }
+          continuation.finish()
+        } catch { continuation.finish(throwing: error) }
+      }
+      continuation.onTermination = { _ in task.cancel() }
+    }
+  }
+
   func generateChatStreaming(request: DashboardChatRequest) -> AsyncThrowingStream<
     ChatStreamEvent, Error
   > {
-    switch request.provider {
-    case .gemini:
-      guard let gemini = makeGeminiProvider() else {
-        return AsyncThrowingStream { continuation in
-          continuation.yield(
-            .error("Gemini is not configured. Add your Gemini API key in Settings > Providers."))
-          continuation.finish(
-            throwing: NSError(
-              domain: "LLMService",
-              code: 1101,
-              userInfo: [
-                NSLocalizedDescriptionKey:
-                  "Gemini is not configured. Add your Gemini API key in Settings > Providers."
-              ]))
-        }
+    do {
+      let configuration = try loadConfiguration()
+      guard !configuration.assignments(for: .chat).isEmpty else {
+        throw AIConfiguredRuntimeError.missingRoute
       }
-      return gemini.generateDashboardChatStreaming(
-        systemInstruction: request.systemInstruction ?? "",
-        history: request.history
-      )
-    case .codex:
-      return CodexProvider().generateChatStreaming(
-        prompt: request.prompt,
-        sessionId: request.sessionId
-      )
-    case .claude:
-      return ClaudeProvider().generateChatStreaming(
-        prompt: request.prompt,
-        sessionId: request.sessionId
-      )
+      return configuredChatStream(request: request, configuration: configuration)
+    } catch {
+      return AsyncThrowingStream { $0.finish(throwing: error) }
     }
   }
 }

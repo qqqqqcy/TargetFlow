@@ -3,10 +3,13 @@ import Foundation
 extension CodexProvider {
   // MARK: - Codex screenshot transcription
 
-  static func transcriptionModelConfiguration() -> (
+  static func transcriptionModelConfiguration(defaults: UserDefaults = .standard) -> (
     model: String, reasoningEffort: String?
   ) {
-    return (model: "gpt-6-luna", reasoningEffort: "low")
+    return ModelPreferences.resolve(
+      provider: .chatGPT, feature: .transcription,
+      defaultModel: "gpt-6-luna", defaultEffort: "low", defaults: defaults
+    ).tuple
   }
 
   func transcribeScreenshots(

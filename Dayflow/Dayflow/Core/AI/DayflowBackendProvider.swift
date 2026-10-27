@@ -188,7 +188,7 @@ private struct DayflowTranscribeResponse: Codable, Sendable {
   let log: DayflowLLMCallResponse
 }
 
-final class DayflowBackendProvider {
+final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
   private let token: String
   private let endpoint: String
 
@@ -754,6 +754,28 @@ final class DayflowBackendProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
+    // The hosted card endpoint owns its prompt server-side. Use its text endpoint when
+    // custom instructions are enabled so those preferences actually reach generation.
+    let overrides = ActivityCardPromptPreferences.load()
+    if !overrides.isEmpty {
+      let prompt = buildCardsPrompt(observations: observations, context: context, overrides: overrides)
+      let result = try await generateText(prompt: prompt)
+      var output = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+      if output.hasPrefix("```"), let newline = output.firstIndex(of: "\n") {
+        output = String(output[output.index(after: newline)...])
+        if output.hasSuffix("```") { output = String(output.dropLast(3)) }
+      }
+      let decoded = try JSONDecoder().decode([ActivityCardData].self, from: Data(output.utf8))
+      let cards = normalizeCards(decoded, descriptors: context.categories)
+      let coverage = validateTimeCoverage(existingCards: context.existingCards, newCards: cards)
+      let timeline = validateTimeline(cards)
+      guard !cards.isEmpty, coverage.isValid, timeline.isValid else {
+        throw NSError(domain: "DayflowBackend", code: -22, userInfo: [
+          NSLocalizedDescriptionKey: [coverage.error, timeline.error].compactMap { $0 }.joined(separator: "\n")
+        ])
+      }
+      return (cards, result.log)
+    }
     let requestId = UUID().uuidString
     let startedAt = Date()
     let normalizedEndpoint = resolvedEndpointString()

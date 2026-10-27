@@ -4,12 +4,15 @@ extension CodexProvider {
   func generateChatStreaming(prompt: String, sessionId: String? = nil) -> AsyncThrowingStream<
     ChatStreamEvent, Error
   > {
-    runner.runStreaming(
+    let selection = ModelPreferences.resolve(
+      provider: .chatGPT, feature: .chat,
+      defaultModel: "gpt-5.6-luna", defaultEffort: "low")
+    return runner.runStreaming(
       tool: .codex,
       prompt: prompt,
       workingDirectory: config.workingDirectory,
-      model: "gpt-5.6-luna",
-      reasoningEffort: "low",
+      model: selection.model,
+      reasoningEffort: selection.reasoningEffort,
       sessionId: sessionId
     )
   }
@@ -44,10 +47,12 @@ extension CodexProvider {
   }
 
   func generateText(prompt: String) async throws -> (text: String, log: LLMCall) {
-    try await generateText(
+    let selection = ModelPreferences.resolve(
+      provider: .chatGPT, feature: .text, defaultModel: "gpt-5.2", defaultEffort: "high")
+    return try await generateText(
       prompt: prompt,
-      model: "gpt-5.2",
-      reasoningEffort: "high",
+      model: selection.model,
+      reasoningEffort: selection.reasoningEffort,
       disableTools: false
     )
   }

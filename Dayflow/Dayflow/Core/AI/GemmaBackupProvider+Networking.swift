@@ -30,6 +30,16 @@ extension GemmaBackupProvider {
     request.httpBody = requestData
 
     let requestStart = Date()
+    var reportedModels: [String] = []
+    var succeeded = false
+    var failureCode = "request_failed"
+    defer {
+      ModelExecutionHistory.shared.record(
+        provider: LLMProviderID.gemini.rawValue, requestedModel: model,
+        reportedModels: reportedModels, startedAt: requestStart,
+        outcome: succeeded ? .succeeded : .failed,
+        failureCode: succeeded ? nil : failureCode)
+    }
     let logBody = logRequestBody ? requestData : nil
 
     let ctx = LLMCallContext(
@@ -64,6 +74,12 @@ extension GemmaBackupProvider {
 
     let httpResponse = response as? HTTPURLResponse
     let status = httpResponse?.statusCode
+    if let status { failureCode = "HTTP \(status)" }
+    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+      let reported = json["modelVersion"] as? String {
+      reportedModels = [reported]
+      print("Gemma response model: \(reported) (requested: \(model))")
+    }
     let responseHeaders: [String: String]? = httpResponse?.allHeaderFields.reduce(into: [:]) {
       acc, kv in
       if let k = kv.key as? String, let v = kv.value as? CustomStringConvertible {
@@ -112,6 +128,7 @@ extension GemmaBackupProvider {
       finishedAt: Date()
     )
 
+    succeeded = true
     return text
   }
 

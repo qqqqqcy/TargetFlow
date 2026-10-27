@@ -10,6 +10,7 @@ extension OllamaProvider {
     let reasoning: String
     let title: String
     let summary: String
+    let detailedSummary: String?
     let category: String
     let appSites: AppSites?
   }
@@ -17,6 +18,7 @@ extension OllamaProvider {
   private struct SummaryResponse: Codable {
     let reasoning: String
     let summary: String
+    let detailedSummary: String?
     let category: String
     let appSites: AppSitesResponse?
 
@@ -28,6 +30,7 @@ extension OllamaProvider {
     enum CodingKeys: String, CodingKey {
       case reasoning
       case summary
+      case detailedSummary
       case category
       case appSites = "app_sites"
     }
@@ -123,6 +126,8 @@ extension OllamaProvider {
 
       \(promptSections.summary)
 
+      \(promptSections.detailedSummary)
+
       EVENT DEFINITIONS (secondary labels):
       Choose the closest label after describing what happened:
       \(categoriesSection)
@@ -149,6 +154,7 @@ extension OllamaProvider {
       {
         "reasoning": "Your step-by-step thinking process",
         "summary": "Your 2-3 sentence summary",
+        "detailedSummary": "A timestamped breakdown of the observed activity",
         "category": "\(allowedValues)",
         "app_sites": {"primary": "domain.com", "secondary": "domain.com"}
       }
@@ -280,6 +286,7 @@ extension OllamaProvider {
       reasoning: "Summary: \(summaryResult.reasoning) | Title: \(titleResult.reasoning)",
       title: titleResult.title,
       summary: summaryResult.summary,
+      detailedSummary: summaryResult.detailedSummary,
       category: summaryResult.category,
       appSites: appSites
     )
@@ -304,6 +311,7 @@ extension OllamaProvider {
       New activity (\(newCard.startTime) - \(newCard.endTime)):
       Title: \(newCard.title)
       Summary: \(newCard.summary)
+      Details: \(newCard.detailedSummary)
 
       Merge ONLY if they clearly describe the same ongoing task or intent.
       - Tool/app switches are allowed if they support the same goal (e.g., doc writing + research).
@@ -397,10 +405,12 @@ extension OllamaProvider {
       Activity 1 (\(previousCard.startTime) - \(previousCard.endTime)):
       Title: \(previousCard.title)
       Summary: \(previousCard.summary)
+      Details: \(previousCard.detailedSummary)
 
       Activity 2 (\(newCard.startTime) - \(newCard.endTime)):
       Title: \(newCard.title)
       Summary: \(newCard.summary)
+      Details: \(newCard.detailedSummary)
 
       Create a unified title and summary that covers the entire period from \(previousCard.startTime) to \(newCard.endTime).
       Title rules (use ONLY the titles and summaries above):
@@ -436,8 +446,11 @@ extension OllamaProvider {
         ✗ Summary that omits a named site/app/topic from the inputs
         ✗ Summary longer than three sentences or formatted as bullet points
 
+      \(promptOverrides.instructionBlock)
+
       Return JSON:
       {
+        "detailedSummary": "Combined timestamped details from both cards",
         "title": "Merged title",
         "summary": "Merged summary"
       }
@@ -450,6 +463,7 @@ extension OllamaProvider {
     struct MergedContent: Codable {
       let title: String
       let summary: String
+      let detailedSummary: String?
     }
 
     for attempt in 1...maxAttempts {
@@ -477,7 +491,8 @@ extension OllamaProvider {
           subcategory: previousCard.subcategory,
           title: merged.title,
           summary: merged.summary,
-          detailedSummary: previousCard.detailedSummary,
+          detailedSummary: merged.detailedSummary ?? [previousCard.detailedSummary, newCard.detailedSummary]
+            .filter { !$0.isEmpty }.joined(separator: "\n"),
           distractions: previousCard.distractions,
           appSites: previousCard.appSites ?? newCard.appSites
         )

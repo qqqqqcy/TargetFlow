@@ -30,7 +30,7 @@ struct ClaudeCLIStructuredOutputOptions: Sendable {
 }
 
 struct ClaudeCLIExecutionProfile: Sendable {
-  fileprivate enum Kind: Sendable {
+  enum Kind: Sendable {
     case optimizedTranscription
     case optimizedTranscriptionCorrection
     case optimizedCardGeneration
@@ -39,9 +39,20 @@ struct ClaudeCLIExecutionProfile: Sendable {
     case structuredOutput
   }
 
-  fileprivate let kind: Kind
-  fileprivate let allowedReadPath: String?
+  let kind: Kind
+  fileprivate var allowedReadPath: String?
   fileprivate var structuredOutputOptions: ClaudeCLIStructuredOutputOptions? = nil
+  fileprivate var overridesReasoning = false
+  fileprivate var preferredReasoningEffort: String?
+
+  /// Explicit preferences supersede the profile's legacy thinking limits. Nil restores
+  /// the CLI's own default instead of retaining a profile-specific effort setting.
+  func withReasoningEffort(_ effort: String?) -> ClaudeCLIExecutionProfile {
+    var profile = self
+    profile.overridesReasoning = true
+    profile.preferredReasoningEffort = effort
+    return profile
+  }
 
   /// A run that returns JSON matching `options.jsonSchema` (in the envelope's `structured_output`).
   static func structuredOutput(_ options: ClaudeCLIStructuredOutputOptions)
@@ -107,19 +118,20 @@ struct ClaudeCLIExecutionProfile: Sendable {
   /// The Flow agent's working directory holds only the current screenshot
   /// and timeline.json; it may read and edit inside it and nowhere else.
   func allowingFlowWorkspace(at directory: String) -> ClaudeCLIExecutionProfile {
-    ClaudeCLIExecutionProfile(kind: .flowAgent, allowedReadPath: directory)
+    var profile = self
+    profile.allowedReadPath = directory
+    return profile
   }
 
   /// Lets the one-step profile read every frame inside its temporary folder and nothing else.
   func allowingReadDirectory(at directory: String) -> ClaudeCLIExecutionProfile {
-    ClaudeCLIExecutionProfile(kind: kind, allowedReadPath: directory)
+    allowingRead(at: directory)
   }
 
   func allowingRead(at path: String) -> ClaudeCLIExecutionProfile {
-    ClaudeCLIExecutionProfile(
-      kind: kind,
-      allowedReadPath: path
-    )
+    var profile = self
+    profile.allowedReadPath = path
+    return profile
   }
 
   // Do not add `--safe-mode` here. Some Claude CLI versions installed by Dayflow
@@ -176,7 +188,7 @@ struct ClaudeCLIExecutionProfile: Sendable {
     ]
     arguments.append(contentsOf: persistenceArguments)
     if let settingsJSON = options.settingsJSON {
-      arguments.append(contentsOf: ["--settings", LoginShellRunner.shellEscape(settingsJSON)])
+      arguments.append(contentsOf: ["--settings", LoginShellRunner.shellEscape(reasoningSettings(settingsJSON))])
     }
     if let mcpConfigPath = options.mcpConfigPath {
       arguments.append(contentsOf: ["--mcp-config", LoginShellRunner.shellEscape(mcpConfigPath)])
@@ -197,7 +209,7 @@ struct ClaudeCLIExecutionProfile: Sendable {
       "--disable-slash-commands",
       "--prompt-suggestions", "false",
       "--settings",
-      LoginShellRunner.shellEscape(settings),
+      LoginShellRunner.shellEscape(reasoningSettings(settings)),
       "--system-prompt",
       LoginShellRunner.shellEscape(systemPrompt),
       "--tools", tools,
@@ -225,7 +237,19 @@ struct ClaudeCLIExecutionProfile: Sendable {
     return arguments
   }
 
+  private func reasoningSettings(_ settings: String) -> String {
+    guard overridesReasoning else { return settings }
+    var object = (try? JSONSerialization.jsonObject(with: Data(settings.utf8))) as? [String: Any] ?? [:]
+    object.removeValue(forKey: "alwaysThinkingEnabled")
+    object.removeValue(forKey: "effortLevel")
+    if let preferredReasoningEffort { object["effortLevel"] = preferredReasoningEffort }
+    guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    else { return "{}" }
+    return String(decoding: data, as: UTF8.self)
+  }
+
   fileprivate var environmentOverrides: [String: String] {
+    if overridesReasoning { return [:] }
     switch kind {
     case .optimizedCardGeneration, .oneStepTimeline, .structuredOutput:
       return [:]
@@ -235,7 +259,7 @@ struct ClaudeCLIExecutionProfile: Sendable {
   }
 
   fileprivate var environmentKeysToRemove: Set<String> {
-    kind == .optimizedCardGeneration || kind == .oneStepTimeline || kind == .structuredOutput
+    overridesReasoning || kind == .optimizedCardGeneration || kind == .oneStepTimeline || kind == .structuredOutput
       ? ["MAX_THINKING_TOKENS"] : []
   }
 }
@@ -247,6 +271,13 @@ struct ChatCLIProcessRunner {
     static let readChunkSize = 64 * 1024
     static let timeoutSeconds: TimeInterval = 300
     static let codexFallbackDirectoryPrefix = "Dayflow-codex-home-"
+  }
+
+  /// Codex parses -c values as TOML. JSON string encoding supplies a properly escaped
+  /// basic string; shell escaping then preserves that complete assignment as one argv value.
+  static func codexReasoningArgument(_ effort: String) -> String {
+    let literal = String(decoding: try! JSONEncoder().encode(effort), as: UTF8.self)
+    return LoginShellRunner.shellEscape("model_reasoning_effort=\(literal)")
   }
 
   let codexExecutableResolver: CodexExecutableResolver
@@ -568,6 +599,8 @@ struct ChatCLIProcessRunner {
   ) -> AsyncThrowingStream<ChatStreamEvent, Error> {
     AsyncThrowingStream { continuation in
       Task.detached {
+        let startedAt = Date()
+        let metadata = StreamingExecutionMetadata()
         do {
           try await self.executeStreaming(
             tool: tool,
@@ -579,9 +612,23 @@ struct ChatCLIProcessRunner {
             codexConfigOverrides: codexConfigOverrides,
             continuation: continuation,
             onProcessStart: onProcessStart,
-            processEnvironment: environmentOverrides
+            processEnvironment: environmentOverrides,
+            executionMetadata: metadata
           )
+          let snapshot = metadata.snapshot()
+          ModelExecutionHistory.shared.record(
+            provider: tool.rawValue, requestedModel: model, reportedModels: snapshot.models,
+            requestedReasoning: reasoningEffort, reportedReasoning: snapshot.reasoning,
+            startedAt: startedAt, outcome: snapshot.failed ? .failed : .succeeded,
+            failureCode: snapshot.failureCode)
+          continuation.finish()
         } catch {
+          let snapshot = metadata.snapshot()
+          ModelExecutionHistory.shared.record(
+            provider: tool.rawValue, requestedModel: model, reportedModels: snapshot.models,
+            requestedReasoning: reasoningEffort, reportedReasoning: snapshot.reasoning,
+            startedAt: startedAt, outcome: .failed,
+            failureCode: "error \((error as NSError).code)")
           continuation.yield(.error(error.localizedDescription))
           continuation.finish(throwing: error)
         }
@@ -601,7 +648,8 @@ struct ChatCLIProcessRunner {
     onProcessStart: (@Sendable (String, [String: String]) -> Void)? = nil,
     processEnvironment: [String: String] = [:],
     hasRetriedInvalidTransport: Bool = false,
-    hasRetriedExecutableResolution: Bool = false
+    hasRetriedExecutableResolution: Bool = false,
+    executionMetadata: StreamingExecutionMetadata = StreamingExecutionMetadata()
   ) async throws {
     let toolName = tool.rawValue
     let codexExecutable = try resolvedCodexExecutable(for: tool)
@@ -615,14 +663,14 @@ struct ChatCLIProcessRunner {
     case .codex:
       if let sessionId = sessionId {
         cmdParts.append(contentsOf: [
-          "exec", "resume", sessionId, "--skip-git-repo-check", "--json",
+          "exec", "resume", LoginShellRunner.shellEscape(sessionId), "--skip-git-repo-check", "--json",
         ])
       } else {
         cmdParts.append(contentsOf: ["exec", "--skip-git-repo-check", "--json"])
       }
-      if let model = model { cmdParts.append(contentsOf: ["-m", model]) }
+      if let model = model { cmdParts.append(contentsOf: ["-m", LoginShellRunner.shellEscape(model)]) }
       if let effort = reasoningEffort {
-        cmdParts.append(contentsOf: ["-c", "model_reasoning_effort=\(effort)"])
+        cmdParts.append(contentsOf: ["-c", Self.codexReasoningArgument(effort)])
       }
       for override in codexConfigOverrides {
         cmdParts.append(contentsOf: ["-c", LoginShellRunner.shellEscape(override)])
@@ -714,6 +762,7 @@ struct ChatCLIProcessRunner {
         let line = stripANSIEscapes(trimmed)
         guard !line.isEmpty else { continue }
 
+        executionMetadata.observe(line: line)
         if let event = parseJSONLLine(tool: tool, line: line) {
           if case .error = event { didYieldError = true }
           var shouldYield = true
@@ -818,6 +867,7 @@ struct ChatCLIProcessRunner {
       {
         let trimmed = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
         let line = stripANSIEscapes(trimmed)
+        executionMetadata.observe(line: line)
         if !line.isEmpty, let event = parseJSONLLine(tool: tool, line: line) {
           if case .error = event { didYieldError = true }
           var shouldYield = true
@@ -863,6 +913,7 @@ struct ChatCLIProcessRunner {
       print(
         "[ChatCLI] Retrying Codex with \(replacement.executableURL.path) after executable failure"
       )
+      executionMetadata.resetForRetry()
       try await executeStreaming(
         tool: tool,
         prompt: prompt,
@@ -875,7 +926,8 @@ struct ChatCLIProcessRunner {
         onProcessStart: onProcessStart,
         processEnvironment: processEnvironment,
         hasRetriedInvalidTransport: hasRetriedInvalidTransport,
-        hasRetriedExecutableResolution: true
+        hasRetriedExecutableResolution: true,
+        executionMetadata: executionMetadata
       )
       return
     }
@@ -892,6 +944,7 @@ struct ChatCLIProcessRunner {
           + (fallback.didCopyAuth ? " (copied auth.json)" : "")
       )
       defer { fallback.cleanup() }
+      executionMetadata.resetForRetry()
       try await executeStreaming(
         tool: tool,
         prompt: prompt,
@@ -904,7 +957,8 @@ struct ChatCLIProcessRunner {
         onProcessStart: onProcessStart,
         processEnvironment: fallback.environment,
         hasRetriedInvalidTransport: true,
-        hasRetriedExecutableResolution: hasRetriedExecutableResolution
+        hasRetriedExecutableResolution: hasRetriedExecutableResolution,
+        executionMetadata: executionMetadata
       )
       return
     }
@@ -929,7 +983,7 @@ struct ChatCLIProcessRunner {
       continuation.yield(.complete(text: finalState.0))
     }
 
-    continuation.finish()
+    executionMetadata.finish(exitCode: process.terminationStatus, failed: finalState.3)
   }
 
   func parseJSONLLine(tool: ChatCLITool, line: String) -> ChatStreamEvent? {
@@ -1069,10 +1123,10 @@ struct ChatCLIProcessRunner {
       cmdParts.append(contentsOf: ["--resume", id])
     }
     if let model = model {
-      cmdParts.append(contentsOf: ["--model", model])
+      cmdParts.append(contentsOf: ["--model", LoginShellRunner.shellEscape(model)])
     }
     if let reasoningEffort {
-      cmdParts.append(contentsOf: ["--effort", reasoningEffort])
+      cmdParts.append(contentsOf: ["--effort", LoginShellRunner.shellEscape(reasoningEffort)])
     }
     if profile == nil && !disableTools {
       cmdParts.append("--dangerously-skip-permissions")
@@ -1155,10 +1209,10 @@ struct ChatCLIProcessRunner {
       cmdParts.append(contentsOf: ["--resume", sessionId])
     }
     if let model {
-      cmdParts.append(contentsOf: ["--model", model])
+      cmdParts.append(contentsOf: ["--model", LoginShellRunner.shellEscape(model)])
     }
     if let reasoningEffort {
-      cmdParts.append(contentsOf: ["--effort", reasoningEffort])
+      cmdParts.append(contentsOf: ["--effort", LoginShellRunner.shellEscape(reasoningEffort)])
     }
     cmdParts.append("--dangerously-skip-permissions")
     cmdParts.append("--strict-mcp-config")
@@ -1357,23 +1411,56 @@ struct ChatCLIProcessRunner {
     environmentOverrides: [String: String] = [:],
     timeoutSeconds: TimeInterval = Constants.timeoutSeconds
   ) throws -> ChatCLIRunResult {
-    try run(
-      tool: tool,
-      prompt: prompt,
-      workingDirectory: workingDirectory,
-      imagePaths: imagePaths,
-      model: model,
-      reasoningEffort: reasoningEffort,
-      disableTools: disableTools,
-      claudeProfile: claudeProfile,
-      claudeSessionMode: claudeSessionMode,
-      codexResumeSessionId: codexResumeSessionId,
-      codexConfigOverrides: codexConfigOverrides,
-      processEnvironment: environmentOverrides,
-      hasRetriedInvalidTransport: false,
-      hasRetriedExecutableResolution: false,
-      timeoutSeconds: timeoutSeconds
-    )
+    let startedAt = Date()
+    do {
+      let result = try run(
+        tool: tool,
+        prompt: prompt,
+        workingDirectory: workingDirectory,
+        imagePaths: imagePaths,
+        model: model,
+        reasoningEffort: reasoningEffort,
+        disableTools: disableTools,
+        claudeProfile: claudeProfile,
+        claudeSessionMode: claudeSessionMode,
+        codexResumeSessionId: codexResumeSessionId,
+        codexConfigOverrides: codexConfigOverrides,
+        processEnvironment: environmentOverrides,
+        hasRetriedInvalidTransport: false,
+        hasRetriedExecutableResolution: false,
+        timeoutSeconds: timeoutSeconds
+      )
+      let metadata = CLIReportedExecutionMetadata.parse(result.rawStdout)
+      let failed = result.exitCode != 0 || metadata.reportedFailure
+      ModelExecutionHistory.shared.record(
+        provider: tool.rawValue, requestedModel: model, reportedModels: metadata.models,
+        requestedReasoning: requestedReasoning(tool: tool, effort: reasoningEffort, profile: claudeProfile),
+        reportedReasoning: metadata.reasoning, startedAt: startedAt, finishedAt: result.finishedAt,
+        outcome: failed ? .failed : .succeeded,
+        failureCode: failed ? (result.exitCode == 0 ? "cli_error" : "exit \(result.exitCode)") : nil)
+      return result
+    } catch {
+      let partial = (error as NSError).userInfo["partialStdout"] as? String ?? ""
+      let metadata = CLIReportedExecutionMetadata.parse(partial)
+      ModelExecutionHistory.shared.record(
+        provider: tool.rawValue, requestedModel: model, reportedModels: metadata.models,
+        requestedReasoning: requestedReasoning(tool: tool, effort: reasoningEffort, profile: claudeProfile),
+        reportedReasoning: metadata.reasoning, startedAt: startedAt, outcome: .failed,
+        failureCode: "error \((error as NSError).code)")
+      throw error
+    }
+  }
+
+  private func requestedReasoning(
+    tool: ChatCLITool, effort: String?, profile: ClaudeCLIExecutionProfile?
+  ) -> String? {
+    guard tool == .claude, let profile else { return effort }
+    if profile.overridesReasoning { return profile.preferredReasoningEffort }
+    if profile.kind == .oneStepTimeline { return "thinking enabled; effort \(effort ?? "medium")" }
+    if profile.environmentOverrides["MAX_THINKING_TOKENS"] == "0" {
+      return "thinking disabled; effort \(effort ?? "default")"
+    }
+    return effort
   }
 
   func run(
@@ -1416,9 +1503,9 @@ struct ChatCLIProcessRunner {
       } else {
         cmdParts.append(contentsOf: ["exec", "--skip-git-repo-check"])
       }
-      if let model = model { cmdParts.append(contentsOf: ["-m", model]) }
+      if let model = model { cmdParts.append(contentsOf: ["-m", LoginShellRunner.shellEscape(model)]) }
       if let effort = reasoningEffort {
-        cmdParts.append(contentsOf: ["-c", "model_reasoning_effort=\(effort)"])
+        cmdParts.append(contentsOf: ["-c", Self.codexReasoningArgument(effort)])
       }
       for override in codexConfigOverrides {
         cmdParts.append(contentsOf: ["-c", LoginShellRunner.shellEscape(override)])

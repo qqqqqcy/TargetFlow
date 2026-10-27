@@ -11,20 +11,32 @@ extension DailyView {
 
     return selectedProviderAvailability.isAvailable
   }
+  private var configuredRecapAssignment: AIRuntimeSelection? {
+    guard let runtime = try? AIConfiguredRuntime.load(),
+      let assignment = runtime.configuration.assignments(for: .dailyRecap).first
+    else { return nil }
+    return try? runtime.selection(for: assignment)
+  }
+
   var selectedProviderAvailability: DailyRecapProviderAvailability {
-    providerAvailability[dailyRecapProvider]
+    if let selection = configuredRecapAssignment {
+      return DailyRecapProviderAvailability(
+        isAvailable: selection.connection.enabled,
+        detail: "\(selection.connection.name) · \(selection.modelID)")
+    }
+    return providerAvailability[dailyRecapProvider]
       ?? DailyRecapProviderAvailability(
         isAvailable: true,
         detail: dailyRecapProvider.pickerSubtitle
       )
   }
   var canRegenerateStandup: Bool {
-    dailyRecapProvider.canGenerate
+    (configuredRecapAssignment != nil || dailyRecapProvider.canGenerate)
       && selectedProviderAvailability.isAvailable
       && standupRegenerateState != .regenerating
   }
   var regenerateButtonHelpText: String {
-    if !dailyRecapProvider.canGenerate {
+    if configuredRecapAssignment == nil && !dailyRecapProvider.canGenerate {
       return DailyStandupPlaceholder.noProviderSelectedMessage
     }
 
@@ -36,6 +48,10 @@ extension DailyView {
   }
   func dailyProviderButton(scale: CGFloat) -> some View {
     Button {
+      if configuredRecapAssignment != nil {
+        NotificationCenter.default.post(name: .openProvidersSettings, object: nil)
+        return
+      }
       if !isShowingProviderPicker {
         refreshProviderAvailability()
       }

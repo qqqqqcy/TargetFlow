@@ -366,7 +366,7 @@ extension ChatView {
 
   func isGeminiConfigured() -> Bool {
     let key =
-      KeychainManager.shared.retrieve(for: "gemini")?
+      LocalProviderCredentialStore.shared.retrieve(for: "gemini")?
       .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     return !key.isEmpty
   }

@@ -8,12 +8,12 @@ extension GeminiDirectProvider {
   ]
   static let dashboardChatMaxToolRounds = 20
   static let dashboardChatTimelinePayloadSoftLimitBytes = 800_000
-  func dashboardGenerateEndpoint(model: GeminiModel) -> String {
-    "https://generativelanguage.googleapis.com/v1beta/models/\(model.rawValue):generateContent"
+  func dashboardGenerateEndpoint(model: String) -> String {
+    "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent"
   }
 
-  func dashboardStreamEndpoint(model: GeminiModel) -> String {
-    "https://generativelanguage.googleapis.com/v1beta/models/\(model.rawValue):streamGenerateContent"
+  func dashboardStreamEndpoint(model: String) -> String {
+    "https://generativelanguage.googleapis.com/v1beta/models/\(model):streamGenerateContent"
   }
 
   struct DashboardFunctionCall {
@@ -169,7 +169,7 @@ extension GeminiDirectProvider {
     contents: [[String: Any]],
     continuation: AsyncThrowingStream<ChatStreamEvent, Error>.Continuation
   ) async throws -> DashboardTurnResult {
-    try await Self.withDashboardModelFallback { model in
+    try await Self.withDashboardModelFallback(models: selectedModels(feature: .chat)) { model in
       try await runDashboardTurn(
         model: model,
         systemInstruction: systemInstruction,
@@ -182,7 +182,15 @@ extension GeminiDirectProvider {
   static func withDashboardModelFallback(
     attempt: (GeminiModel) async throws -> DashboardTurnResult
   ) async throws -> DashboardTurnResult {
-    for (index, model) in dashboardChatModels.enumerated() {
+    try await withDashboardModelFallback(models: dashboardChatModels.map(\.rawValue)) { model in
+      try await attempt(GeminiModel(rawValue: model)!)
+    }
+  }
+
+  static func withDashboardModelFallback(
+    models: [String], attempt: (String) async throws -> DashboardTurnResult
+  ) async throws -> DashboardTurnResult {
+    for (index, model) in models.enumerated() {
       try Task.checkCancellation()
       do {
         return try await attempt(model)
@@ -190,17 +198,15 @@ extension GeminiDirectProvider {
         if error is CancellationError || (error as NSError).code == NSURLErrorCancelled {
           throw error
         }
-        guard index < dashboardChatModels.count - 1 else { throw error }
-        print(
-          "Gemini dashboard chat: \(model.rawValue) failed; trying \(dashboardChatModels[index + 1].rawValue)"
-        )
+        guard index < models.count - 1 else { throw error }
+        print("Gemini dashboard chat: \(model) failed; trying \(models[index + 1])")
       }
     }
     preconditionFailure("Dashboard chat requires at least one model")
   }
 
   private func runDashboardTurn(
-    model: GeminiModel,
+    model: String,
     systemInstruction: String,
     contents: [[String: Any]],
     continuation: AsyncThrowingStream<ChatStreamEvent, Error>.Continuation
@@ -218,7 +224,9 @@ extension GeminiDirectProvider {
     } catch {
       try Task.checkCancellation()
       if (error as NSError).code == NSURLErrorCancelled { throw error }
-      if shouldRetryDashboardWithoutThinkingConfig(error) {
+      if shouldRetryDashboardWithoutThinkingConfig(error),
+        ModelPreferences.load(provider: .gemini).defaultSelection.reasoningEffort == nil,
+        ModelPreferences.load(provider: .gemini).featureOverrides[.chat]?.reasoningEffort == nil {
         includeThinkingConfig = false
         print("🔎 GEMINI DEBUG: dashboard_chat retrying without thinkingConfig")
       }
@@ -306,15 +314,14 @@ extension GeminiDirectProvider {
   func dashboardChatRequestBody(
     systemInstruction: String,
     contents: [[String: Any]],
-    includeThinkingConfig: Bool
-  ) -> [String: Any] {
+    includeThinkingConfig: Bool,
+    model: String = GeminiModel.flash38.rawValue
+  ) throws -> [String: Any] {
     var generationConfig: [String: Any] = [
       "maxOutputTokens": 8192
     ]
     if includeThinkingConfig {
-      generationConfig["thinkingConfig"] = [
-        "thinkingLevel": "high"
-      ]
+      generationConfig["thinkingConfig"] = try thinkingConfig(feature: .chat, model: model)
     }
 
     var body: [String: Any] = [

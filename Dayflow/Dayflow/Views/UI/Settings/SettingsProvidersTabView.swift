@@ -18,18 +18,10 @@ struct SettingsProvidersTabView: View {
           .foregroundColor(SettingsStyle.destructive)
       }
 
-      currentConfigurationSection
-      connectionHealthSection
-      failoverRoutingSection
+      AIConfigurationSettingsView(viewModel: viewModel)
+      ModelExecutionHistorySection()
 
-      if viewModel.currentProvider == .gemini {
-        geminiModelSection
-      }
-
-      primaryPromptCustomizationSection
-      if viewModel.hasCodexOrClaudeProviderInRouting {
-        agentPromptCustomizationSection
-      }
+      sharedPromptCustomizationSection
     }
   }
 
@@ -112,7 +104,7 @@ struct SettingsProvidersTabView: View {
       }
       SettingsRow(label: String(localized: "API key"), showsDivider: false) {
         SettingsMetadata(
-          text: KeychainManager.shared.retrieve(for: "gemini") != nil
+          text: LocalProviderCredentialStore.shared.retrieve(for: "gemini") != nil
             ? String(localized: "Stored safely in Keychain") : String(localized: "Not set"))
       }
     case .chatGPT, .claude:
@@ -350,126 +342,46 @@ struct SettingsProvidersTabView: View {
 
   // MARK: - Prompt customization
 
-  @ViewBuilder
-  private var primaryPromptCustomizationSection: some View {
-    switch viewModel.currentProvider {
-    case .gemini:
-      promptSection(
-        title: String(localized: "Gemini prompt customization"),
-        subtitle: String(localized: "Override Target Flow's defaults to tailor card generation."),
-        intro:
-          String(
-            localized:
-              "Overrides apply only when their toggle is on. Unchecked sections fall back to Target Flow's defaults."
-          ),
-        sections: [
-          promptEditorConfig(
-            heading: String(localized: "Card titles"),
-            description: String(
-              localized: "Shape how card titles read and tweak the example list."),
-            isEnabled: $viewModel.useCustomGeminiTitlePrompt,
-            text: $viewModel.geminiTitlePromptText,
-            defaultText: GeminiPromptDefaults.titleBlock
-          ),
-          promptEditorConfig(
-            heading: String(localized: "Card summaries"),
-            description: String(localized: "Control tone and style for the summary field."),
-            isEnabled: $viewModel.useCustomGeminiSummaryPrompt,
-            text: $viewModel.geminiSummaryPromptText,
-            defaultText: GeminiPromptDefaults.summaryBlock
-          ),
-          promptEditorConfig(
-            heading: String(localized: "Detailed summaries"),
-            description: String(
-              localized: "Define the minute-by-minute breakdown format and examples."),
-            isEnabled: $viewModel.useCustomGeminiDetailedPrompt,
-            text: $viewModel.geminiDetailedPromptText,
-            defaultText: GeminiPromptDefaults.detailedSummaryBlock
-          ),
-        ],
-        onReset: viewModel.resetGeminiPromptOverrides
-      )
-    case .local:
-      promptSection(
-        title: String(localized: "Local prompt customization"),
-        subtitle: String(localized: "Adjust the prompts used for local timeline summaries."),
-        intro: String(
-          localized: "Customize the local model prompts for summary and title generation."),
-        sections: [
-          promptEditorConfig(
-            heading: String(localized: "Timeline summaries"),
-            description: String(
-              localized: "Control how the local model writes its 2-3 sentence card summaries."),
-            isEnabled: $viewModel.useCustomOllamaSummaryPrompt,
-            text: $viewModel.ollamaSummaryPromptText,
-            defaultText: OllamaPromptDefaults.summaryBlock
-          ),
-          promptEditorConfig(
-            heading: String(localized: "Card titles"),
-            description: String(
-              localized: "Adjust the tone and examples for local title generation."),
-            isEnabled: $viewModel.useCustomOllamaTitlePrompt,
-            text: $viewModel.ollamaTitlePromptText,
-            defaultText: OllamaPromptDefaults.titleBlock
-          ),
-        ],
-        onReset: viewModel.resetOllamaPromptOverrides
-      )
-    case .dayflow, .chatGPT, .claude, .openAICompatible:
-      EmptyView()
-    }
-  }
-
-  private var agentPromptCustomizationSection: some View {
-    let defaults: (titleBlock: String, summaryBlock: String, detailedSummaryBlock: String)
-    if viewModel.selectedAgentPromptProvider == .claude {
-      defaults = (
-        ClaudePromptDefaults.titleBlock,
-        ClaudePromptDefaults.summaryBlock,
-        ClaudePromptDefaults.detailedSummaryBlock
-      )
-    } else {
-      defaults = (
-        CodexPromptDefaults.titleBlock,
-        CodexPromptDefaults.summaryBlock,
-        CodexPromptDefaults.detailedSummaryBlock
-      )
-    }
+  private var sharedPromptCustomizationSection: some View {
+    let defaults = (
+      titleBlock: CodexPromptDefaults.titleBlock,
+      summaryBlock: CodexPromptDefaults.summaryBlock,
+      detailedSummaryBlock: CodexPromptDefaults.detailedSummaryBlock
+    )
     return promptSection(
-      title: String(localized: "ChatGPT and Claude prompt customization"),
+      title: String(localized: "Activity-card prompt customization"),
       subtitle: String(
-        localized: "Keep independent card-generation prompts for each CLI provider."),
+        localized: "Customize card titles, summaries, and detailed summaries for all configured providers."),
       intro:
         String(
           localized:
-            "Overrides apply only when their toggle is on. Unchecked sections fall back to Target Flow's defaults."
+            "Enabled instructions apply to every provider and model. Disabled sections use each provider's defaults."
         ),
       sections: [
         promptEditorConfig(
           heading: String(localized: "Card titles"),
           description: String(localized: "Shape how card titles read and tweak the example list."),
-          isEnabled: $viewModel.useCustomAgentTitlePrompt,
-          text: $viewModel.agentTitlePromptText,
+          isEnabled: $viewModel.useCustomTitlePrompt,
+          text: $viewModel.titlePromptText,
           defaultText: defaults.titleBlock
         ),
         promptEditorConfig(
           heading: String(localized: "Card summaries"),
           description: String(localized: "Control tone and style for the summary field."),
-          isEnabled: $viewModel.useCustomAgentSummaryPrompt,
-          text: $viewModel.agentSummaryPromptText,
+          isEnabled: $viewModel.useCustomSummaryPrompt,
+          text: $viewModel.summaryPromptText,
           defaultText: defaults.summaryBlock
         ),
         promptEditorConfig(
           heading: String(localized: "Detailed summaries"),
           description: String(
             localized: "Define the minute-by-minute breakdown format and examples."),
-          isEnabled: $viewModel.useCustomAgentDetailedPrompt,
-          text: $viewModel.agentDetailedPromptText,
+          isEnabled: $viewModel.useCustomDetailedPrompt,
+          text: $viewModel.detailedPromptText,
           defaultText: defaults.detailedSummaryBlock
         ),
       ],
-      onReset: viewModel.resetAgentPromptOverrides,
-      showsAgentProviderPicker: true
+      onReset: viewModel.resetSharedPromptOverrides
     )
   }
 
@@ -498,21 +410,10 @@ struct SettingsProvidersTabView: View {
     subtitle: String,
     intro: String,
     sections: [PromptEditorConfig],
-    onReset: @escaping () -> Void,
-    showsAgentProviderPicker: Bool = false
+    onReset: @escaping () -> Void
   ) -> some View {
     SettingsSection(title: title, subtitle: subtitle) {
       VStack(alignment: .leading, spacing: 18) {
-        if showsAgentProviderPicker {
-          Picker("Provider", selection: $viewModel.selectedAgentPromptProvider) {
-            Text("ChatGPT").tag(LLMProviderID.chatGPT)
-            Text("Claude").tag(LLMProviderID.claude)
-          }
-          .pickerStyle(.segmented)
-          .labelsHidden()
-          .frame(maxWidth: 320)
-        }
-
         Text(intro)
           .font(.system(size: 12))
           .foregroundColor(SettingsStyle.secondary)

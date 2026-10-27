@@ -27,7 +27,7 @@ extension ChatGPTTimelinePromptSupporting {
     let existingCardsData = try? encoder.encode(context.existingCards)
     let existingCardsJSON = existingCardsData.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
     let promptSections = CodexPromptSections(
-      overrides: overrides ?? CodexPromptPreferences.load()
+      overrides: overrides ?? ActivityCardPromptPreferences.load()
     )
 
     // Build prompt with explicit concatenation to avoid GRDB SQL interpolation pollution

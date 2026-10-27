@@ -4,8 +4,11 @@ import Foundation
 extension CodexProvider {
   // MARK: - Codex one-step timeline
 
-  static func timelineModelConfiguration() -> (model: String, reasoningEffort: String?) {
-    (model: "gpt-6-luna", reasoningEffort: "high")
+  static func timelineModelConfiguration(defaults: UserDefaults = .standard) -> (model: String, reasoningEffort: String?) {
+    ModelPreferences.resolve(
+      provider: .chatGPT, feature: .timeline,
+      defaultModel: "gpt-6-luna", defaultEffort: "high", defaults: defaults
+    ).tuple
   }
 
   private static var timelineFrameMaxHeight: Int { 1080 }
@@ -184,7 +187,7 @@ extension CodexProvider {
 
   // MARK: Prompt
 
-  private func buildTimelinePrompt(
+  func buildTimelinePrompt(
     frames: OneStepTimelineFrames,
     previousCards: [ActivityCardData],
     categories: [LLMCategoryDescriptor]
@@ -209,6 +212,8 @@ extension CodexProvider {
       prompt = prompt.replacingOccurrences(
         of: ClaudeTimelinePrompt.perMinuteFrames, with: ClaudeTimelinePrompt.irregularFrames)
     }
+
+    prompt += "\n\n" + ActivityCardPromptPreferences.load().instructionBlock
 
     let previousCardsData = try? JSONEncoder().encode(previousCards)
     let previousCardsJSON = previousCardsData.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"

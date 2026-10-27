@@ -30,10 +30,13 @@ struct ClaudeCardGenerationPlan {
 extension ClaudeProvider {
   // MARK: - Claude activity cards
 
-  static func activityCardModelConfiguration() -> (
+  static func activityCardModelConfiguration(defaults: UserDefaults = .standard) -> (
     model: String, reasoningEffort: String?
   ) {
-    (model: "sonnet", reasoningEffort: "low")
+    ModelPreferences.resolve(
+      provider: .claude, feature: .activityCards,
+      defaultModel: "sonnet", defaultEffort: "low", defaults: defaults
+    ).tuple
   }
 
   func generateActivityCards(

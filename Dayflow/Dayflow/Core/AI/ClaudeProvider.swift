@@ -32,6 +32,17 @@ final class ClaudeProvider: AgentCLISupporting {
   ) async throws -> ChatCLIRunResult {
     let runner = runner
     let workingDirectory = config.workingDirectory
+    let feature: ModelFeature
+    switch profile.kind {
+    case .oneStepTimeline: feature = .timeline
+    case .optimizedTranscription, .optimizedTranscriptionCorrection: feature = .transcription
+    default: feature = .activityCards
+    }
+    let preferences = ModelPreferences.load(provider: .claude)
+    let hasReasoningOverride = AIRequestContext.assignment != nil
+      || preferences.featureOverrides[feature]?.reasoningEffort != nil
+      || preferences.defaultSelection.reasoningEffort != nil
+    let profile = hasReasoningOverride ? profile.withReasoningEffort(reasoningEffort) : profile
     return try await Task.detached(priority: .utility) {
       try runner.run(
         tool: .claude,

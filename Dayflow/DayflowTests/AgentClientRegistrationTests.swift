@@ -168,9 +168,10 @@ final class AgentClientRegistrationTests: XCTestCase {
       return .init(stdout: "", stderr: "permission denied", exitCode: 1)
     }
 
+    let detail = "permission denied"
     XCTAssertEqual(
       registration.connect(),
-      .failed("Codex couldn't connect the Target Flow connection: permission denied")
+      .failed(String(localized: "Codex couldn't connect to Target Flow: \(detail)"))
     )
   }
 

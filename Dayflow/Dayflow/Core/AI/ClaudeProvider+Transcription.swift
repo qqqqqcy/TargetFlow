@@ -3,10 +3,13 @@ import Foundation
 extension ClaudeProvider {
   // MARK: - Claude screenshot transcription
 
-  static func transcriptionModelConfiguration() -> (
+  static func transcriptionModelConfiguration(defaults: UserDefaults = .standard) -> (
     model: String, reasoningEffort: String?
   ) {
-    (model: "sonnet", reasoningEffort: "low")
+    ModelPreferences.resolve(
+      provider: .claude, feature: .transcription,
+      defaultModel: "sonnet", defaultEffort: "low", defaults: defaults
+    ).tuple
   }
 
   func transcribeScreenshots(

@@ -150,7 +150,7 @@ struct GeminiPromptSections {
   let summary: String
   let detailedSummary: String
 
-  init(overrides: GeminiPromptOverrides) {
+  init(overrides: ActivityCardPromptOverrides) {
     self.title = GeminiPromptSections.compose(
       defaultBlock: GeminiPromptDefaults.titleBlock, custom: overrides.titleBlock)
     self.summary = GeminiPromptSections.compose(

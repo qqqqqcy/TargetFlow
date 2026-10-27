@@ -105,7 +105,7 @@ struct APIKeyInputView: View {
           .foregroundColor(SettingsStyle.statusGood.opacity(0.7))
 
         Text(
-          "Your API key is encrypted and stored in your macOS Keychain - never uploaded anywhere"
+          "Your API key is stored in a local file readable only by your macOS user and sent to your provider for requests."
         )
         .font(.system(size: 12))
         .foregroundColor(SettingsStyle.secondary)

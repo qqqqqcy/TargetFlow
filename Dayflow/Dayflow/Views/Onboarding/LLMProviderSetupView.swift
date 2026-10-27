@@ -483,7 +483,7 @@ struct LLMProviderSetupView: View {
                     credentialStorageDescription:
                       String(
                         localized:
-                          "Stored safely in Keychain and sent only to this endpoint as a Bearer token."
+                          "Stored in a local file readable only by your macOS user and sent only to this endpoint as a Bearer token."
                       ),
                     requiresMeaningfulResponse: true,
                     enforcesLocalLatencyLimit: false,
@@ -680,15 +680,15 @@ struct LLMProviderSetupView: View {
       return false
     }
 
-    // Save API key to keychain for Gemini
+    // Save API key locally for Gemini
     if providerType == .gemini {
       let cleanedKey = setupState.apiKey.components(separatedBy: .whitespacesAndNewlines).joined()
       if !cleanedKey.isEmpty {
-        guard KeychainManager.shared.store(cleanedKey, for: "gemini") else {
+        guard LocalProviderCredentialStore.shared.store(cleanedKey, for: "gemini") else {
           let message =
             String(
               localized:
-                "Couldn't save your API key to Keychain. Please unlock Keychain and try again.")
+                "Couldn't save your API key locally. Check the app storage permissions and try again.")
           setupState.geminiAPIKeySaveError = message
           setupState.saveErrorMessage = message
           return false
@@ -755,13 +755,13 @@ struct LLMProviderSetupView: View {
     guard configuration.isComplete else { return false }
 
     let key = setupState.openAICompatibleAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-    let previousKey = KeychainManager.shared.retrieve(
+    let previousKey = LocalProviderCredentialStore.shared.retrieve(
       for: OpenAICompatiblePreferences.keychainProvider)
     if key.isEmpty {
-      guard KeychainManager.shared.delete(for: OpenAICompatiblePreferences.keychainProvider) else {
+      guard LocalProviderCredentialStore.shared.delete(for: OpenAICompatiblePreferences.keychainProvider) else {
         return false
       }
-    } else if !KeychainManager.shared.store(
+    } else if !LocalProviderCredentialStore.shared.store(
       key,
       for: OpenAICompatiblePreferences.keychainProvider
     ) {
@@ -770,12 +770,12 @@ struct LLMProviderSetupView: View {
 
     guard OpenAICompatiblePreferences.save(configuration) else {
       if let previousKey {
-        _ = KeychainManager.shared.store(
+        _ = LocalProviderCredentialStore.shared.store(
           previousKey,
           for: OpenAICompatiblePreferences.keychainProvider
         )
       } else {
-        _ = KeychainManager.shared.delete(for: OpenAICompatiblePreferences.keychainProvider)
+        _ = LocalProviderCredentialStore.shared.delete(for: OpenAICompatiblePreferences.keychainProvider)
       }
       return false
     }

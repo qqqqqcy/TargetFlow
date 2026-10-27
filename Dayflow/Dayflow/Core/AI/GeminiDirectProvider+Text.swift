@@ -3,30 +3,31 @@ import Foundation
 extension GeminiDirectProvider {
   // MARK: - Text Generation
 
-  func generateText(prompt: String, maxOutputTokens: Int = 8192) async throws
+  func generateText(prompt: String, maxOutputTokens: Int = 8192, feature: ModelFeature = .text, imageURLs: [URL] = []) async throws
     -> (text: String, log: LLMCall)
   {
     let callStart = Date()
 
-    let generationConfig: [String: Any] = [
-      "maxOutputTokens": maxOutputTokens,
-      "thinkingConfig": ["thinkingLevel": "high"],
-    ]
-
-    let requestBody: [String: Any] = [
-      "contents": [["parts": [["text": prompt]]]],
-      "generationConfig": generationConfig,
-    ]
-
     let maxRetries = 4
     var attempt = 0
     var lastError: Error?
-    var modelState = ModelRunState(models: modelPreference.orderedModels)
+    var modelState = ModelRunState(models: selectedModels(feature: feature))
 
     while attempt < maxRetries {
       do {
         print("🔄 generateText attempt \(attempt + 1)/\(maxRetries)")
         let activeModel = modelState.current
+        var generationConfig: [String: Any] = ["maxOutputTokens": maxOutputTokens]
+        generationConfig["thinkingConfig"] = try thinkingConfig(feature: feature, model: activeModel)
+        var inputParts: [[String: Any]] = [["text": prompt]]
+        for url in imageURLs {
+          inputParts.append(["inlineData": ["mimeType": "image/jpeg",
+            "data": try Data(contentsOf: url).base64EncodedString()]])
+        }
+        let requestBody: [String: Any] = [
+          "contents": [["parts": inputParts]],
+          "generationConfig": generationConfig,
+        ]
         let urlWithKey = endpointForModel(activeModel) + "?key=\(apiKey)"
 
         var request = URLRequest(url: URL(string: urlWithKey)!)
@@ -37,6 +38,8 @@ extension GeminiDirectProvider {
 
         let requestStart = Date()
         let (data, response) = try await URLSession.shared.data(for: request)
+        recordResponse(data, model: activeModel, feature: feature, startedAt: requestStart,
+          status: (response as? HTTPURLResponse)?.statusCode)
 
         guard let httpResponse = response as? HTTPURLResponse else {
           throw NSError(
@@ -93,7 +96,7 @@ extension GeminiDirectProvider {
         {
 
           let reason = fallbackReason(for: nsError.code)
-          print("↔️ Switching to \(transition.to.rawValue) after \(nsError.code)")
+          print("↔️ Switching to \(transition.to) after \(nsError.code)")
 
           Task { @MainActor in
             AnalyticsService.shared.capture(
@@ -101,8 +104,8 @@ extension GeminiDirectProvider {
               [
                 "provider": "gemini",
                 "operation": "generate_text",
-                "from_model": transition.from.rawValue,
-                "to_model": transition.to.rawValue,
+                "from_model": transition.from,
+                "to_model": transition.to,
                 "reason": reason,
               ])
           }

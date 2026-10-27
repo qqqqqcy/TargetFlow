@@ -4,8 +4,11 @@ import Foundation
 extension ClaudeProvider {
   // MARK: - Claude one-step timeline
 
-  static func timelineModelConfiguration() -> (model: String, reasoningEffort: String?) {
-    (model: "haiku", reasoningEffort: "medium")
+  static func timelineModelConfiguration(defaults: UserDefaults = .standard) -> (model: String, reasoningEffort: String?) {
+    ModelPreferences.resolve(
+      provider: .claude, feature: .timeline,
+      defaultModel: "haiku", defaultEffort: "medium", defaults: defaults
+    ).tuple
   }
 
   private static var timelineFrameMaxHeight: Int { 1080 }
@@ -167,7 +170,7 @@ extension ClaudeProvider {
 
   // MARK: Prompt
 
-  private func buildTimelinePrompt(
+  func buildTimelinePrompt(
     frames: OneStepTimelineFrames,
     previousCards: [ActivityCardData],
     categories: [LLMCategoryDescriptor]
@@ -192,6 +195,8 @@ extension ClaudeProvider {
       prompt = prompt.replacingOccurrences(
         of: ClaudeTimelinePrompt.perMinuteFrames, with: ClaudeTimelinePrompt.irregularFrames)
     }
+
+    prompt += "\n\n" + ActivityCardPromptPreferences.load().instructionBlock
 
     let previousCardsData = try? JSONEncoder().encode(previousCards)
     let previousCardsJSON = previousCardsData.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"

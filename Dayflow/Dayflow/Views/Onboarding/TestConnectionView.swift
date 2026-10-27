@@ -55,7 +55,7 @@ struct TestConnectionView: View {
       apiKeyOverride?
       .components(separatedBy: .whitespacesAndNewlines).joined() ?? ""
     let storedKey =
-      KeychainManager.shared.retrieve(for: "gemini")?
+      LocalProviderCredentialStore.shared.retrieve(for: "gemini")?
       .components(separatedBy: .whitespacesAndNewlines).joined() ?? ""
     let apiKey = override.isEmpty ? storedKey : override
     guard !apiKey.isEmpty else {

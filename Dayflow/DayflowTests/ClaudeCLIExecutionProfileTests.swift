@@ -21,8 +21,8 @@ final class ClaudeCLIExecutionProfileTests: XCTestCase {
       Array(parts.prefix(5)),
       ["claude", "-p", "--output-format", "json", "--verbose"]
     )
-    XCTAssertEqual(try argument(after: "--model", in: parts), "sonnet")
-    XCTAssertEqual(try argument(after: "--effort", in: parts), "low")
+    XCTAssertEqual(try argument(after: "--model", in: parts), LoginShellRunner.shellEscape("sonnet"))
+    XCTAssertEqual(try argument(after: "--effort", in: parts), LoginShellRunner.shellEscape("low"))
     XCTAssertEqual(try argument(after: "--tools", in: parts), "Read")
     XCTAssertEqual(
       try argument(after: "--allowedTools", in: parts),
@@ -47,6 +47,26 @@ final class ClaudeCLIExecutionProfileTests: XCTestCase {
       )
     )
     XCTAssertTrue(String(decoding: payload, as: UTF8.self).contains("/tmp/contact-sheet.jpg"))
+  }
+
+  func testExplicitReasoningPreferenceOverridesLegacyProfileSettings() throws {
+    let highProfile = ClaudeCLIExecutionProfile.optimizedTranscription
+      .withReasoningEffort("high").allowingRead(at: "/tmp/frame.png")
+    let highParts = runner.buildClaudeCommandParts(
+      prompt: "Transcribe", imagePaths: [], model: "custom", reasoningEffort: "high",
+      disableTools: false, profile: highProfile)
+    XCTAssertEqual(try argument(after: "--settings", in: highParts),
+      LoginShellRunner.shellEscape(#"{"effortLevel":"high"}"#))
+    XCTAssertEqual(try argument(after: "--allowedTools", in: highParts),
+      LoginShellRunner.shellEscape("Read(//tmp/frame.png)"))
+    XCTAssertNil(runner.mergedProcessEnvironment(tool: .claude,
+      processEnvironment: ["MAX_THINKING_TOKENS": "0"], claudeProfile: highProfile)["MAX_THINKING_TOKENS"])
+
+    let defaultProfile = ClaudeCLIExecutionProfile.oneStepTimeline.withReasoningEffort(nil)
+    let defaultParts = runner.buildClaudeCommandParts(
+      prompt: "Timeline", imagePaths: [], model: nil, disableTools: false, profile: defaultProfile)
+    XCTAssertEqual(try argument(after: "--settings", in: defaultParts), LoginShellRunner.shellEscape("{}"))
+    XCTAssertFalse(defaultParts.contains("--effort"))
   }
 
   func testOptimizedTranscriptionNeverAutoApprovesGlobalRead() {
@@ -140,7 +160,7 @@ final class ClaudeCLIExecutionProfileTests: XCTestCase {
 
     XCTAssertEqual(
       Array(parts.prefix(7)),
-      ["claude", "-p", "--model", "sonnet", "--effort", "medium", "--dangerously-skip-permissions"]
+      ["claude", "-p", "--model", LoginShellRunner.shellEscape("sonnet"), "--effort", LoginShellRunner.shellEscape("medium"), "--dangerously-skip-permissions"]
     )
     XCTAssertFalse(parts.contains("--output-format"))
     XCTAssertFalse(parts.contains("--safe-mode"))

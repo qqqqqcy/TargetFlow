@@ -2,16 +2,17 @@ import Foundation
 
 extension GeminiDirectProvider {
   func streamDashboardTurn(
-    model: GeminiModel,
+    model: String,
     systemInstruction: String,
     contents: [[String: Any]],
     includeThinkingConfig: Bool,
     continuation: AsyncThrowingStream<ChatStreamEvent, Error>.Continuation
   ) async throws -> DashboardTurnResult {
-    let requestBody = dashboardChatRequestBody(
+    let requestBody = try dashboardChatRequestBody(
       systemInstruction: systemInstruction,
       contents: contents,
-      includeThinkingConfig: includeThinkingConfig
+      includeThinkingConfig: includeThinkingConfig,
+      model: model
     )
     var request = URLRequest(
       url: URL(string: dashboardStreamEndpoint(model: model) + "?alt=sse&key=\(apiKey)")!)
@@ -20,6 +21,18 @@ extension GeminiDirectProvider {
     request.timeoutInterval = 180
     request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
+    let startedAt = Date()
+    var reportedModels = Set<String>()
+    var succeeded = false
+    defer {
+      ModelExecutionHistory.shared.record(
+        provider: LLMProviderID.gemini.rawValue, requestedModel: model,
+        reportedModels: reportedModels.sorted(),
+        requestedReasoning: includeThinkingConfig
+          ? (try? thinkingConfig(feature: .chat, model: model))?["thinkingLevel"] as? String : nil,
+        startedAt: startedAt, outcome: succeeded ? .succeeded : .failed,
+        failureCode: succeeded ? nil : "stream_failed")
+    }
     let (bytes, response) = try await URLSession.shared.bytes(for: request)
     guard let httpResponse = response as? HTTPURLResponse else {
       throw NSError(
@@ -51,6 +64,14 @@ extension GeminiDirectProvider {
     for try await line in bytes.lines {
       if line.hasPrefix("data:") {
         let payload = String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+        if let objects = try? decodeDashboardSSEChunkObjects(from: payload) {
+          for object in objects {
+            if let reported = object["modelVersion"] as? String,
+              reportedModels.insert(reported).inserted {
+              print("Gemini response model: \(reported) (requested: \(model))")
+            }
+          }
+        }
         if !payload.isEmpty {
           dataBuffer.append(payload)
         }
@@ -84,6 +105,7 @@ extension GeminiDirectProvider {
       )
     }
 
+    succeeded = true
     return DashboardTurnResult(
       text: accumulatedText,
       functionCalls: functionCalls,
@@ -92,17 +114,18 @@ extension GeminiDirectProvider {
   }
 
   func generateDashboardTurnNonStreaming(
-    model: GeminiModel,
+    model: String,
     systemInstruction: String,
     contents: [[String: Any]],
     includeThinkingConfig: Bool
   ) async throws
     -> DashboardTurnResult
   {
-    let requestBody = dashboardChatRequestBody(
+    let requestBody = try dashboardChatRequestBody(
       systemInstruction: systemInstruction,
       contents: contents,
-      includeThinkingConfig: includeThinkingConfig
+      includeThinkingConfig: includeThinkingConfig,
+      model: model
     )
     var request = URLRequest(
       url: URL(string: dashboardGenerateEndpoint(model: model) + "?key=\(apiKey)")!)
@@ -111,7 +134,10 @@ extension GeminiDirectProvider {
     request.timeoutInterval = 180
     request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
+    let startedAt = Date()
     let (data, response) = try await URLSession.shared.data(for: request)
+    recordResponse(data, model: model, feature: .chat, startedAt: startedAt,
+      status: (response as? HTTPURLResponse)?.statusCode)
     guard let httpResponse = response as? HTTPURLResponse else {
       throw NSError(
         domain: "GeminiDashboardChat",

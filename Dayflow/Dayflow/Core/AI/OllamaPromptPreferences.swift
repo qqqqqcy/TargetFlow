@@ -85,8 +85,10 @@ enum OllamaPromptDefaults {
 struct OllamaPromptSections {
   let summary: String
   let title: String
+  let detailedSummary: String
 
-  init(overrides: OllamaPromptOverrides) {
+  init(overrides: ActivityCardPromptOverrides) {
+    self.detailedSummary = ActivityCardPromptOverrides(detailedBlock: overrides.detailedBlock).instructionBlock
     self.summary = OllamaPromptSections.compose(
       defaultBlock: OllamaPromptDefaults.summaryBlock, custom: overrides.summaryBlock)
     self.title = OllamaPromptSections.compose(

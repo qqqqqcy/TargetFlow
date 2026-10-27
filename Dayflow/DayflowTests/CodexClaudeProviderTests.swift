@@ -6,6 +6,34 @@ final class CodexClaudeProviderTests: XCTestCase {
   private let runner = ChatCLIProcessRunner()
   private let claudeProvider = ClaudeProvider()
 
+  func testSharedPromptsReachBothCLIStageAndOneStepBuilders() throws {
+    let defaults = UserDefaults.standard
+    let previous = defaults.object(forKey: ActivityCardPromptPreferences.storageKey)
+    defer {
+      if let previous { defaults.set(previous, forKey: ActivityCardPromptPreferences.storageKey) }
+      else { defaults.removeObject(forKey: ActivityCardPromptPreferences.storageKey) }
+    }
+    try ActivityCardPromptPreferences.saveVerified(.init(
+      titleBlock: "CLI_SHARED_TITLE", summaryBlock: "CLI_SHARED_SUMMARY", detailedBlock: "CLI_SHARED_DETAILS"))
+    let context = ActivityGenerationContext(
+      batchObservations: [], existingCards: [], currentTime: Date(), categories: [],
+      hasPreviousCardWithinFiveMinutes: false)
+    let frames = OneStepTimelineFrames(directory: URL(fileURLWithPath: "/tmp"), frames: [
+      .init(capturedAt: 3600, url: URL(fileURLWithPath: "/tmp/shared-prompt-frame.jpg"))])
+    let prompts = [
+      CodexProvider().buildCardsPrompt(observations: [], context: context),
+      claudeProvider.buildCardsPrompt(observations: [], context: context),
+      CodexProvider().buildTimelinePrompt(frames: frames, previousCards: [], categories: []),
+      claudeProvider.buildTimelinePrompt(frames: frames, previousCards: [], categories: []),
+    ]
+    for prompt in prompts {
+      for marker in ["CLI_SHARED_TITLE", "CLI_SHARED_SUMMARY", "CLI_SHARED_DETAILS"] {
+        XCTAssertTrue(prompt.contains(marker))
+      }
+      XCTAssertTrue(prompt.contains("detailedSummary"))
+    }
+  }
+
   func testClaudeStreamingCommandIncludesExplicitEffort() {
     let parts = runner.buildClaudeStreamingCommandParts(
       prompt: "Generate cards",
@@ -18,7 +46,8 @@ final class CodexClaudeProviderTests: XCTestCase {
       Array(parts.prefix(10)),
       [
         "claude", "-p", "--output-format", "stream-json", "--verbose",
-        "--include-partial-messages", "--model", "sonnet", "--effort", "medium",
+        "--include-partial-messages", "--model", LoginShellRunner.shellEscape("sonnet"),
+        "--effort", LoginShellRunner.shellEscape("medium"),
       ]
     )
   }
@@ -35,8 +64,8 @@ final class CodexClaudeProviderTests: XCTestCase {
       Array(parts.prefix(12)),
       [
         "claude", "-p", "--output-format", "stream-json", "--verbose",
-        "--include-partial-messages", "--resume", "session-123", "--model", "sonnet",
-        "--effort", "medium",
+        "--include-partial-messages", "--resume", "session-123", "--model",
+        LoginShellRunner.shellEscape("sonnet"), "--effort", LoginShellRunner.shellEscape("medium"),
       ]
     )
   }
