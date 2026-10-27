@@ -4,6 +4,15 @@
 
 <h1>Target Flow</h1>
 
+<p>
+  <img src="https://img.shields.io/badge/macOS-14%2B-007AFF?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS 14+">
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/v/release/qqqqqcy/TargetFlow?include_prereleases&amp;sort=date&amp;style=flat-square&amp;label=release&amp;color=F59E0B" alt="Latest release (including test builds)"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/downloads/qqqqqcy/TargetFlow/total?style=flat-square" alt="Total release downloads"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/qqqqqcy/TargetFlow/release.yml?branch=main&amp;style=flat-square&amp;label=build" alt="Test release build status"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/release-date-pre/qqqqqcy/TargetFlow?style=flat-square&amp;label=released" alt="Latest release date (including test builds)"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-34A853?style=flat-square" alt="MIT License"></a>
+</p>
+
 <p><strong>A gentle nudge back to what you meant to do.</strong></p>
 
 <p>A macOS app that turns screen activity into an automatic timeline,<br>spots detours from your current goals, and suggests one concrete step back.</p>
@@ -13,16 +22,9 @@
 <h3>Download for macOS</h3>
 
 <p>
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-arm64.dmg"><strong>↓ Apple silicon (M-series)</strong></a>
-  &nbsp; · &nbsp;
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-x86_64.dmg"><strong>↓ Intel Mac</strong></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><strong>↓ Download the latest test build</strong></a><br>
+  <sub>Apple silicon (M-series): arm64 · Intel Mac: x86_64</sub>
 </p>
-
-<p>macOS 14+ · v0.0.1 Test 1 · Free &amp; open source</p>
-
-<p><sub>Ad-hoc signed test build, not notarized by Apple. If blocked on first launch,<br>go to System Settings → Privacy &amp; Security → Open Anyway after attempting to open the app.</sub></p>
-
-<p><a href="https://github.com/qqqqqcy/TargetFlow/releases/tag/v0.0.1-test.1">Release notes &amp; checksums</a> · <a href="docs/test-release-install.txt">Installation help</a></p>
 
 </div>
 

@@ -4,6 +4,15 @@
 
 <h1>Target Flow</h1>
 
+<p>
+  <img src="https://img.shields.io/badge/macOS-14%2B-007AFF?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS 14+">
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/v/release/qqqqqcy/TargetFlow?include_prereleases&amp;sort=date&amp;style=flat-square&amp;label=release&amp;color=F59E0B" alt="最新版本（含测试版）"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/downloads/qqqqqcy/TargetFlow/total?style=flat-square" alt="Release 附件累计下载量"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/qqqqqcy/TargetFlow/release.yml?branch=main&amp;style=flat-square&amp;label=build" alt="测试版构建状态"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/release-date-pre/qqqqqcy/TargetFlow?style=flat-square&amp;label=released" alt="最新发布时间（含测试版）"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-34A853?style=flat-square" alt="MIT 开源协议"></a>
+</p>
+
 <p><strong>偏离时，提醒你回到当前目标。</strong></p>
 
 <p>一款 macOS 目标提醒应用：自动整理屏幕活动，识别与当前目标的偏离，<br>给你一个具体的小步骤，重新开始。</p>
@@ -13,16 +22,9 @@
 <h3>下载 macOS 测试版</h3>
 
 <p>
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-arm64.dmg"><strong>↓ Apple 芯片（M 系列）</strong></a>
-  &nbsp; · &nbsp;
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases/download/v0.0.1-test.1/TargetFlow-0.0.1-test-x86_64.dmg"><strong>↓ Intel Mac</strong></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><strong>↓ 下载最新测试版</strong></a><br>
+  <sub>Apple 芯片（M 系列）：arm64 · Intel Mac：x86_64</sub>
 </p>
-
-<p>macOS 14+ · v0.0.1 Test 1 · 免费开源</p>
-
-<p><sub>临时签名测试版，未经 Apple 公证。若首次打开被阻止，请尝试启动后前往<br>「系统设置 → 隐私与安全性 → 仍要打开」并确认。</sub></p>
-
-<p><a href="https://github.com/qqqqqcy/TargetFlow/releases/tag/v0.0.1-test.1">版本说明与校验文件</a> · <a href="docs/test-release-install.txt">安装帮助</a></p>
 
 </div>
 
