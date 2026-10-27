@@ -199,9 +199,10 @@ final class NotificationService: NSObject, ObservableObject {
   }
 
   func sendTargetTestNotification() async throws -> Bool {
-    let body = TargetPreferences.notificationStyle() == .notch
-      ? String(localized: "This is a test notch reminder. Choose a current goal and take one small, concrete step. Hover to keep it expanded, or click below to view Events & Goals.")
-      : String(localized: "This is a test goal notification. Choose a current goal and take one small, concrete step. Click to open Events & Goals.")
+    let body = String(
+      localized:
+        "You spent 18 minutes on news unrelated to “Prepare for interviews.” Start with one concrete step: write the context, actions, and results of a performance optimization case."
+    )
     return try await notifyTargetDeviation(
       identifier: "test.\(UUID().uuidString)", body: body)
   }

@@ -7,15 +7,66 @@ struct NotchNotificationLayout {
   let screenFrame: CGRect
   let cameraWidth: CGFloat
   let cameraHeight: CGFloat
+  let body: String
+
+  init(
+    screenFrame: CGRect, cameraWidth: CGFloat, cameraHeight: CGFloat, body: String = ""
+  ) {
+    self.screenFrame = screenFrame
+    self.cameraWidth = cameraWidth
+    self.cameraHeight = cameraHeight
+    self.body = body
+  }
+
+  static let horizontalContentPadding: CGFloat = 24
+  static let contentTopPadding: CGFloat = 8
+  static let contentBottomPadding: CGFloat = 16
+  static let blockSpacing: CGFloat = 12
+  static let titleLineHeight: CGFloat = 19
+  static let buttonLineHeight: CGFloat = 15
+  static let topBarExtraHeight: CGFloat = 6
+  private static let bodyFontSize: CGFloat = 13
+  private static let bodyLineSpacing: CGFloat = 3
+  private static let maxBodyLines = 3
 
   var compactSize: CGSize {
     CGSize(width: min(screenFrame.width, max(180, cameraWidth + 104)),
-           height: max(32, cameraHeight) + 6)
+           height: max(32, cameraHeight) + Self.topBarExtraHeight)
   }
 
   var expandedSize: CGSize {
-    CGSize(width: min(screenFrame.width - 24, max(460, cameraWidth + 160)),
-           height: max(32, cameraHeight) + 174)
+    CGSize(width: expandedWidth,
+           height: max(32, cameraHeight) + Self.topBarExtraHeight + expandedContentHeight)
+  }
+
+  private var expandedWidth: CGFloat {
+    min(screenFrame.width - 24, max(460, cameraWidth + 160))
+  }
+
+  private var expandedContentHeight: CGFloat {
+    Self.contentTopPadding
+      + Self.titleLineHeight
+      + Self.blockSpacing
+      + Self.measuredBodyHeight(body, width: expandedWidth - Self.horizontalContentPadding * 2)
+      + Self.blockSpacing
+      + Self.buttonLineHeight
+      + Self.contentBottomPadding
+  }
+
+  /// Matches the three-line limit of the reminder body so the panel never grows past its content.
+  static func measuredBodyHeight(_ body: String, width: CGFloat) -> CGFloat {
+    guard !body.isEmpty, width > 0 else { return 0 }
+    let font = NSFont.systemFont(ofSize: bodyFontSize)
+    let paragraph = NSMutableParagraphStyle()
+    paragraph.lineSpacing = bodyLineSpacing
+    let measured = (body as NSString).boundingRect(
+      with: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude),
+      options: [.usesLineFragmentOrigin, .usesFontLeading],
+      attributes: [.font: font, .paragraphStyle: paragraph])
+    let lineHeight = ceil(font.ascender - font.descender + font.leading)
+    let maximum =
+      lineHeight * CGFloat(maxBodyLines) + bodyLineSpacing * CGFloat(maxBodyLines - 1)
+    return min(ceil(measured.height), maximum)
   }
 
   func frame(expanded: Bool) -> CGRect {
@@ -64,7 +115,7 @@ final class NotchNotificationController: ObservableObject {
     }
     let layout = NotchNotificationLayout(
       screenFrame: screen.frame, cameraWidth: cameraWidth,
-      cameraHeight: screen.safeAreaInsets.top)
+      cameraHeight: screen.safeAreaInsets.top, body: body)
     self.layout = layout
     cameraHeight = max(32, layout.cameraHeight)
     self.body = body
@@ -195,6 +246,38 @@ final class NotchNotificationPanel: NSPanel {
   override var canBecomeMain: Bool { false }
 }
 
+/// A notch surface that flares into the physical top edge with inverted (concave)
+/// top corners and rounded bottom corners. `UnevenRoundedRectangle` rounds all
+/// corners outward, which makes the panel look detached from the screen edge.
+struct NotchNotificationShape: Shape {
+  var topCornerRadius: CGFloat = 8
+  var bottomCornerRadius: CGFloat = 28
+
+  func path(in rect: CGRect) -> Path {
+    let top = min(topCornerRadius, rect.width / 2, rect.height / 2)
+    let bottom = min(bottomCornerRadius, rect.width / 2 - top)
+    var path = Path()
+    path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.minX + top, y: rect.minY + top),
+      control: CGPoint(x: rect.minX + top, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.minX + top, y: rect.maxY - bottom))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.minX + top + bottom, y: rect.maxY),
+      control: CGPoint(x: rect.minX + top, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.maxX - top - bottom, y: rect.maxY))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.maxX - top, y: rect.maxY - bottom),
+      control: CGPoint(x: rect.maxX - top, y: rect.maxY))
+    path.addLine(to: CGPoint(x: rect.maxX - top, y: rect.minY + top))
+    path.addQuadCurve(
+      to: CGPoint(x: rect.maxX, y: rect.minY),
+      control: CGPoint(x: rect.maxX - top, y: rect.minY))
+    path.closeSubpath()
+    return path
+  }
+}
+
 private struct NotchNotificationView: View {
   @ObservedObject var controller: NotchNotificationController
   // The notch always uses a black surface, including when the app is in light mode.
@@ -215,10 +298,10 @@ private struct NotchNotificationView: View {
         Circle().fill(accent).frame(width: 7, height: 7)
       }
       .padding(.horizontal, 22)
-      .frame(height: controller.cameraHeight + 6)
+      .frame(height: controller.cameraHeight + NotchNotificationLayout.topBarExtraHeight)
 
       if controller.isExpanded {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: NotchNotificationLayout.blockSpacing) {
           HStack {
             Text(String(localized: "Return to your current goal"))
               .font(.system(size: 16, weight: .semibold))
@@ -248,9 +331,9 @@ private struct NotchNotificationView: View {
               .foregroundStyle(.white.opacity(0.6))
           }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .padding(.bottom, 22)
+        .padding(.horizontal, NotchNotificationLayout.horizontalContentPadding)
+        .padding(.top, NotchNotificationLayout.contentTopPadding)
+        .padding(.bottom, NotchNotificationLayout.contentBottomPadding)
         .transition(.opacity)
       }
       Spacer(minLength: 0)
@@ -258,9 +341,7 @@ private struct NotchNotificationView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     .foregroundStyle(.white)
     .background(.black)
-    .clipShape(UnevenRoundedRectangle(
-      topLeadingRadius: 8, bottomLeadingRadius: 28,
-      bottomTrailingRadius: 28, topTrailingRadius: 8))
+    .clipShape(NotchNotificationShape())
     .contentShape(Rectangle())
     .onHover(perform: controller.hover)
     .accessibilityElement(children: .contain)

@@ -78,6 +78,28 @@ final class NotchNotificationTests: XCTestCase {
     XCTAssertGreaterThanOrEqual(layout.compactSize.height, 32)
   }
 
+  func testExpandedHeightFollowsReminderCopyInsteadOfLeavingBottomSpace() {
+    let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
+    let shortLayout = NotchNotificationLayout(
+      screenFrame: screen, cameraWidth: 210, cameraHeight: 32, body: "从一个具体的小步骤继续。")
+    let longLayout = NotchNotificationLayout(
+      screenFrame: screen, cameraWidth: 210, cameraHeight: 32,
+      body: "You spent 18 minutes on news unrelated to “Prepare for interviews.” Start with one concrete step: write the context, actions, and results of a performance optimization case.")
+
+    XCTAssertLessThan(shortLayout.expandedSize.height, longLayout.expandedSize.height)
+    XCTAssertGreaterThan(shortLayout.expandedSize.height, shortLayout.compactSize.height)
+    XCTAssertLessThan(longLayout.expandedSize.height, 32 + 174)
+  }
+
+  func testMeasuredBodyHeightCapsAtThreeLines() {
+    let narrow = NotchNotificationLayout.measuredBodyHeight(
+      String(repeating: "A long reminder sentence that wraps. ", count: 12), width: 360)
+    let threeLines = NotchNotificationLayout.measuredBodyHeight(
+      "You spent 18 minutes on news unrelated to “Prepare for interviews.” Start with one concrete step: write the context, actions, and results of a performance optimization case.",
+      width: 412)
+    XCTAssertEqual(narrow, threeLines)
+  }
+
   func testLargeCameraAndNarrowScreenFitWithoutCoveringStatusMarks() {
     let layout = NotchNotificationLayout(
       screenFrame: CGRect(x: 100, y: -900, width: 600, height: 900),
