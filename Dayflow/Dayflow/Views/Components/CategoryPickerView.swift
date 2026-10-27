@@ -46,7 +46,7 @@ struct CategoryPickerView: View {
             // Main text
             HStack(alignment: .top, spacing: 0) {
               Text(
-                "补充事件的具体内容和范围，帮助识别实际发生的事情。 "
+                "Add details and scope to help identify what actually happened. "
               )
               .font(Font.custom("Figtree", size: 10).weight(.medium))
               .foregroundColor(helperTextColor)

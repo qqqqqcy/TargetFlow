@@ -39,7 +39,7 @@ struct EditableCategoryCard: View {
   private var targetToggle: some View {
     if !category.isSystem && !category.isIdle {
       Toggle(
-        "当前目标",
+        "Current goal",
         isOn: Binding(
           get: { category.isCurrentTarget },
           set: { categoryStore.setCurrentTarget($0, for: category.id) }
@@ -51,14 +51,14 @@ struct EditableCategoryCard: View {
       .tint(theme.accent)
       .foregroundStyle(theme.textSecondary)
       .fixedSize()
-      .accessibilityLabel("将\(category.name)设为当前目标")
+      .accessibilityLabel("Set \(category.name) as a current goal")
     }
   }
 
   private var editingView: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 10) {
-        TextField("事件名称", text: $draftName)
+        TextField("Event name", text: $draftName)
           .font(.system(size: 13, weight: .semibold))
           .textFieldStyle(.plain)
           .foregroundStyle(theme.textPrimary)
@@ -78,12 +78,12 @@ struct EditableCategoryCard: View {
         }
         .buttonStyle(.plain)
         .pointingHandCursor()
-        .accessibilityLabel("保存事件")
+        .accessibilityLabel("Save event")
       }
 
       ZStack(alignment: .topLeading) {
         if draftDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-          Text("描述要推进的具体事情，例如完成登录页，允许查阅 SwiftUI 文档。")
+          Text("Describe what you want to work on, such as finishing the login page, with SwiftUI documentation allowed.")
             .font(.system(size: 12))
             .foregroundStyle(theme.textMuted)
             .padding(10)
@@ -96,7 +96,7 @@ struct EditableCategoryCard: View {
           .padding(6)
           .frame(minHeight: 70)
           .focused($focusedField, equals: .description)
-          .accessibilityLabel("事件说明")
+          .accessibilityLabel("Event description")
       }
       .background(theme.inputFill, in: RoundedRectangle(cornerRadius: 8))
       .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.inputBorder, lineWidth: 1))
@@ -122,7 +122,7 @@ struct EditableCategoryCard: View {
             .foregroundStyle(theme.textPrimary)
           Text(
             category.details.isEmpty
-              ? String(localized: "补充事件说明，帮助识别实际在做的事情。")
+              ? String(localized: "Add an event description to help identify what you are actually doing.")
               : category.details
           )
           .font(.system(size: 12))
@@ -150,7 +150,7 @@ struct EditableCategoryCard: View {
                 theme.chipFill, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
           }
           .foregroundStyle(theme.textSecondary)
-          .accessibilityLabel("编辑事件")
+          .accessibilityLabel("Edit event")
 
           Button(action: onDelete) {
             Image(systemName: "trash")
@@ -159,7 +159,7 @@ struct EditableCategoryCard: View {
                 theme.chipFill, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
           }
           .foregroundStyle(theme.textTertiary)
-          .accessibilityLabel("删除事件")
+          .accessibilityLabel("Delete event")
         }
       }
       .font(.system(size: 12))

@@ -7,7 +7,7 @@ struct CategoryEditCircleButton: View {
   let action: () -> Void
   var diameter: CGFloat = DayflowLayout.buttonHeight
   var iconSize: CGFloat? = nil
-  var accessibilityLabel: String = String(localized: "事件与目标")
+  var accessibilityLabel: String = String(localized: "Events and Goals")
 
   var body: some View {
     let resolvedIconSize = iconSize ?? diameter * 0.6

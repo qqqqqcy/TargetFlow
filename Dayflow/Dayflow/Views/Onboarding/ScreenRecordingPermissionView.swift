@@ -54,13 +54,13 @@ struct ScreenRecordingPermissionView: View {
     .onDisappear {
       AppDelegate.allowTermination = false
     }
-    .alert("无法重新打开 Target Flow", isPresented: Binding(
+    .alert("Unable to reopen Target Flow", isPresented: Binding(
       get: { restartError != nil },
       set: { if !$0 { restartError = nil } }
     )) {
-      Button("好", role: .cancel) { restartError = nil }
+      Button("OK", role: .cancel) { restartError = nil }
     } message: {
-      Text(restartError ?? "请退出应用后，从访达重新打开。")
+      Text(restartError ?? String(localized: "Please quit the app and reopen it from Finder."))
     }
   }
 
@@ -98,7 +98,7 @@ struct ScreenRecordingPermissionView: View {
           .font(.custom("InstrumentSerif-Regular", size: 28))
           .foregroundColor(.black)
 
-        Text("Target Flow 需要屏幕录制权限来生成时间线。")
+        Text("Target Flow needs screen recording permission to generate your timeline.")
           .font(.custom("Figtree-Medium", size: 14))
           .foregroundColor(Color(hex: "5B5B5B"))
           .fixedSize(horizontal: false, vertical: true)
@@ -109,19 +109,19 @@ struct ScreenRecordingPermissionView: View {
             Image(systemName: "shield.fill")
               .font(.system(size: 14))
               .foregroundColor(privacyTextColor)
-            Text("Target Flow 将录制内容保存在本机。")
+            Text("Target Flow stores recordings on your device.")
               .font(.custom("Figtree-Bold", size: 14))
               .foregroundColor(privacyTextColor)
               .fixedSize(horizontal: false, vertical: true)
           }
 
           Text(
-            "使用本地 AI 时，分析可在设备上进行；选择云端提供商时，分析所需的数据会发送到该提供商。"
+            "With local AI, analysis can run on your device. If you choose a cloud provider, the data needed for analysis is sent to that provider."
           )
           .font(.custom("Figtree-Medium", size: 14))
           .foregroundColor(privacyTextColor)
 
-          Text("你可以随时暂停或关闭 Target Flow。")
+          Text("You can pause or quit Target Flow at any time.")
             .font(.custom("Figtree-Medium", size: 14))
             .foregroundColor(privacyTextColor)
         }
@@ -146,7 +146,7 @@ struct ScreenRecordingPermissionView: View {
               .font(.custom("Figtree", size: 14))
               .foregroundColor(.green)
           case .needsAction:
-            Text("尚未检测到录屏权限。请在系统设置中开启；如果开关已开启，点击‘退出并重新打开’让授权生效。")
+            Text("Screen recording permission has not been detected yet. Enable it in System Settings. If it is already enabled, click “Quit and Reopen” to apply the permission.")
               .font(.custom("Figtree", size: 14))
               .foregroundColor(.orange)
           }
@@ -220,18 +220,18 @@ struct ScreenRecordingPermissionView: View {
       )
 
       VStack(alignment: .leading, spacing: 18) {
-        Label("屏幕与系统音频录制", systemImage: "display")
+        Label("Screen & System Audio Recording", systemImage: "display")
           .font(.title3.bold())
-        Text("系统设置 → 隐私与安全性 → 屏幕与系统音频录制")
-        Text("在列表中找到 Target Flow（或 TargetFlow），开启右侧开关。这里不需要辅助功能权限。")
-        Text("如果没有找到，点击列表下方的 +，选择当前应用：")
+        Text("System Settings → Privacy & Security → Screen & System Audio Recording")
+        Text("Find Target Flow (or TargetFlow) in the list and turn on the switch on the right. Accessibility permission is not required here.")
+        Text("If it is missing, click + below the list and select the current app:")
         Text(Bundle.main.bundleURL.path)
           .font(.system(size: 12, design: .monospaced))
           .textSelection(.enabled)
-        Button("在访达中显示 Target Flow") {
+        Button("Show Target Flow in Finder") {
           NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL])
         }
-        Text("授权后返回此窗口；若系统要求重新启动，请退出后重新打开应用。")
+        Text("Return to this window after granting permission. If the system asks you to restart, quit and reopen the app.")
       }
       .foregroundColor(brownAccent)
       .padding(24)
@@ -318,7 +318,7 @@ struct ScreenRecordingPermissionView: View {
       AppDelegate.permitTermination(reason: "screen_permission_quit_and_reopen")
       NSApp.terminate(nil)
     } catch {
-      restartError = "无法启动重启助手：\(error.localizedDescription)。请退出应用后，从访达重新打开。"
+      restartError = String(localized: "Unable to start the restart helper: \(error.localizedDescription). Please quit the app and reopen it from Finder.")
     }
   }
 }

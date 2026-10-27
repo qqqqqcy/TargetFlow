@@ -14,21 +14,21 @@ struct TimelineUsageCostView: View {
     Button {
       showsDetails.toggle()
     } label: {
-      Text("· " + (summary?.costText ?? "累计费用 —"))
+      Text("· " + (summary?.costText ?? String(localized: "Total cost —")))
         .monospacedDigit()
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
     }
     .buttonStyle(.plain)
     .pointingHandCursor()
-    .help(summary?.detailText ?? "暂时无法读取累计费用")
+    .help(summary?.detailText ?? String(localized: "Total cost is currently unavailable"))
     .popover(isPresented: $showsDetails, arrowEdge: .top) {
       VStack(alignment: .leading, spacing: 12) {
-        Label("接口用量与费用", systemImage: "chart.bar.doc.horizontal")
+        Label(String(localized: "API usage & cost"), systemImage: "chart.bar.doc.horizontal")
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(theme.textPrimary)
         Rectangle().fill(theme.rightPanelDivider).frame(height: 1)
-        Text(summary?.detailText ?? "暂时无法读取累计费用")
+        Text(summary?.detailText ?? String(localized: "Total cost is currently unavailable"))
           .font(.system(size: 12))
           .foregroundStyle(theme.textSecondary)
           .lineSpacing(4)

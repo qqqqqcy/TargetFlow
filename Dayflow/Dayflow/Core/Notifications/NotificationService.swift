@@ -164,7 +164,7 @@ final class NotificationService: NSObject, ObservableObject {
     identifier: String, body: String
   ) -> UNNotificationRequest {
     let content = UNMutableNotificationContent()
-    content.title = "当前目标提醒"
+    content.title = String(localized: "Current goal reminder")
     content.body = body
     // System notices use macOS sound preferences independently of notch game audio.
     content.sound = .default
@@ -200,8 +200,8 @@ final class NotificationService: NSObject, ObservableObject {
 
   func sendTargetTestNotification() async throws -> Bool {
     let body = TargetPreferences.notificationStyle() == .notch
-      ? "这是一条刘海测试提醒。先选一个当前目标，从一个具体的小步骤继续。悬停可保持展开，点击下方按钮查看事件与目标。"
-      : "这是一条目标测试通知。先选一个当前目标，从一个具体的小步骤继续。点击可打开事件与目标。"
+      ? String(localized: "This is a test notch reminder. Choose a current goal and take one small, concrete step. Hover to keep it expanded, or click below to view Events & Goals.")
+      : String(localized: "This is a test goal notification. Choose a current goal and take one small, concrete step. Click to open Events & Goals.")
     return try await notifyTargetDeviation(
       identifier: "test.\(UUID().uuidString)", body: body)
   }

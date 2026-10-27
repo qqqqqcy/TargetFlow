@@ -138,7 +138,7 @@ struct ActivityCard: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(theme.textPrimary)
               Text(
-                "卡片会按设置中的生成间隔自动更新，AI 处理还需要一些时间。可在“设置 → 记录与提醒”选择 5、10 或 15 分钟。"
+                String(localized: "Cards update automatically at the generation interval in Settings, with additional time for AI processing. Choose 5, 10, or 15 minutes in Settings → Recording & Reminders.")
               )
               .font(.system(size: 13))
               .foregroundColor(theme.textSecondary)
@@ -214,7 +214,7 @@ struct ActivityCard: View {
                   .foregroundStyle(theme.textSecondary)
                   .lineLimit(1)
               }
-              .help("事件标签，仅用于辅助归纳")
+              .help(String(localized: "Event label, used only to help organize activities"))
             }
             CategoryEditCircleButton(
               action: {
@@ -223,7 +223,7 @@ struct ActivityCard: View {
                 }
               },
               diameter: 24,
-              accessibilityLabel: String(localized: "调整事件标签")
+              accessibilityLabel: String(localized: "Edit event label")
             )
           }
         }
@@ -324,7 +324,7 @@ struct ActivityCard: View {
   private func summaryContent(for activity: TimelineActivity) -> some View {
     VStack(alignment: .leading, spacing: 8) {
       VStack(alignment: .leading, spacing: 8) {
-        Text("事件摘要")
+        Text(String(localized: "Event summary"))
           .font(
             Font.system(size: 12)
               .weight(.semibold)
@@ -346,7 +346,7 @@ struct ActivityCard: View {
         && activity.detailedSummary != activity.summary
       {
         VStack(alignment: .leading, spacing: 8) {
-          Text("详细记录")
+          Text(String(localized: "Detailed record"))
             .font(
               Font.system(size: 12)
                 .weight(.semibold)

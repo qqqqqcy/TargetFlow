@@ -11,6 +11,8 @@ enum AppLanguage: String, CaseIterable, Identifiable {
   case traditionalChinese = "zh-Hant"
   case japanese = "ja"
 
+  static let supportedChoices: [AppLanguage] = [.system, .simplifiedChinese, .english]
+
   var id: String { rawValue }
 
   // Native names stay readable even if someone chooses an unfamiliar language.
@@ -32,11 +34,12 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 enum AppLanguagePreferences {
   private static let key = "AppleLanguages"
 
-  static func selection(in defaults: UserDefaults = .standard) -> AppLanguage {
-    // Read only the app domain: the global AppleLanguages array is the system
-    // preference, not an explicit override for Dayflow.
-    let domain = defaults.persistentDomain(
-      forName: Bundle.main.bundleIdentifier ?? "teleportlabs.com.Dayflow")
+  static func selection(
+    in defaults: UserDefaults = .standard,
+    domainName: String = Bundle.main.bundleIdentifier ?? "local.targetflow.app"
+  ) -> AppLanguage {
+    // Read only the app domain, excluding the system's global language preference.
+    let domain = defaults.persistentDomain(forName: domainName)
     guard let languages = domain?[key] as? [String], !languages.isEmpty else { return .system }
     return selection(for: languages)
   }

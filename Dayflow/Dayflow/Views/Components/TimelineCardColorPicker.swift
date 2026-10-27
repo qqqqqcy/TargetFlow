@@ -133,10 +133,10 @@ struct ColorOrganizerRoot: View {
         if showsTitles {
           HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 7) {
-              Text(stage == .details ? "事件与目标" : "事件颜色")
+              Text(stage == .details ? String(localized: "Events and Goals") : String(localized: "Event colors"))
                 .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(theme.textPrimary)
-              Text(stage == .details ? "管理具体事件，选择你现在想推进的目标。" : "用颜色辅助识别事件，不影响目标评估。")
+              Text(stage == .details ? String(localized: "Manage events and choose the goals you want to work on now.") : String(localized: "Use colors to identify events. Colors do not affect goal evaluation."))
                 .font(.system(size: 12))
                 .foregroundStyle(theme.textSecondary)
             }
@@ -157,7 +157,7 @@ struct ColorOrganizerRoot: View {
               }
               .buttonStyle(.plain)
               .pointingHandCursor()
-              .accessibilityLabel("关闭事件与目标")
+              .accessibilityLabel("Close Events and Goals")
             }
           }
           .padding(24)
@@ -225,14 +225,14 @@ struct ColorOrganizerRoot: View {
     VStack(alignment: .leading, spacing: showTitles ? 20 : 16) {
       if showTitles {
         VStack(alignment: .leading, spacing: 6) {
-          Text(presentationStyle == .sheet ? "当前目标可多选" : "Part 1 of 2")
+          Text(presentationStyle == .sheet ? String(localized: "You can select multiple current goals") : String(localized: "Part 1 of 2"))
             .font(Font.system(size: 14).weight(.bold))
             .foregroundColor(
               theme.accent
             )
             .frame(maxWidth: .infinity, alignment: .leading)
 
-          Text("描述具体事件")
+          Text("Describe your events")
             .font(
               Font.system(size: 20, weight: .semibold)
             )
@@ -247,7 +247,7 @@ struct ColorOrganizerRoot: View {
           text:
             String(
               localized:
-                "写下你要做的事情和具体说明，例如修复登录问题或准备面试。"
+                "Write down what you want to do and add details, such as fixing a login issue or preparing for an interview."
             )
         )
         .frame(maxWidth: isCompact ? .infinity : 280, alignment: .leading)
@@ -257,14 +257,14 @@ struct ColorOrganizerRoot: View {
           text:
             String(
               localized:
-                "开启事件下方的“当前目标”开关，可同时选择多个。推进其中任意一个即为专注。"
+                "Turn on “Current goal” below each event. You can select multiple goals. Working on any of them counts as focused."
             )
         )
         .frame(maxWidth: isCompact ? .infinity : 280, alignment: .leading)
       }
 
       Text(
-        "中性或分心事件会提醒，专注时不提醒。全部关闭即可暂停目标评估。"
+        "You will receive reminders for neutral or distracting events, and none while focused. Turn off all goals to pause goal evaluation."
       )
       .font(Font.system(size: 12).weight(.medium))
       .foregroundColor(
@@ -293,7 +293,7 @@ struct ColorOrganizerRoot: View {
     VStack(alignment: .leading, spacing: 24) {
       if showTitles {
         VStack(alignment: .leading, spacing: 6) {
-          Text("辅助识别")
+          Text("Visual cues")
             .font(Font.system(size: 14).weight(.bold))
             .foregroundColor(
               theme.accent
@@ -339,10 +339,10 @@ struct ColorOrganizerRoot: View {
       VStack(alignment: .leading, spacing: 12) {
         Text(
           isDraggingColor
-            ? String(localized: "拖到事件上 →")
+            ? String(localized: "Drag onto an event →")
             : String(
               localized:
-                "拖动上方色盘调整配色，再将颜色拖到事件上。颜色仅用于辅助识别。"
+                "Drag the color wheel above to adjust the palette, then drag colors onto events. Colors are only used as visual cues."
             )
         )
         .font(Font.system(size: 13).weight(.medium))
@@ -377,7 +377,7 @@ struct ColorOrganizerRoot: View {
 
   private var addCategoryButton: some View {
     SettingsSecondaryButton(
-      title: "添加事件", systemImage: "plus", isDisabled: !canAddMoreCategories
+      title: String(localized: "Add event"), systemImage: "plus", isDisabled: !canAddMoreCategories
     ) {
       createNewCategory()
     }
@@ -437,7 +437,7 @@ struct ColorOrganizerRoot: View {
       .frame(maxWidth: isCompact ? .infinity : 708)
       .frame(height: containerHeight, alignment: .topLeading)
 
-      Text("颜色可选，之后也可以随时修改。")
+      Text("Colors are optional and can be changed at any time.")
         .font(Font.system(size: 12).weight(.medium))
         .foregroundColor(
           theme.textSecondary
@@ -464,11 +464,11 @@ struct ColorOrganizerRoot: View {
         }
 
         if presentationStyle == .sheet {
-          SettingsSecondaryButton(title: "调整颜色") {
+          SettingsSecondaryButton(title: String(localized: "Adjust colors")) {
             commitPendingEditsIfNeeded()
             withAnimation(.easeInOut(duration: 0.25)) { stage = .colors }
           }
-          SettingsPrimaryButton(title: completionButtonTitle ?? "完成") {
+          SettingsPrimaryButton(title: completionButtonTitle ?? String(localized: "Done")) {
             commitPendingEditsIfNeeded()
             categoryStore.persist()
             onDismiss?()
@@ -577,7 +577,7 @@ struct ColorOrganizerRoot: View {
   }
 
   private var emptyState: some View {
-    Text("添加一件要做的事情。")
+    Text("Add something you want to do.")
       .font(Font.system(size: 13).weight(.medium))
       .foregroundColor(
         theme.textSecondary
@@ -613,7 +613,7 @@ struct ColorOrganizerRoot: View {
 
       showFirstTimeHints = false
 
-      let baseName = "新事件"
+      let baseName = String(localized: "New event")
       var candidate = baseName
       var suffix = 2
       let existingNames = Set(categories.map { $0.name.lowercased() })

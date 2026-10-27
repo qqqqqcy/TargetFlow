@@ -18,7 +18,7 @@ struct SettingsView: View {
 
     var title: String {
       switch self {
-      case .storage: return "记录与提醒"
+      case .storage: return String(localized: "Recording & reminders")
       case .privacy: return String(localized: "Privacy")
       case .providers: return String(localized: "Providers")
       }
@@ -35,6 +35,8 @@ struct SettingsView: View {
 
   @AppStorage(DayflowAppearance.storageKey) private var appearance: DayflowAppearance = .system
   @State private var selectedTab: SettingsTab = .storage
+  @State private var appLanguage = AppLanguagePreferences.selection()
+  @State private var languageChanged = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   @Namespace private var sidebarSelectionNamespace
@@ -139,12 +141,33 @@ struct SettingsView: View {
         Text("Settings")
           .font(.system(size: 25, weight: .bold))
           .foregroundStyle(SettingsStyle.text)
-        Text("按你的节奏记录，掌控数据与提醒。")
+        Text("Record at your pace. Control your data and reminders.")
           .font(.system(size: 12))
           .foregroundStyle(SettingsStyle.secondary)
       }
 
       Spacer(minLength: 16)
+
+      VStack(alignment: .trailing, spacing: 4) {
+        Picker("App language", selection: $appLanguage) {
+          ForEach(AppLanguage.supportedChoices) { language in
+            Text(verbatim: language.title).tag(language)
+          }
+        }
+        .pickerStyle(.menu)
+        .fixedSize()
+        .accessibilityIdentifier("settings.appLanguage")
+        .onChange(of: appLanguage) { _, language in
+          AppLanguagePreferences.setSelection(language)
+          languageChanged = true
+        }
+
+        if languageChanged {
+          Text("Quit and reopen Target Flow to apply. / 退出并重新打开后生效。")
+            .font(.system(size: 10))
+            .foregroundStyle(SettingsStyle.secondary)
+        }
+      }
 
       Menu {
         Picker("Light/Dark mode", selection: $appearance) {
@@ -168,7 +191,7 @@ struct SettingsView: View {
       .menuIndicator(.hidden)
       .fixedSize()
       .accessibilityLabel("Light/Dark mode")
-      .help("跟随系统，或选择浅色与深色外观")
+      .help("Follow the system setting or pick light or dark.")
     }
   }
 

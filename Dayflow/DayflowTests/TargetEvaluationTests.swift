@@ -3,6 +3,17 @@ import XCTest
 @testable import Dayflow
 
 final class TargetEvaluationTests: XCTestCase {
+  @MainActor
+  func testEvaluationPromptUsesSelectedOutputLanguageAndStableJSONValues() {
+    let target = FocusTarget(id: UUID(), text: "Prepare for an interview", startedAt: .distantPast)
+    for language in ["English", "Simplified Chinese"] {
+      let prompt = TargetStore.prompt(target: target, card: Self.card(), outputLanguage: language)
+      XCTAssertTrue(prompt.contains("Write reason and reminder in \(language)."))
+      XCTAssertTrue(prompt.contains("\"alignment\":\"focused|neutral|severe\""))
+      XCTAssertFalse(prompt.contains("Chinese characters"))
+    }
+  }
+
   func testDecodeRequiresRemindersForBothOffTrackStates() throws {
     for alignment in ["neutral", "severe", "unknown"] {
       XCTAssertThrowsError(

@@ -81,8 +81,8 @@ struct TabFilterBar: View {
       .opacity(isMuted ? 0.55 : 1)
       .help(
         isMuted
-          ? "已弱化此事件的时间线卡片，再次点击恢复"
-          : "点击弱化此事件的时间线卡片"
+          ? String(localized: "Timeline cards for this event are dimmed. Click again to restore them.")
+          : String(localized: "Click to dim timeline cards for this event")
       )
       .animation(.easeOut(duration: 0.15), value: isMuted)
     }

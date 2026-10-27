@@ -8,8 +8,8 @@ enum TargetNotificationStyle: String, CaseIterable, Identifiable {
 
   var title: String {
     switch self {
-    case .notch: return "刘海通知"
-    case .notice: return "系统通知（Notice）"
+    case .notch: return String(localized: "Notch notifications")
+    case .notice: return String(localized: "System notifications (Notice)")
     }
   }
 }
@@ -30,14 +30,14 @@ enum TargetReminderSound: String, CaseIterable, Identifiable {
 
   var title: String {
     switch self {
-    case .gemCollect: return "宝石收集 · Gem Collect"
-    case .itemFound: return "发现物品 · Item Found"
-    case .secretChime: return "秘密发现 · Secret Chime"
-    case .ringChime: return "清脆铃声 · Ring Chime"
-    case .itemFanfare: return "获得道具 · Item Fanfare"
-    case .victoryFanfare: return "胜利号角 · Victory Fanfare"
-    case .startupChime: return "启程提示 · Startup Chime"
-    case .errorBuzz: return "错误警示 · Error Buzz"
+    case .gemCollect: return String(localized: "Gem Collect")
+    case .itemFound: return String(localized: "Item Found")
+    case .secretChime: return String(localized: "Secret Chime")
+    case .ringChime: return String(localized: "Ring Chime")
+    case .itemFanfare: return String(localized: "Item Fanfare")
+    case .victoryFanfare: return String(localized: "Victory Fanfare")
+    case .startupChime: return String(localized: "Startup Chime")
+    case .errorBuzz: return String(localized: "Error Buzz")
     }
   }
 }

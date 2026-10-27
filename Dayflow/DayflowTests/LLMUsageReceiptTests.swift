@@ -23,11 +23,11 @@ final class LLMUsageReceiptTests: XCTestCase {
     XCTAssertEqual(free.costUSD, 0)
     var summary = LLMUsageSummary()
     summary.include(unknown)
-    XCTAssertEqual(summary.costText, "累计费用未知")
+    XCTAssertEqual(summary.costText, String(localized: "Total cost unknown"))
     summary.include(free)
     XCTAssertEqual(summary.pricedCalls, 1)
     XCTAssertEqual(summary.unpricedCalls, 1)
-    XCTAssertTrue(summary.costText.contains("已知"))
+    XCTAssertTrue(summary.costText.contains(String(localized: "Total known cost")))
   }
 
   func testAmountsSumExactlyAndPersistAsDecimals() throws {
@@ -47,7 +47,7 @@ final class LLMUsageReceiptTests: XCTestCase {
   func testTinyPositiveCostsDoNotDisplayAsZero() {
     var summary = LLMUsageSummary()
     summary.include(receipt(#"{"total_cost_usd":0.00000001}"#))
-    XCTAssertEqual(summary.costText, "累计费用 < US$0.000001")
+    XCTAssertEqual(summary.costText, "\(String(localized: "Total cost")) < US$0.000001")
   }
 
   func testRejectsInvalidPricesAndTruncatedBodies() {

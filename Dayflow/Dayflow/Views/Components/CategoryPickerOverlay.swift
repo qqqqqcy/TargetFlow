@@ -106,19 +106,19 @@ struct CategoryPickerOverlay: View {
     var intro = AttributedString(
       String(
         localized:
-          "补充事件的具体内容和范围，帮助识别实际发生的事情。 "
+          "Add details and scope to help identify what actually happened. "
       )
     )
     intro.font = baseFont
     intro.foregroundColor = baseColor
 
-    var link = AttributedString("管理事件")
+    var link = AttributedString(String(localized: "Manage events"))
     link.font = baseFont
     link.foregroundColor = linkColor
     link.underlineStyle = .single
     link.link = linkURL
 
-    var period = AttributedString("。")
+    var period = AttributedString(String(localized: "."))
     period.font = baseFont
     period.foregroundColor = baseColor
 

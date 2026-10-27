@@ -86,7 +86,7 @@ final class TargetStore: ObservableObject {
       lastError = nil
       enqueue(cardIDs: try storage.targetCandidateCardIDs(since: target.startedAt))
     } catch {
-      lastError = "无法读取待评估卡片：\(error.localizedDescription)"
+      lastError = String(localized: "Could not load cards awaiting evaluation: \(error.localizedDescription)")
     }
   }
 
@@ -110,7 +110,7 @@ final class TargetStore: ObservableObject {
       assessments = Dictionary(
         uniqueKeysWithValues: try storage.fetchTargetAssessments().map { ($0.cardID, $0) })
     } catch {
-      lastError = "无法读取目标评估：\(error.localizedDescription)"
+      lastError = String(localized: "Could not load goal assessments: \(error.localizedDescription)")
     }
   }
 
@@ -153,7 +153,7 @@ final class TargetStore: ObservableObject {
         try await sendReminderIfNeeded(assessment)
       } catch {
         guard target?.id == snapshot.id else { continue }
-        lastError = "目标评估或提醒失败，可重试：\(error.localizedDescription)"
+        lastError = String(localized: "Goal evaluation or reminder failed. Try again: \(error.localizedDescription)")
       }
     }
   }
@@ -194,7 +194,8 @@ final class TargetStore: ObservableObject {
   }
 
   static func prompt(
-    target: FocusTarget, card: TimelineCardWithTimestamps, observations: [Observation] = []
+    target: FocusTarget, card: TimelineCardWithTimestamps, observations: [Observation] = [],
+    outputLanguage: String = LLMOutputLanguagePreferences.normalizedOverride ?? "English"
   ) -> String {
     let start = max(target.startedAt.timeIntervalSince1970, Double(card.startTs))
     let crossesTargetBoundary = Double(card.startTs) < target.startedAt.timeIntervalSince1970
@@ -237,14 +238,15 @@ final class TargetStore: ObservableObject {
       reasonable breaks or idle time not explicitly included in a goal.
       severe: the observed main event is unrelated to ALL enabled goals and persists
       through most of the evaluated interval (including intervals of only a few minutes).
-      This level is displayed to the user as 分心. Other productive work can also be off-track.
+      This level is displayed to the user as Distracted. Other productive work can also be off-track.
       Do not invent a hypothetical connection to a goal when evidence shows a different task.
       Choose neutral when the event itself is unclear. Do not shame the user or invent facts.
       Return ONLY a JSON object with exactly these fields:
-      {"alignment":"focused|neutral|severe","reason":"简短中文理由","reminder":"中文回归建议"}
-      reason: at most 120 Chinese characters, grounded in the concrete event; name the matched
+      {"alignment":"focused|neutral|severe","reason":"brief reason","reminder":"next step toward a goal"}
+      Write reason and reminder in \(outputLanguage). Keep JSON keys and alignment values in English.
+      reason: at most 240 characters, grounded in the concrete event; name the matched
       goal when focused. Do not use broad categories as the explanation.
-      reminder: for BOTH neutral and severe, at most 80 Chinese characters; suggest one concrete
+      reminder: for BOTH neutral and severe, at most 160 characters; suggest one concrete
       next step toward one enabled goal. For neutral, acknowledge uncertainty or the break
       without claiming the user was distracted. For focused return an empty string.
       Evidence:

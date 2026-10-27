@@ -135,12 +135,12 @@ struct SettingsStorageTabView: View {
 
   private var timelineGenerationSection: some View {
     SettingsSection(
-      title: "事件时间线",
-      subtitle: "间隔越短，更新越及时，AI 请求也越频繁。"
+      title: String(localized: "Event timeline"),
+      subtitle: String(localized: "Shorter intervals provide faster updates and more frequent AI requests.")
     ) {
       SettingsRow(
-        label: "卡片生成间隔",
-        subtitle: "每隔这段时间分析新记录；同一事件可能延长已有卡片，因此卡片时长不固定。",
+        label: String(localized: "Card generation interval"),
+        subtitle: String(localized: "New recordings are analyzed at this interval. The same event may extend an existing card, so card durations vary."),
         showsDivider: false
       ) {
         settingsMenu(

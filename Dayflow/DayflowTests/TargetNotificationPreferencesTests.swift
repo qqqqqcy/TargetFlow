@@ -48,7 +48,7 @@ final class TargetNotificationPreferencesTests: XCTestCase {
     let request = NotificationService.targetNoticeRequest(
       identifier: "goal.card", body: "继续当前目标")
     XCTAssertEqual(request.identifier, "target.deviation.goal.card")
-    XCTAssertEqual(request.content.title, "当前目标提醒")
+    XCTAssertEqual(request.content.title, String(localized: "Current goal reminder"))
     XCTAssertEqual(request.content.body, "继续当前目标")
     XCTAssertEqual(request.content.sound, .default)
     XCTAssertNil(request.trigger)

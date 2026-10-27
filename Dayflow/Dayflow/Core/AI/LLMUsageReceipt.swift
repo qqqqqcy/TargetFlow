@@ -102,9 +102,11 @@ struct LLMUsageSummary: Sendable {
 
   var costText: String {
     guard pricedCalls > 0 else {
-      return unpricedCalls > 0 ? "累计费用未知" : "累计费用 US$0.0000"
+      return unpricedCalls > 0
+        ? String(localized: "Total cost unknown") : String(localized: "Total cost US$0.0000")
     }
-    let label = "累计\(unpricedCalls > 0 ? "已知" : "")费用"
+    let label = unpricedCalls > 0
+      ? String(localized: "Total known cost") : String(localized: "Total cost")
     if costUSD > 0 && costUSD < Decimal(string: "0.000001")! {
       return "\(label) < US$0.000001"
     }
@@ -117,8 +119,8 @@ struct LLMUsageSummary: Sendable {
   }
 
   var detailText: String {
-    "应用内累计调用：已返回费用 \(pricedCalls) 次，未返回费用 \(unpricedCalls) 次。\n"
-      + "已记录输入 \(inputTokens) tokens，输出 \(outputTokens) tokens。\n"
-      + "仅累计接口明确返回的美元费用，包含重试；未返回用量或价格的调用不按零费用计算。订阅制 CLI 的用量不代表额外账单。"
+    String(localized: "Total app calls: \(pricedCalls) with cost, \(unpricedCalls) without cost.\n")
+      + String(localized: "Recorded input: \(inputTokens.description) tokens; output: \(outputTokens.description) tokens.\n")
+      + String(localized: "Only explicitly reported USD costs are counted, including retries. Calls without usage or pricing are not treated as free. Subscription CLI usage does not imply extra charges.")
   }
 }

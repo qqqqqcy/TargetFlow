@@ -1,6 +1,1536 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Events and Goals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件与目标"
+          }
+        }
+      }
+    },
+    "Add details and scope to help identify what actually happened. ": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "补充事件的具体内容和范围，帮助识别实际发生的事情。 "
+          }
+        }
+      }
+    },
+    "Manage events": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理事件"
+          }
+        }
+      }
+    },
+    "Current goal": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前目标"
+          }
+        }
+      }
+    },
+    "Set %@ as a current goal": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将%@设为当前目标"
+          }
+        }
+      }
+    },
+    "Event name": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件名称"
+          }
+        }
+      }
+    },
+    "Save event": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存事件"
+          }
+        }
+      }
+    },
+    "Describe what you want to work on, such as finishing the login page, with SwiftUI documentation allowed.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "描述要推进的具体事情，例如完成登录页，允许查阅 SwiftUI 文档。"
+          }
+        }
+      }
+    },
+    "Event description": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件说明"
+          }
+        }
+      }
+    },
+    "Add an event description to help identify what you are actually doing.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "补充事件说明，帮助识别实际在做的事情。"
+          }
+        }
+      }
+    },
+    "Edit event": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑事件"
+          }
+        }
+      }
+    },
+    "Delete event": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除事件"
+          }
+        }
+      }
+    },
+    "Unable to reopen Target Flow": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法重新打开 Target Flow"
+          }
+        }
+      }
+    },
+    "Please quit the app and reopen it from Finder.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请退出应用后，从访达重新打开。"
+          }
+        }
+      }
+    },
+    "Target Flow needs screen recording permission to generate your timeline.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Flow 需要屏幕录制权限来生成时间线。"
+          }
+        }
+      }
+    },
+    "Target Flow stores recordings on your device.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target Flow 将录制内容保存在本机。"
+          }
+        }
+      }
+    },
+    "With local AI, analysis can run on your device. If you choose a cloud provider, the data needed for analysis is sent to that provider.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用本地 AI 时，分析可在设备上进行；选择云端提供商时，分析所需的数据会发送到该提供商。"
+          }
+        }
+      }
+    },
+    "You can pause or quit Target Flow at any time.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你可以随时暂停或关闭 Target Flow。"
+          }
+        }
+      }
+    },
+    "Screen recording permission has not been detected yet. Enable it in System Settings. If it is already enabled, click “Quit and Reopen” to apply the permission.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未检测到录屏权限。请在系统设置中开启；如果开关已开启，点击‘退出并重新打开’让授权生效。"
+          }
+        }
+      }
+    },
+    "Screen & System Audio Recording": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屏幕与系统音频录制"
+          }
+        }
+      }
+    },
+    "System Settings → Privacy & Security → Screen & System Audio Recording": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统设置 → 隐私与安全性 → 屏幕与系统音频录制"
+          }
+        }
+      }
+    },
+    "Find Target Flow (or TargetFlow) in the list and turn on the switch on the right. Accessibility permission is not required here.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在列表中找到 Target Flow（或 TargetFlow），开启右侧开关。这里不需要辅助功能权限。"
+          }
+        }
+      }
+    },
+    "If it is missing, click + below the list and select the current app:": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果没有找到，点击列表下方的 +，选择当前应用："
+          }
+        }
+      }
+    },
+    "Show Target Flow in Finder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在访达中显示 Target Flow"
+          }
+        }
+      }
+    },
+    "Return to this window after granting permission. If the system asks you to restart, quit and reopen the app.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授权后返回此窗口；若系统要求重新启动，请退出后重新打开应用。"
+          }
+        }
+      }
+    },
+    "Unable to start the restart helper: %@. Please quit the app and reopen it from Finder.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法启动重启助手：%@。请退出应用后，从访达重新打开。"
+          }
+        }
+      }
+    },
+    "Event colors": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件颜色"
+          }
+        }
+      }
+    },
+    "Manage events and choose the goals you want to work on now.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理具体事件，选择你现在想推进的目标。"
+          }
+        }
+      }
+    },
+    "Use colors to identify events. Colors do not affect goal evaluation.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用颜色辅助识别事件，不影响目标评估。"
+          }
+        }
+      }
+    },
+    "Close Events and Goals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭事件与目标"
+          }
+        }
+      }
+    },
+    "You can select multiple current goals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前目标可多选"
+          }
+        }
+      }
+    },
+    "Describe your events": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "描述具体事件"
+          }
+        }
+      }
+    },
+    "Write down what you want to do and add details, such as fixing a login issue or preparing for an interview.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写下你要做的事情和具体说明，例如修复登录问题或准备面试。"
+          }
+        }
+      }
+    },
+    "Turn on “Current goal” below each event. You can select multiple goals. Working on any of them counts as focused.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启事件下方的“当前目标”开关，可同时选择多个。推进其中任意一个即为专注。"
+          }
+        }
+      }
+    },
+    "You will receive reminders for neutral or distracting events, and none while focused. Turn off all goals to pause goal evaluation.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中性或分心事件会提醒，专注时不提醒。全部关闭即可暂停目标评估。"
+          }
+        }
+      }
+    },
+    "Visual cues": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "辅助识别"
+          }
+        }
+      }
+    },
+    "Drag onto an event →": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖到事件上 →"
+          }
+        }
+      }
+    },
+    "Drag the color wheel above to adjust the palette, then drag colors onto events. Colors are only used as visual cues.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动上方色盘调整配色，再将颜色拖到事件上。颜色仅用于辅助识别。"
+          }
+        }
+      }
+    },
+    "Add event": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加事件"
+          }
+        }
+      }
+    },
+    "Colors are optional and can be changed at any time.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "颜色可选，之后也可以随时修改。"
+          }
+        }
+      }
+    },
+    "Adjust colors": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "调整颜色"
+          }
+        }
+      }
+    },
+    "Add something you want to do.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加一件要做的事情。"
+          }
+        }
+      }
+    },
+    "New event": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新事件"
+          }
+        }
+      }
+    },
+    ", ": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "、"
+          }
+        }
+      }
+    },
+    "AI did not return a valid goal assessment. Please try again later.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 未返回有效的目标评估，请稍后重试。"
+          }
+        }
+      }
+    },
+    "API usage & cost": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接口用量与费用"
+          }
+        }
+      }
+    },
+    "Allow notifications, banners, and sounds in macOS. Focus mode may silence or hide notifications.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在 macOS 中允许通知、横幅和声音；专注模式可能静音或隐藏通知。"
+          }
+        }
+      }
+    },
+    "Applies after each new event assessment. The same recording will not trigger repeated reminders.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次新事件评估后生效，同一段记录不重复提醒。"
+          }
+        }
+      }
+    },
+    "Assessing new events": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在评估新事件"
+          }
+        }
+      }
+    },
+    "Authorized": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已授权"
+          }
+        }
+      }
+    },
+    "Banners or alerts": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横幅或提醒"
+          }
+        }
+      }
+    },
+    "Card generation interval": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片生成间隔"
+          }
+        }
+      }
+    },
+    "Cards update automatically at the generation interval in Settings, with additional time for AI processing. Choose 5, 10, or 15 minutes in Settings → Recording & Reminders.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片会按设置中的生成间隔自动更新，AI 处理还需要一些时间。可在“设置 → 记录与提醒”选择 5、10 或 15 分钟。"
+          }
+        }
+      }
+    },
+    "Choose sound": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择声音"
+          }
+        }
+      }
+    },
+    "Click an event to dim its cards.\nDrag events to reorder them.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击事件可弱化对应卡片。\n拖动事件可调整排列顺序。"
+          }
+        }
+      }
+    },
+    "Click to dim timeline cards for this event": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点击弱化此事件的时间线卡片"
+          }
+        }
+      }
+    },
+    "Close event details": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭事件详情"
+          }
+        }
+      }
+    },
+    "Collapses automatically after 12 seconds. Hover to keep it expanded; it collapses 5 seconds after the pointer leaves.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开 12 秒后自动收回，鼠标悬停时保持展开；移开后 5 秒收回。"
+          }
+        }
+      }
+    },
+    "Current goal reminder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前目标提醒"
+          }
+        }
+      }
+    },
+    "Current goals: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前目标：%@"
+          }
+        }
+      }
+    },
+    "Denied": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已拒绝"
+          }
+        }
+      }
+    },
+    "Detailed record": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详细记录"
+          }
+        }
+      }
+    },
+    "Deviation reminders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偏离提醒"
+          }
+        }
+      }
+    },
+    "Disabled": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已关闭"
+          }
+        }
+      }
+    },
+    "Edit event label": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "调整事件标签"
+          }
+        }
+      }
+    },
+    "Enable an event’s goal switch to assess focus in new recordings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开启事件的目标开关，即可评估新记录的专注状态。"
+          }
+        }
+      }
+    },
+    "Enable current goals in Events & Goals on the timeline. Neutral and distracted events trigger reminders; progress toward any current goal does not.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在时间线的“事件与目标”中开启当前目标。中性和分心事件会提醒，推进任意当前目标则不提醒。"
+          }
+        }
+      }
+    },
+    "Enabled": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已开启"
+          }
+        }
+      }
+    },
+    "Error Buzz": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "错误警示 · Error Buzz"
+          }
+        }
+      }
+    },
+    "Event details": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件详情"
+          }
+        }
+      }
+    },
+    "Event filters": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件筛选"
+          }
+        }
+      }
+    },
+    "Event label, used only to help organize activities": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件标签，仅用于辅助归纳"
+          }
+        }
+      }
+    },
+    "Event summary": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件摘要"
+          }
+        }
+      }
+    },
+    "Event timeline": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件时间线"
+          }
+        }
+      }
+    },
+    "Events & Goals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "事件与目标"
+          }
+        }
+      }
+    },
+    "Expand & collapse": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开与收回"
+          }
+        }
+      }
+    },
+    "Expands from the notch at the top of the screen. System notification permission is not required.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在屏幕顶部刘海处展开，不需要系统通知权限。"
+          }
+        }
+      }
+    },
+    "Game sounds": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游戏提示音"
+          }
+        }
+      }
+    },
+    "Gem Collect": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宝石收集 · Gem Collect"
+          }
+        }
+      }
+    },
+    "Goal assessment: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标评估：%@"
+          }
+        }
+      }
+    },
+    "Goal reminders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标提醒"
+          }
+        }
+      }
+    },
+    "Goals at assessment: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评估时的目标：%@"
+          }
+        }
+      }
+    },
+    "Hover to keep expanded": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "悬停保持展开"
+          }
+        }
+      }
+    },
+    "Item Fanfare": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获得道具 · Item Fanfare"
+          }
+        }
+      }
+    },
+    "Item Found": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现物品 · Item Found"
+          }
+        }
+      }
+    },
+    "Loading…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读取中…"
+          }
+        }
+      }
+    },
+    "Making progress toward any enabled goal counts as focused.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "推进任意一个已开启的目标，即为专注。"
+          }
+        }
+      }
+    },
+    "Manage events and use the switches to choose any number of current goals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理事件，并通过开关选择任意多个当前目标"
+          }
+        }
+      }
+    },
+    "New recordings are analyzed at this interval. The same event may extend an existing card, so card durations vary.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每隔这段时间分析新记录；同一事件可能延长已有卡片，因此卡片时长不固定。"
+          }
+        }
+      }
+    },
+    "No current goals enabled": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未开启当前目标"
+          }
+        }
+      }
+    },
+    "No screen is available to show the reminder. Please try again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到可显示提醒的屏幕，请重试。"
+          }
+        }
+      }
+    },
+    "Not authorized yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未授权"
+          }
+        }
+      }
+    },
+    "Not supported": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不支持"
+          }
+        }
+      }
+    },
+    "Notch notifications": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刘海通知"
+          }
+        }
+      }
+    },
+    "Notification authorization": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知授权"
+          }
+        }
+      }
+    },
+    "Notification permission": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知权限"
+          }
+        }
+      }
+    },
+    "Permission has not been granted. Allow Target Flow notifications in system notification settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未获得权限，请在系统通知设置中允许 Target Flow 通知。"
+          }
+        }
+      }
+    },
+    "Play reminder sound": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "播放提示音"
+          }
+        }
+      }
+    },
+    "Play the selected sound without showing a reminder.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只播放选中的声音，不显示提醒。"
+          }
+        }
+      }
+    },
+    "Please open System Settings → Notifications → Target Flow manually.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请手动打开“系统设置 → 通知 → Target Flow”。"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试听"
+          }
+        }
+      }
+    },
+    "Preview notch notification": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览刘海通知"
+          }
+        }
+      }
+    },
+    "Preview sound": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试听声音"
+          }
+        }
+      }
+    },
+    "Previewing: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在试听：%@"
+          }
+        }
+      }
+    },
+    "Provisional authorization (quiet notifications)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "临时授权（静默通知）"
+          }
+        }
+      }
+    },
+    "Recording paused": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "录制已暂停"
+          }
+        }
+      }
+    },
+    "Recording screen": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在记录屏幕"
+          }
+        }
+      }
+    },
+    "Reminder style": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提醒样式"
+          }
+        }
+      }
+    },
+    "Reminders expand from the camera notch at the top of the screen, or from the top center on displays without a notch. System notification permission is not required.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提醒从顶部摄像头的刘海区域展开；无刘海的显示器在顶部中央显示。无需系统通知权限。"
+          }
+        }
+      }
+    },
+    "Request permission": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求权限"
+          }
+        }
+      }
+    },
+    "Retry assessment": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试评估"
+          }
+        }
+      }
+    },
+    "Return to your current goal": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回到当前目标"
+          }
+        }
+      }
+    },
+    "Ring Chime": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清脆铃声 · Ring Chime"
+          }
+        }
+      }
+    },
+    "Secret Chime": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "秘密发现 · Secret Chime"
+          }
+        }
+      }
+    },
+    "See where your time goes and focus on your current goals.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "看见时间的去向，专注当下的目标。"
+          }
+        }
+      }
+    },
+    "Send system notification": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发送系统通知"
+          }
+        }
+      }
+    },
+    "Shorter intervals provide faster updates and more frequent AI requests.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "间隔越短，更新越及时，AI 请求也越频繁。"
+          }
+        }
+      }
+    },
+    "Sound": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "声音"
+          }
+        }
+      }
+    },
+    "Startup Chime": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启程提示 · Startup Chime"
+          }
+        }
+      }
+    },
+    "System Settings": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统设置"
+          }
+        }
+      }
+    },
+    "System notifications (Notice)": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统通知（Notice）"
+          }
+        }
+      }
+    },
+    "System notifications are allowed. You can send a test reminder.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已允许系统通知，可以发送测试提醒。"
+          }
+        }
+      }
+    },
+    "Test immediately using the current style and sound, even when deviation reminders are off.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用当前样式和声音立即测试，不受偏离提醒开关限制。"
+          }
+        }
+      }
+    },
+    "Test reminder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试提醒"
+          }
+        }
+      }
+    },
+    "Test reminder failed: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试提醒失败：%@"
+          }
+        }
+      }
+    },
+    "The notch notification is expanded. Hover to view it or click “View Events & Goals”.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刘海通知已展开，可悬停查看或点击“查看事件与目标”。"
+          }
+        }
+      }
+    },
+    "The system notification was submitted. If it does not appear or play a sound, check notification settings, Focus mode, and system volume.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "系统通知已提交。若未显示或没有声音，请检查通知设置、专注模式和系统音量。"
+          }
+        }
+      }
+    },
+    "This is a test goal notification. Choose a current goal and take one small, concrete step. Click to open Events & Goals.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是一条目标测试通知。先选一个当前目标，从一个具体的小步骤继续。点击可打开事件与目标。"
+          }
+        }
+      }
+    },
+    "This is a test notch reminder. Choose a current goal and take one small, concrete step. Hover to keep it expanded, or click below to view Events & Goals.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是一条刘海测试提醒。先选一个当前目标，从一个具体的小步骤继续。悬停可保持展开，点击下方按钮查看事件与目标。"
+          }
+        }
+      }
+    },
+    "Timeline cards for this event are dimmed. Click again to restore them.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已弱化此事件的时间线卡片，再次点击恢复"
+          }
+        }
+      }
+    },
+    "Total cost is currently unavailable": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂时无法读取累计费用"
+          }
+        }
+      }
+    },
+    "Total cost —": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计费用 —"
+          }
+        }
+      }
+    },
+    "Track your time, focus on your goals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录时间，专注目标"
+          }
+        }
+      }
+    },
+    "Unable to play the selected sound. Please try again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法播放所选音效，请重试。"
+          }
+        }
+      }
+    },
+    "Unable to send: request notification permission first, or allow notifications in system notification settings.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法发送：请先请求通知权限，或在系统通知设置中允许通知。"
+          }
+        }
+      }
+    },
+    "Unknown status": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知状态"
+          }
+        }
+      }
+    },
+    "Used only for notch notifications. Volume follows the system output volume.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅用于刘海通知，音量跟随系统输出音量。"
+          }
+        }
+      }
+    },
+    "Uses macOS notification banners and the default system sound. Notification permissions and Focus mode apply.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 macOS 通知横幅和系统默认提示音，受通知权限与专注模式影响。"
+          }
+        }
+      }
+    },
+    "Victory Fanfare": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "胜利号角 · Victory Fanfare"
+          }
+        }
+      }
+    },
+    "View Events & Goals": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看事件与目标"
+          }
+        }
+      }
+    },
+    "Recording & reminders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录与提醒"
+          }
+        }
+      }
+    },
+    "Record at your pace. Control your data and reminders.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按你的节奏记录，掌控数据与提醒。"
+          }
+        }
+      }
+    },
+    "Could not load cards awaiting evaluation: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取待评估卡片：%@"
+          }
+        }
+      }
+    },
+    "Could not load goal assessments: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取目标评估：%@"
+          }
+        }
+      }
+    },
+    "Goal evaluation or reminder failed. Try again: %@": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标评估或提醒失败，可重试：%@"
+          }
+        }
+      }
+    },
+    "Total cost unknown": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计费用未知"
+          }
+        }
+      }
+    },
+    "Total cost US$0.0000": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计费用 US$0.0000"
+          }
+        }
+      }
+    },
+    "Total known cost": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计已知费用"
+          }
+        }
+      }
+    },
+    "Total cost": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计费用"
+          }
+        }
+      }
+    },
+    "Total app calls: %lld with cost, %lld without cost.\n": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用内累计调用：已返回费用 %lld 次，未返回费用 %lld 次。\n"
+          }
+        }
+      }
+    },
+    "Recorded input: %@ tokens; output: %@ tokens.\n": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已记录输入 %@ tokens，输出 %@ tokens。\n"
+          }
+        }
+      }
+    },
+    "Only explicitly reported USD costs are counted, including retries. Calls without usage or pricing are not treated as free. Subscription CLI usage does not imply extra charges.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅累计接口明确返回的美元费用，包含重试；未返回用量或价格的调用不按零费用计算。订阅制 CLI 的用量不代表额外账单。"
+          }
+        }
+      }
+    },
+    "Quit and reopen Target Flow to apply. / 退出并重新打开后生效。": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit and reopen Target Flow to apply. / 退出并重新打开后生效。"
+          }
+        }
+      }
+    },
     "%lld min %lld sec remaining" : {
       "localizations" : {
         "zh-Hans" : {

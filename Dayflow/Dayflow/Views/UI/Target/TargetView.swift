@@ -23,18 +23,18 @@ struct CurrentGoalsStatusView: View {
         VStack(alignment: .leading, spacing: 5) {
           Text(
             categoryStore.currentTargets.isEmpty
-              ? "未开启当前目标"
-              : "当前目标：" + categoryStore.currentTargets.map(\.name).joined(separator: "、")
+              ? String(localized: "No current goals enabled")
+              : String(localized: "Current goals: \(categoryStore.currentTargets.map(\.name).joined(separator: String(localized: ", ")))")
           )
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(theme.textPrimary)
           .lineLimit(2)
-          .help(categoryStore.currentTargets.map(\.name).joined(separator: "、"))
+          .help(categoryStore.currentTargets.map(\.name).joined(separator: String(localized: ", ")))
 
           Text(
             categoryStore.currentTargets.isEmpty
-              ? "开启事件的目标开关，即可评估新记录的专注状态。"
-              : "推进任意一个已开启的目标，即为专注。"
+              ? String(localized: "Enable an event’s goal switch to assess focus in new recordings.")
+              : String(localized: "Making progress toward any enabled goal counts as focused.")
           )
           .font(.system(size: 11))
           .foregroundStyle(theme.textSecondary)
@@ -43,10 +43,10 @@ struct CurrentGoalsStatusView: View {
         Spacer(minLength: 8)
         if store.isEvaluating {
           ProgressView().controlSize(.small)
-            .help("正在评估新事件")
+            .help(String(localized: "Assessing new events"))
         }
         Button(action: onManageEvents) {
-          Label("事件与目标", systemImage: "slider.horizontal.3")
+          Label(String(localized: "Events & Goals"), systemImage: "slider.horizontal.3")
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(theme.primaryButtonText)
             .padding(.horizontal, DayflowLayout.buttonHorizontalInset)
@@ -58,14 +58,14 @@ struct CurrentGoalsStatusView: View {
         }
         .buttonStyle(.plain)
         .pointingHandCursor()
-        .accessibilityHint("管理事件，并通过开关选择任意多个当前目标")
+        .accessibilityHint(String(localized: "Manage events and use the switches to choose any number of current goals"))
         .fixedSize()
       }
       if let error = store.lastError {
         HStack(alignment: .top, spacing: 10) {
           Label(error, systemImage: "exclamationmark.circle")
             .foregroundStyle(SettingsStyle.destructive)
-          DayflowButton(title: "重试评估", action: { store.retryPendingEvaluations() }, isSubtle: true)
+          DayflowButton(title: String(localized: "Retry assessment"), action: { store.retryPendingEvaluations() }, isSubtle: true)
             .fixedSize()
         }
         .font(.system(size: 12))
@@ -92,7 +92,7 @@ struct TargetAssessmentView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 9) {
-      Label("目标评估：" + assessment.alignment.title, systemImage: assessment.alignment.symbol)
+      Label(String(localized: "Goal assessment: \(assessment.alignment.title)"), systemImage: assessment.alignment.symbol)
         .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(statusColor)
       Text(assessment.reason)
@@ -106,7 +106,7 @@ struct TargetAssessmentView: View {
           .lineSpacing(3)
       }
       if showsTarget {
-        Text("评估时的目标：\(assessment.targetText)")
+        Text(String(localized: "Goals at assessment: \(assessment.targetText)"))
           .font(.system(size: 11))
           .foregroundStyle(theme.textTertiary)
       }

@@ -1,161 +1,167 @@
 # Target Flow
 
-**偏离时，提醒你回到当前目标。**
+English | [简体中文](README.zh-CN.md)
 
-本来打算准备面试，回过神来却已经浏览了很久的资讯。Target Flow 是一款 macOS 目标提醒应用：记住你此刻想推进的事情，结合屏幕活动判断实际发生了什么，在偏离时提醒你，并给出一个回到目标的具体步骤。
+**A reminder to return to your current goal when you drift away.**
 
-**选定当前目标 → 自动识别事件 → 发现偏离 → 提醒你回来。**
+You meant to prepare for an interview, but suddenly realize you have spent a long time browsing the news. Target Flow is a macOS goal reminder app: it remembers what you want to work on right now, uses screen activity to understand what actually happened, and reminds you when you drift away, with a concrete step to get back to your goal.
 
-当前版本：**0.0.1**（构建号 1）。
+**Choose your current goal → Automatically identify events → Detect a detour → Remind you to return.**
 
-## 偏离时，提醒你回来
+Current version: **0.0.1** (build 1).
 
-当新事件被判断为中性或分心时，Target Flow 会发出偏离提醒。比如准备面试时持续浏览无关资讯，提醒可以建议：**「回到项目经历，先写下一个性能优化案例的背景、行动和结果。」** 让你能从一个明确的小步骤重新开始。
+## A reminder when you drift away
 
-![实际展开的刘海提醒：回到当前目标、提醒正文，以及查看事件与目标的入口](docs/images/target-flow-distraction-reminder.png)
+When a new event is assessed as neutral or distracted, Target Flow sends a reminder. For example, if you keep browsing unrelated news while preparing for an interview, it might suggest: **“Return to your project experience. Start by writing down the context, actions, and results of one performance optimization example.”** This gives you a clear, small step to start again.
 
-*上图是当前应用实际弹出的刘海提醒窗口，正文为设置中的测试提醒；自动提醒的正文来自对应事件的回归建议。*
+![An expanded notch reminder showing a prompt to return to the current goal, the reminder text, and a link to Events & Goals](docs/images/target-flow-distraction-reminder.png)
 
-推进任意当前目标时不会提醒。短暂休息或证据不足时，建议会承认这种不确定性，不直接把你判为分心。提醒显示后可以悬停阅读，或点击 **「查看事件与目标」** 确认接下来想推进的事情。
+*The image above shows an actual notch reminder window from the current app. Its text is the test reminder from Settings; automatic reminders use the return-to-goal suggestion for the corresponding event.*
 
-提醒随新事件分析触发，默认分析间隔为 5 分钟，并非逐秒判断。同一段记录不重复提醒。提醒样式、声音及触发范围见[提醒设置与行为](#提醒设置与行为)。
+No reminder is sent while you are making progress on any current goal. For a short break or insufficient evidence, the suggestion acknowledges that uncertainty instead of immediately labeling you distracted. Once a reminder appears, hover over it to read it, or click **“View Events & Goals”** to confirm what you want to work on next.
 
-> 本页产品图来自当前应用的实际界面，使用独立的虚构示例数据。GIF 是真实操作截图组成的步骤演示；事件及评估文字用于说明功能，不代表真实用户记录或一次现场 AI 分析结果。
+Reminders are triggered by new event analysis, which runs every 5 minutes by default, rather than making second-by-second judgments. The same recorded segment does not trigger repeated reminders. See [Reminder settings and behavior](#reminder-settings-and-behavior) for styles, sounds, and trigger conditions.
 
-## 让提醒围绕你此刻的目标
+> The product images on this page show the current app's actual interface using separate, fictional example data. GIFs demonstrate steps using screenshots of real interactions. Event and assessment text illustrates the features; it does not represent real user records or the result of a live AI analysis.
 
-### 1. 写下此刻想推进的事情
+## Keep reminders centered on your current goals
 
-在时间线顶部打开 **「事件与目标」**，添加或编辑事件名称与说明，再开启它的「当前目标」开关。
+### 1. Write down what you want to work on now
 
-名称描述具体事情，说明补充范围和预期成果。例如：
+Open **“Events & Goals”** at the top of the timeline, add or edit an event's name and description, then turn on its “Current Goal” switch.
 
-| 事件名称 | 说明示例 |
+Use the name to describe a specific task, and the description to clarify its scope and expected outcome. For example:
+
+| Event name | Example description |
 | --- | --- |
-| 准备前端面试 | 修改简历、复习 React、练习面试题，为下一轮面试做准备。 |
-| 修复登录问题 | 排查登录失败原因，修改代码并验证登录流程。 |
-| 撰写项目方案 | 整理需求、比较实现方案，完成可供评审的方案文档。 |
+| Prepare for a frontend interview | Update my résumé, review React, and practice interview questions to prepare for the next interview round. |
+| Fix the login issue | Investigate why login fails, update the code, and verify the login flow. |
+| Write a project proposal | Organize requirements, compare implementation approaches, and complete a proposal ready for review. |
 
-可以同时开启多个当前目标。**推进其中任意一个，就符合当前方向**，无需同时推进所有目标。
+You can enable several current goals at once. **Making progress on any one of them counts as staying on track**; you do not need to work on all of them simultaneously.
 
-![在事件与目标中开启多个当前目标，再返回时间线的操作演示](docs/images/target-flow-current-goals.gif)
+![A demonstration of enabling several current goals in Events & Goals and returning to the timeline](docs/images/target-flow-current-goals.gif)
 
-目标可以随时调整。全部关闭后，应用继续记录时间线，但停止目标评估和偏离提醒。开启、关闭或修改目标名称与说明后，评估以变更后的记录为准；颜色和排序调整不会重新开始目标评估。
+You can adjust your goals at any time. Turning them all off keeps timeline recording running but stops goal assessments and reminders. After you enable, disable, or change a goal's name or description, assessments use records captured after that change. Changes to colors or ordering do not restart goal assessment.
 
-### 2. 自动记录发生了什么
+### 2. Automatically record what happened
 
-开始录制后，Target Flow 定期截取屏幕画面，通过你配置的提供商分析活动，生成带有时间范围、标题和摘要的事件卡片，为目标评估和偏离提醒提供依据。
+Once recording starts, Target Flow periodically captures screenshots and uses your configured provider to analyze activity. It creates event cards with time ranges, titles, and summaries that serve as the basis for goal assessments and reminders.
 
-![Target Flow 当前目标与自动事件时间线](docs/images/target-flow-timeline.png)
+![Target Flow's current goals and automatic event timeline](docs/images/target-flow-timeline.png)
 
-事件围绕具体事情组织：修复一个问题可能跨越编辑器、浏览器和终端，切换应用不一定意味着新事件。你可以在日／周时间线中查看记录、回放、复核、复制或删除卡片。
+Events are organized around specific tasks: fixing a problem may involve an editor, a browser, and a terminal, so switching apps does not necessarily mean a new event. In the day or week timeline, you can view records, play back recordings, review, copy, or delete cards.
 
-**卡片生成间隔默认 5 分钟**，可在「设置 → 记录与提醒」中改为 10 或 15 分钟。它控制启动新一轮分析的频率；连续发生的同一事件仍可能合并为一张更长的卡片。目标评估随新事件分析进行，并非逐秒判断。
+**The default card generation interval is 5 minutes.** You can change it to 10 or 15 minutes in “Settings → Recording & Reminders.” This controls how often a new round of analysis starts; a continuing event may still be merged into a single, longer card. Goal assessment runs with new event analysis, rather than making second-by-second judgments.
 
-### 3. 看见事件与目标的关系
+### 3. See how events relate to your goals
 
-开启当前目标后，新事件会接受目标评估，并展示判断理由及必要的回归建议。
+With current goals enabled, new events are assessed against them, with an explanation and a suggestion for returning to your goals when needed.
 
-![事件详情中的分心判断、具体理由与返回当前目标的下一步建议](docs/images/target-flow-assessment.png)
+![Event details showing a distracted assessment, specific reasoning, and a suggested next step to return to the current goal](docs/images/target-flow-assessment.png)
 
-| 专注状态 | 判断依据 | 是否提醒 |
+| Focus status | Assessment basis | Reminder behavior |
 | --- | --- | --- |
-| **专注** | 推进至少一个当前目标，包括必要的研究、准备或支持工作。 | 不提醒 |
-| **中性** | 证据不足、关联不明确、短暂切换或合理休息。 | 提供回归建议，不把不确定或休息直接说成分心 |
-| **分心** | 有证据表明，在评估时段的大部分时间里持续进行与所有当前目标无关的事情。 | 建议一个返回目标的具体步骤 |
+| **Focused** | Advances at least one current goal, including necessary research, preparation, or supporting work. | No reminder |
+| **Neutral** | Insufficient evidence, an unclear connection, a brief switch, or a reasonable break. | Offers a suggestion for returning, without treating uncertainty or a break as distraction |
+| **Distracted** | Evidence shows sustained activity unrelated to all current goals for most of the assessed period. | Suggests a concrete step to return to a goal |
 
-专注状态取决于事件与**当前目标**的关系。即使是在处理另一件有价值的工作，也可能偏离此刻选定的方向。事件标签用于归纳和筛选，不直接决定评估结果。自动判断可能存在误差，可结合卡片中的理由和实际记录查看。
+Focus status depends on how an event relates to your **current goals**. Even other valuable work may take you away from the direction you selected for now. Event tags help summarize and filter records; they do not directly determine assessments. Automatic judgments can be wrong, so review the reasoning on the card alongside the actual records.
 
-## 提醒设置与行为
+## Reminder settings and behavior
 
-在 **「设置 → 记录与提醒 → 目标提醒」** 中可以测试提醒效果或关闭偏离提醒。关闭提醒后仍可查看目标评估。
+In **“Settings → Recording & Reminders → Goal Reminders,”** you can test reminders or turn them off. Goal assessments remain available when reminders are disabled.
 
-- **刘海通知（默认）**：从鼠标所在屏幕的顶部展开；没有刘海的屏幕显示在顶部中央。不需要系统通知权限，不抢键盘焦点。支持 8 种游戏音效、试听和静音，默认「宝石收集」。
-- **系统通知（Notice）**：使用 macOS 通知横幅和默认提示音，受系统通知权限、声音设置和专注模式影响。
+- **Notch notification (default):** Expands from the top of the screen containing the pointer. On screens without a notch, it appears at the top center. It needs no system notification permission and does not take keyboard focus. It offers 8 game sound effects, previews, and mute; the default is “Gem Collect.”
+- **System notification (Notice):** Uses macOS notification banners and the default alert sound, subject to system notification permissions, sound settings, and Focus modes.
 
-两种提醒都可以打开「事件与目标」，便于调整当前方向。刘海通知在 12 秒后收回；悬停可保持展开，移开后 5 秒收回，也可以手动收起。
+Both reminder styles can open “Events & Goals” so you can adjust your current direction. A notch notification collapses after 12 seconds. Hovering keeps it expanded; after the pointer leaves, it collapses after 5 seconds. You can also collapse it manually.
 
-提醒在新事件评估后触发，没有额外冷却间隔；同一段记录不重复提醒，只提示最近 30 分钟内结束的事件。切换提醒样式或关闭提醒会清理现有目标提示。
+Reminders are triggered after a new event assessment, with no additional cooldown. The same recorded segment does not trigger repeated reminders, and only events that ended within the last 30 minutes are eligible. Switching reminder styles or disabling reminders clears existing goal reminders.
 
-音效来源见[通知音效说明](docs/notification-sounds.md)。
+For sound sources, see [Notification sound notes](docs/notification-sounds.md).
 
-## 首次使用
+## Getting started
 
-1. 启动应用，配置自己的 API、本地模型或 CLI 提供商。
-2. 按引导授予屏幕录制权限，开始录制。
-3. 在时间线的「事件与目标」中写下具体事情，开启一个或多个当前目标。
-4. 等待事件卡片生成，查看专注状态，并在设置中测试喜欢的提醒方式。
+1. Launch the app and configure your own API, local model, or CLI provider.
+2. Follow the setup guide to grant screen recording permission and start recording.
+3. In the timeline's “Events & Goals,” describe specific tasks and enable one or more current goals.
+4. Wait for event cards to appear, review their focus status, and test your preferred reminder style in Settings.
 
-菜单栏提供录制、暂停、打开窗口和「Quit Completely」等操作。关闭窗口或普通退出可能让应用继续留在菜单栏；需要彻底结束进程时使用「Quit Completely」。
+The menu bar offers recording, pause, open-window, and “Quit Completely” actions. Closing the window or quitting normally may leave the app running in the menu bar. Use “Quit Completely” when you need to end the process fully.
 
-## 记录、隐私与费用
+### Interface language
 
-录屏和数据库保存在本机。**使用云端提供商时，分析所需的活动数据会发送到该提供商**；本地存储不代表分析过程完全离线。选择提供商时，请结合其数据处理方式和你的使用场景。
+Use the language menu in the **Settings header** to choose **English** or **简体中文**. Changes require a full restart: quit the app completely and reopen it to apply the new interface language. You can use “Quit Completely” in the menu bar to fully exit.
 
-- 在「设置 → 隐私」中选择不参与屏幕录制的应用。
-- 在「设置 → 记录与提醒」中调整截屏频率、查看录制与回放空间用量、设置存储上限和清理数据。
-- 在「设置 → 提供商」中配置主／备用提供商。
-- 时间线左下角显示应用内累计接口费用，点击可查看已记录的输入／输出 token 和费用覆盖情况。金额不限本周，重试也计入；提供商未返回价格时显示费用未知，不将未知金额算作零。订阅制 CLI 的 token 用量不代表额外账单。
+## Recording, privacy, and costs
 
-## 安装与本地构建
+Screen recordings and the database are stored locally. **When you use a cloud provider, the activity data needed for analysis is sent to that provider.** Local storage does not mean analysis is fully offline. Consider the provider's data handling practices and your own use case when choosing one.
 
-目前通过源码构建运行，尚未配置发布渠道。需要完整 Xcode，仅安装 Command Line Tools 无法构建此 macOS 应用。应用部署目标为 macOS 14，测试目标为 macOS 15.1。
+- In “Settings → Privacy,” choose apps to exclude from screen recording.
+- In “Settings → Recording & Reminders,” adjust screenshot frequency, view recording and playback storage usage, set storage limits, and clean up data.
+- In “Settings → Providers,” configure primary and backup providers.
+- The bottom-left corner of the timeline shows cumulative API costs recorded by the app. Click to view recorded input/output tokens and cost coverage. The amount is not limited to the current week, and retries count too. If a provider does not return pricing, the cost is shown as unknown; unknown amounts are not counted as zero. Token usage from a subscription-based CLI does not imply an additional bill.
 
-### 使用 Xcode
+## Installation and local builds
+
+The app currently runs from source builds; no release channel has been configured yet. Full Xcode is required: Command Line Tools alone cannot build this macOS app. The app deployment target is macOS 14, and the test target requires macOS 15.1.
+
+### Using Xcode
 
 ```bash
 open Dayflow/Dayflow.xcodeproj
 ```
 
-选择 `Dayflow` scheme，在 Signing & Capabilities 中设置自己的签名团队，然后运行。项目和 Swift 模块仍名为 `Dayflow`，构建产物为 `TargetFlow.app`。
+Select the `Dayflow` scheme, set your own signing team in Signing & Capabilities, and run. The project and Swift module are still named `Dayflow`; the built app is `TargetFlow.app`.
 
-### 构建并安装到「应用程序」
+### Build and install in Applications
 
-先查看可用的代码签名证书：
+First, list the available code signing certificates:
 
 ```bash
 security find-identity -v -p codesigning
 ```
 
-将选定证书的 SHA-1 保存到 `scripts/local-signing-identity`（单行，该文件已被 Git 忽略），然后运行：
+Save the chosen certificate's SHA-1 to `scripts/local-signing-identity` (a single line; this file is ignored by Git), then run:
 
 ```bash
 bash scripts/run-local.sh
 ```
 
-也可以通过环境变量指定签名身份，它优先于本地配置文件：
+You can also specify a signing identity through an environment variable, which takes precedence over the local configuration file:
 
 ```bash
 TARGETFLOW_SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" \
   bash scripts/run-local.sh
 ```
 
-脚本会构建、验证签名，关闭当前用户正在运行的 Target Flow，等待退出后安装到 `/Applications/TargetFlow.app` 并重新打开。如果应用在 30 秒内没有退出，安装停止并保留原应用。
+The script builds the app, verifies its signature, closes Target Flow processes running under the current user, waits for them to exit, installs to `/Applications/TargetFlow.app`, and reopens it. If the app does not exit within 30 seconds, installation stops and the original app is preserved.
 
-只构建和验证，不安装或关闭应用：
+To build and verify only, without installing or closing the app:
 
 ```bash
 bash scripts/run-local.sh --build-only
 ```
 
-日常运行请保持签名证书、应用标识和安装路径一致，避免重编译后录屏授权失效。没有配置证书时脚本会停止。临时验证可显式使用 `TARGETFLOW_SIGNING_IDENTITY=-`，但临时签名的身份随程序内容变化，不适合需要持续保留录屏授权的日常安装。不要使用 `CODE_SIGNING_ALLOWED=NO` 构建日常运行版本。
+For everyday use, keep the signing certificate, app identifier, and installation path consistent to avoid losing screen recording authorization after rebuilding. The script stops if no certificate is configured. For temporary verification, you can explicitly use `TARGETFLOW_SIGNING_IDENTITY=-`, but an ad hoc signature's identity changes with the app's contents, making it unsuitable for everyday installations that need to retain screen recording authorization. Do not use `CODE_SIGNING_ALLOWED=NO` to build an app for everyday use.
 
-### 屏幕录制权限
+### Screen recording permission
 
-首次启动点击「打开系统设置」，在「隐私与安全性 → 录屏与系统录音」（部分 macOS 版本称「屏幕与系统音频录制」）中开启 TargetFlow。如果列表中没有应用，点击 `+` 添加 `/Applications/TargetFlow.app`。屏幕录制不需要辅助功能权限。
+On first launch, click “Open System Settings” and enable TargetFlow under “Privacy & Security → Screen & System Audio Recording” (the label varies by macOS version). If the app is missing from the list, click `+` and add `/Applications/TargetFlow.app`. Screen recording does not require Accessibility permission.
 
-返回应用后会自动重新检查权限。开关已开启但权限仍未生效时，点击「退出并重新打开」。只有系统权限检查成功，才能继续引导。
+The app automatically checks permission again when you return. If the switch is enabled but permission has not taken effect, click “Quit and Reopen.” Setup can continue only after the system permission check succeeds.
 
-如果曾运行未签名的版本或更换签名身份，系统可能保留旧身份的授权。此时先完全退出应用，再重置本应用的录屏授权，重新打开并授权：
+If you previously ran an unsigned build or changed signing identities, macOS may retain permission for the old identity. In that case, fully quit the app, reset its screen recording permission, then reopen it and grant permission again:
 
 ```bash
 tccutil reset ScreenCapture local.targetflow.app
 open /Applications/TargetFlow.app
 ```
 
-这仅用于处理旧签名授权，不是每次启动的必要步骤。构建脚本不会创建证书、修改钥匙串信任或自动重置权限。
+This is only for resolving permissions tied to an old signature; it is not required at every launch. The build script does not create certificates, change Keychain trust, or automatically reset permissions.
 
-### 单元测试
+### Unit tests
 
 ```bash
 xcodebuild -project Dayflow/Dayflow.xcodeproj \
@@ -163,25 +169,25 @@ xcodebuild -project Dayflow/Dayflow.xcodeproj \
   -only-testing:DayflowTests CODE_SIGNING_ALLOWED=NO test
 ```
 
-## 项目来源与边界
+## Project origins and scope
 
-Target Flow 基于 [Dayflow](https://github.com/JerryZLiu/dayflow) 的上游提交 `730d6f84`（v2.7.5），保留其 Git 历史和 MIT 许可证，功能聚焦于**当前目标、自动时间线和偏离提醒**。
+Target Flow is based on upstream [Dayflow](https://github.com/JerryZLiu/dayflow) commit `730d6f84` (v2.7.5), retaining its Git history and MIT license, with a focus on **current goals, an automatic timeline, and reminders when you drift away**.
 
-日报、独立周报、聊天、Flow、Agents、账户／订阅、推荐计划、MCP／CLI 接入设置、导出设置及其他设置不作为应用功能提供。原版更新检查、功能推广和遥测不启动，构建时不捆绑 Dayflow CLI。部分上游源码与数据库表仍保留以维护共享依赖，没有对应的应用入口或启动任务。
+Daily reports, standalone weekly reports, chat, Flow, Agents, accounts/subscriptions, referrals, MCP/CLI integration settings, export settings, and other settings are not offered as app features. The original update checks, feature promotions, and telemetry do not start, and the Dayflow CLI is not bundled during builds. Some upstream source code and database tables remain to maintain shared dependencies, without corresponding app entry points or startup tasks.
 
-Target Flow 可与 Dayflow 并存，使用独立的应用身份和数据位置：
+Target Flow can coexist with Dayflow, using its own app identity and data locations:
 
-| 项目 | 值 |
+| Item | Value |
 | --- | --- |
-| 应用标识 | `local.targetflow.app` |
-| 数据目录 | `~/Library/Application Support/TargetFlow/` |
-| API 密钥服务前缀 | `local.targetflow.apikeys` |
-| URL scheme | `targetflow://`（录制开始／停止） |
+| App identifier | `local.targetflow.app` |
+| Data directory | `~/Library/Application Support/TargetFlow/` |
+| API key service prefix | `local.targetflow.apikeys` |
+| URL scheme | `targetflow://` (start/stop recording) |
 
-不会自动导入已安装 Dayflow 的录屏、数据库、偏好或密钥，需要单独配置提供商并授权屏幕录制。
+Recordings, databases, preferences, and keys from an installed copy of Dayflow are not imported automatically. Providers and screen recording permission must be configured separately.
 
-品牌素材与重新生成方式见[应用图标与品牌素材](docs/images/README.md)。
+For brand assets and regeneration instructions, see [App icons and brand assets](docs/images/README.md).
 
-## 许可证
+## License
 
-继承上游 [MIT License](LICENSE)，保留原作者版权声明。
+Inherits the upstream [MIT License](LICENSE), retaining the original author's copyright notice.

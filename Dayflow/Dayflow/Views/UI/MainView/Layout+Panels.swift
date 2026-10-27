@@ -58,11 +58,11 @@ extension MainView {
 
       VStack(alignment: .leading, spacing: 8) {
         Label(
-          appState.isRecording ? "正在记录屏幕" : "录制已暂停",
+          appState.isRecording ? String(localized: "Recording screen") : String(localized: "Recording paused"),
           systemImage: appState.isRecording ? "record.circle" : "pause.circle"
         )
         .font(.system(size: 11, weight: .semibold))
-        Text("记录时间，专注目标")
+        Text(String(localized: "Track your time, focus on your goals"))
           .font(.system(size: 10))
           .foregroundStyle(.white.opacity(0.78))
       }
@@ -127,10 +127,10 @@ extension MainView {
     return VStack(alignment: .leading, spacing: DayflowLayout.sectionSpacing) {
       HStack(alignment: .center) {
         VStack(alignment: .leading, spacing: 6) {
-          Text("时间线")
+          Text(String(localized: "Timeline"))
             .font(.system(size: 25, weight: .bold))
             .foregroundStyle(theme.textPrimary)
-          Text("看见时间的去向，专注当下的目标。")
+          Text(String(localized: "See where your time goes and focus on your current goals."))
             .font(.system(size: 12))
             .foregroundStyle(theme.textSecondary)
         }
@@ -177,11 +177,11 @@ extension MainView {
           isEmbedded: true
         )
         Rectangle().fill(theme.separator).frame(height: 1)
-        Text("事件筛选")
+        Text(String(localized: "Event filters"))
           .font(.system(size: 12, weight: .semibold))
           .foregroundStyle(theme.textPrimary)
         categoryFilters(isVertical: true)
-        Text("点击事件可弱化对应卡片。\n拖动事件可调整排列顺序。")
+        Text(String(localized: "Click an event to dim its cards.\nDrag events to reorder them."))
           .font(.system(size: 10))
           .foregroundStyle(theme.textMuted)
           .lineSpacing(4)
@@ -423,7 +423,7 @@ extension MainView {
   {
     VStack(spacing: 0) {
       HStack {
-        Text("事件详情").font(.system(size: 12, weight: .semibold))
+        Text(String(localized: "Event details")).font(.system(size: 12, weight: .semibold))
         Spacer()
         Button {
           clearTimelineSelection()
@@ -436,7 +436,7 @@ extension MainView {
             )
         }
         .buttonStyle(.plain)
-        .help("关闭事件详情")
+        .help(String(localized: "Close event details"))
         .pointingHandCursor()
       }
       .foregroundStyle(theme.textSecondary)

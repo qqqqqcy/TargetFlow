@@ -220,7 +220,7 @@ private struct NotchNotificationView: View {
       if controller.isExpanded {
         VStack(alignment: .leading, spacing: 12) {
           HStack {
-            Text("回到当前目标")
+            Text(String(localized: "Return to your current goal"))
               .font(.system(size: 16, weight: .semibold))
             Spacer()
             Text("Target Flow")
@@ -236,13 +236,13 @@ private struct NotchNotificationView: View {
             .accessibilityLabel(controller.body)
           HStack {
             Button(action: controller.openEvents) {
-              Label("查看事件与目标", systemImage: "arrow.up.right")
+              Label(String(localized: "View Events & Goals"), systemImage: "arrow.up.right")
             }
             .buttonStyle(.plain)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(accent)
             Spacer()
-            Button("收起", action: controller.dismiss)
+            Button(String(localized: "Collapse"), action: controller.dismiss)
               .buttonStyle(.plain)
               .font(.system(size: 12))
               .foregroundStyle(.white.opacity(0.6))
@@ -264,7 +264,7 @@ private struct NotchNotificationView: View {
     .contentShape(Rectangle())
     .onHover(perform: controller.hover)
     .accessibilityElement(children: .contain)
-    .accessibilityLabel("当前目标提醒")
+    .accessibilityLabel(String(localized: "Current goal reminder"))
     .preferredColorScheme(.dark)
   }
 }

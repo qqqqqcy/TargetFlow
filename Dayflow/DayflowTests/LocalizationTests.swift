@@ -7,10 +7,34 @@ final class LocalizationTests: XCTestCase {
     let suiteName = "Dayflow.LocalizationTests.\(UUID().uuidString)"
     let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
-    AppLanguagePreferences.setSelection(.japanese, in: defaults)
-    XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), ["ja"])
+    for language in [AppLanguage.simplifiedChinese, .english] {
+      AppLanguagePreferences.setSelection(language, in: defaults)
+      XCTAssertEqual(
+        defaults.persistentDomain(forName: suiteName)?["AppleLanguages"] as? [String],
+        [language.rawValue])
+      XCTAssertEqual(
+        AppLanguagePreferences.selection(in: defaults, domainName: suiteName), language)
+    }
     AppLanguagePreferences.setSelection(.system, in: defaults)
     XCTAssertNil(defaults.persistentDomain(forName: suiteName)?["AppleLanguages"])
+    XCTAssertEqual(AppLanguagePreferences.selection(in: defaults, domainName: suiteName), .system)
+  }
+
+  func testInitialLanguageChoicesAreChineseEnglishAndSystem() {
+    XCTAssertEqual(AppLanguage.supportedChoices, [.system, .simplifiedChinese, .english])
+  }
+
+  func testTargetInterfaceStringsAreBundledInChineseAndEnglish() throws {
+    let chinese = try languageBundle("zh-Hans")
+    let english = try languageBundle("en")
+    for (key, translation) in [
+      "Events & Goals": "事件与目标",
+      "Recording & reminders": "记录与提醒",
+      "Return to your current goal": "回到当前目标",
+    ] {
+      XCTAssertEqual(chinese.localizedString(forKey: key, value: nil, table: "Localizable"), translation)
+      XCTAssertEqual(english.localizedString(forKey: key, value: nil, table: "Localizable"), key)
+    }
   }
 
   func testRegionalLanguagePreferencesResolveToSupportedTranslations() {

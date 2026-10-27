@@ -32,9 +32,9 @@ enum TargetAlignment: String, Codable, CaseIterable {
 
   var title: String {
     switch self {
-    case .focused: return "专注"
-    case .neutral: return "中性"
-    case .severe: return "分心"
+    case .focused: return String(localized: "Focused")
+    case .neutral: return String(localized: "Neutral")
+    case .severe: return String(localized: "Distracted")
     }
   }
 
@@ -84,7 +84,7 @@ struct TargetEvaluationResponse: Decodable {
 enum TargetEvaluationError: LocalizedError {
   case invalidResponse
 
-  var errorDescription: String? { "AI 未返回有效的目标评估，请稍后重试。" }
+  var errorDescription: String? { String(localized: "AI did not return a valid goal assessment. Please try again later.") }
 }
 
 enum TargetEvaluationPolicy {
