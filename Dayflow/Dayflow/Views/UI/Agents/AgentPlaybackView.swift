@@ -394,7 +394,7 @@ final class AgentPlaybackHost: NSObject, ObservableObject, WKNavigationDelegate,
   private func exited(attempt id: UUID, status: Int32, reason: String) {
     guard id == attempt else { return }
     fail(
-      String(localized: "AgentPlayback stopped (\(reason) \(status)).\n\n\(output.suffix(2000))"),
+      String(localized: "AgentPlayback stopped (\(reason) \(status)).\n\n\(String(output.suffix(2000)))"),
       category: status == 127 && version == nil ? .missingRuntime : .processExit,
       diagnostics: ["termination_status": Int(status), "termination_reason": reason])
   }

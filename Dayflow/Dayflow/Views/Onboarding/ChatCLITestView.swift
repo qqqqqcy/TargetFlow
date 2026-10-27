@@ -196,7 +196,7 @@ struct ChatCLITestView: View {
                     )
                 }
               } else {
-                resultMessage = String(localized: "CLI error: \(stderrTrimmed.prefix(150))")
+                resultMessage = String(localized: "CLI error: \(String(stderrTrimmed.prefix(150)))")
               }
               captureChatCLITestFailed(
                 for: tool,
