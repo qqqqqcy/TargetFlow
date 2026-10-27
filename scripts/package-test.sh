@@ -36,5 +36,5 @@ cp "$repo_dir/docs/test-release-install.txt" "$stage_dir/READ ME FIRST.txt"
 hdiutil create -volname "Target Flow $version Test" -srcfolder "$stage_dir" \
   -format UDZO -ov "$dmg_path"
 hdiutil verify "$dmg_path"
-shasum -a 256 "$dmg_path" > "$dmg_path.sha256"
+(cd "$output_dir" && shasum -a 256 "$(basename "$dmg_path")") > "$dmg_path.sha256"
 printf '\nTest package: %s\nAd-hoc signed; not notarized. Architecture: %s\n' "$dmg_path" "$architecture"
