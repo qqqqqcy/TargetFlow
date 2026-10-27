@@ -105,7 +105,23 @@ Screen recordings and the database are stored locally. **When you use a cloud pr
 
 ## Installation and local builds
 
-The app currently runs from source builds; no release channel has been configured yet. Full Xcode is required: Command Line Tools alone cannot build this macOS app. The app deployment target is macOS 14, and the test target requires macOS 15.1.
+### Download a test build
+
+Download a DMG from [GitHub Releases](https://github.com/qqqqqcy/TargetFlow/releases). Choose `arm64` for Apple silicon (M-series) or `x86_64` for Intel Macs. Requires macOS 14 or later. Open the DMG and drag `TargetFlow.app` into Applications.
+
+Test builds are ad-hoc signed and have not been notarized by Apple. If macOS blocks the first launch, attempt to open the app, then go to **System Settings → Privacy & Security → Open Anyway** and confirm. Only approve a download you trust. Updating a test build may require granting Screen Recording permission again. See the [installation instructions](docs/test-release-install.txt).
+
+### Build your own test DMG
+
+```bash
+bash scripts/package-test.sh
+# Cross-build for Intel:
+TARGETFLOW_TEST_ARCH=x86_64 bash scripts/package-test.sh
+```
+
+The script creates an ad-hoc signed DMG and SHA-256 checksum in `dist/`. It does not publish a release or install the app. Move an existing package aside before rebuilding the same version and architecture.
+
+Source builds require full Xcode: Command Line Tools alone cannot build this macOS app. The app deployment target is macOS 14, and the test target requires macOS 15.1.
 
 ### Using Xcode
 

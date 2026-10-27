@@ -105,7 +105,23 @@
 
 ## 安装与本地构建
 
-目前通过源码构建运行，尚未配置发布渠道。需要完整 Xcode，仅安装 Command Line Tools 无法构建此 macOS 应用。应用部署目标为 macOS 14，测试目标为 macOS 15.1。
+### 下载测试版
+
+在 [GitHub Releases](https://github.com/qqqqqcy/TargetFlow/releases) 下载 DMG：Apple 芯片（M 系列）选择 `arm64`，Intel Mac 选择 `x86_64`。要求 macOS 14 或更高版本。打开 DMG，将 `TargetFlow.app` 拖入「应用程序」。
+
+测试包使用临时签名，未经 Apple 公证。如果 macOS 阻止首次启动，请先尝试打开应用，再前往 **「系统设置 → 隐私与安全性 → 仍要打开」** 并确认。仅对你信任的下载执行此操作。更新测试版后，可能需要重新授予屏幕录制权限。详见[安装说明](docs/test-release-install.txt)。
+
+### 自行打包测试 DMG
+
+```bash
+bash scripts/package-test.sh
+# 交叉构建 Intel 版本：
+TARGETFLOW_TEST_ARCH=x86_64 bash scripts/package-test.sh
+```
+
+脚本在 `dist/` 中生成临时签名 DMG 和 SHA-256 校验文件，不会发布 Release 或安装应用。重新打包相同版本和架构前，请先移走已有安装包。
+
+源码构建需要完整 Xcode，仅安装 Command Line Tools 无法构建此 macOS 应用。应用部署目标为 macOS 14，测试目标为 macOS 15.1。
 
 ### 使用 Xcode
 

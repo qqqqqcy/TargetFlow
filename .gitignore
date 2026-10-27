@@ -8,6 +8,7 @@ LLMEvalScript.swift
 Dayflow/eval/
 evals/
 build/
+dist/
 build_tmp/
 build_universal/
 .claude/
