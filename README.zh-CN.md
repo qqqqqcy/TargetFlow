@@ -211,7 +211,7 @@ xcodebuild -project Dayflow/Dayflow.xcodeproj \
 
 Target Flow 基于 [Dayflow](https://github.com/JerryZLiu/dayflow) 的上游提交 `730d6f84`（v2.7.5），保留其 Git 历史和 MIT 许可证，功能聚焦于**当前目标、自动时间线和偏离提醒**。
 
-日报、独立周报、聊天、Flow、Agents、账户／订阅、推荐计划、MCP／CLI 接入设置、导出设置及其他设置不作为应用功能提供。原版更新检查、功能推广和遥测不启动，构建时不捆绑 Dayflow CLI。部分上游源码与数据库表仍保留以维护共享依赖，没有对应的应用入口或启动任务。
+卡片审阅与手动评分、日报、独立周报、聊天、Flow、Agents、账户／订阅、推荐计划、MCP／CLI 接入设置、导出设置及其他设置不作为应用功能提供。原版更新检查、功能推广和遥测不启动，构建时不捆绑 Dayflow CLI。部分上游源码与数据库表仍保留以维护共享依赖，没有对应的应用入口或启动任务。
 
 Target Flow 可与 Dayflow 并存，使用独立的应用身份和数据位置：
 

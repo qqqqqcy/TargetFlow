@@ -68,10 +68,10 @@ struct TargetNotificationSettingsView: View {
         ) {
           SettingsRow(
             label: String(localized: "Expand & collapse"),
-            subtitle: String(localized: "Collapses automatically after 12 seconds. Hover to keep it expanded; it collapses 5 seconds after the pointer leaves."),
+            subtitle: String(localized: "Stays expanded until you click Collapse or View Events & Goals."),
             showsDivider: false
           ) {
-            Text(String(localized: "Hover to keep expanded"))
+            Text(String(localized: "Dismiss manually"))
               .font(.system(size: 12))
               .foregroundColor(SettingsStyle.secondary)
           }
@@ -198,7 +198,7 @@ struct TargetNotificationSettingsView: View {
         let sent = try await NotificationService.shared.sendTargetTestNotification()
         feedbackIsError = !sent
         if style == .notch {
-          feedback = sent ? String(localized: "The notch notification is expanded. Hover to view it or click “View Events & Goals”.") : String(localized: "No screen is available to show the reminder. Please try again.")
+          feedback = sent ? String(localized: "The notch notification will stay expanded until you click “Collapse” or “View Events & Goals”.") : String(localized: "No screen is available to show the reminder. Please try again.")
         } else {
           feedback = sent
             ? String(localized: "The system notification was submitted. If it does not appear or play a sound, check notification settings, Focus mode, and system volume.")

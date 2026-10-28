@@ -211,7 +211,7 @@ xcodebuild -project Dayflow/Dayflow.xcodeproj \
 
 Target Flow is based on upstream [Dayflow](https://github.com/JerryZLiu/dayflow) commit `730d6f84` (v2.7.5), retaining its Git history and MIT license, with a focus on **current goals, an automatic timeline, and reminders when you drift away**.
 
-Daily reports, standalone weekly reports, chat, Flow, Agents, accounts/subscriptions, referrals, MCP/CLI integration settings, export settings, and other settings are not offered as app features. The original update checks, feature promotions, and telemetry do not start, and the Dayflow CLI is not bundled during builds. Some upstream source code and database tables remain to maintain shared dependencies, without corresponding app entry points or startup tasks.
+Card review and manual ratings, daily reports, standalone weekly reports, chat, Flow, Agents, accounts/subscriptions, referrals, MCP/CLI integration settings, export settings, and other settings are not offered as app features. The original update checks, feature promotions, and telemetry do not start, and the Dayflow CLI is not bundled during builds. Some upstream source code and database tables remain to maintain shared dependencies, without corresponding app entry points or startup tasks.
 
 Target Flow can coexist with Dayflow, using its own app identity and data locations:
 

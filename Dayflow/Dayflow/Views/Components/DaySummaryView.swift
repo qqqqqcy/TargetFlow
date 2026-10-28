@@ -31,12 +31,9 @@ struct DaySummaryView: View {
   let selectedDate: Date
   let categories: [TimelineCategory]
   let storageManager: StorageManaging
-  let cardsToReviewCount: Int
-  let reviewRefreshToken: Int
   let recordingControlMode: RecordingControlMode
   var goalPromptDay: String? = nil
   var onGoalPromptHandled: ((String) -> Void)? = nil
-  var onReviewTap: (() -> Void)? = nil
   var onShowGoalFlow: ((DayGoalFlowPresentation) -> Void)? = nil
 
   @State private var timelineCards: [TimelineCard] = []
@@ -61,12 +58,9 @@ struct DaySummaryView: View {
   @State private var cachedTotalCapturedTime: TimeInterval = 0
   @State private var cachedFocusBlocks: [FocusBlock] = []
   @State private var cachedTotalDistractedTime: TimeInterval = 0
-  @State private var reviewSummary = TimelineReviewSummarySnapshot.placeholder
   @State private var dataLoadTask: Task<Void, Never>?
-  @State private var reviewLoadTask: Task<Void, Never>?
   @State private var categoryStatsTask: Task<Void, Never>?
   @State private var dataLoadToken: DaySummaryLoadToken?
-  @State private var reviewLoadToken: DaySummaryLoadToken?
   @State private var categoryStatsToken: DaySummaryLoadToken?
 
   private let showDistractionPattern = false
@@ -153,10 +147,6 @@ struct DaySummaryView: View {
 
           sectionDivider
 
-          reviewSection
-
-          sectionDivider
-
           focusSection
 
           sectionDivider
@@ -191,9 +181,6 @@ struct DaySummaryView: View {
     .onChange(of: goalPromptDay) {
       handleGoalPromptIfReady()
     }
-    .onChange(of: reviewRefreshToken) {
-      loadReviewSummary()
-    }
     .onReceive(NotificationCenter.default.publisher(for: .timelineDataUpdated)) { notification in
       if let dayString = notification.userInfo?["dayString"] as? String {
         guard dayString == timelineDayInfo.dayString else { return }
@@ -218,11 +205,8 @@ struct DaySummaryView: View {
 
   private func loadData() {
     dataLoadTask?.cancel()
-    reviewLoadTask?.cancel()
     categoryStatsTask?.cancel()
-    reviewLoadTask = nil
     categoryStatsTask = nil
-    reviewLoadToken = nil
     categoryStatsToken = nil
 
     isLoading = true
@@ -247,15 +231,6 @@ struct DaySummaryView: View {
         storageManager: storageManager,
         categories: currentCategories
       )
-      let summary = DaySummaryStats.makeReviewSummary(
-        segments: storageManager.fetchReviewRatingSegments(
-          overlapping: Int(dayInfo.startOfDay.timeIntervalSince1970),
-          endTs: Int(dayInfo.endOfDay.timeIntervalSince1970)
-        ),
-        dayStartTs: Int(dayInfo.startOfDay.timeIntervalSince1970),
-        dayEndTs: Int(dayInfo.endOfDay.timeIntervalSince1970)
-      )
-
       // Pre-compute all card durations (expensive parsing done once here, off main thread)
       let precomputed = DaySummaryStats.precomputeCardDurations(cards)
 
@@ -289,12 +264,9 @@ struct DaySummaryView: View {
         guard loadToken.matches(latest: self.dataLoadToken) else { return }
 
         // A targeted refresh may have started while this full load was running. The full load
-        // owns the complete snapshot, so it also owns the overlapping review and stats fields.
-        self.reviewLoadTask?.cancel()
+        // owns the complete snapshot, so it also owns the overlapping stats fields.
         self.categoryStatsTask?.cancel()
-        self.reviewLoadTask = nil
         self.categoryStatsTask = nil
-        self.reviewLoadToken = nil
         self.categoryStatsToken = nil
 
         self.timelineCards = cards
@@ -308,7 +280,6 @@ struct DaySummaryView: View {
         self.cachedTotalDistractedTime = totalDistracted
         self.isLoading = false
         self.hasCompletedInitialLoad = true
-        self.reviewSummary = summary
         self.explicitYesterdayGoalPlan = explicitYesterdayPlan
         self.yesterdayGoalReview = yesterdayReview
         self.goalSetupReferenceStats = setupReferenceStats
@@ -318,43 +289,12 @@ struct DaySummaryView: View {
     }
   }
 
-  private func loadReviewSummary() {
-    reviewLoadTask?.cancel()
-
-    let dayInfo = timelineDayInfo
-    let loadToken = DaySummaryLoadToken(dayString: dayInfo.dayString)
-    reviewLoadToken = loadToken
-    let storageManager = storageManager
-    reviewLoadTask = Task.detached(priority: .userInitiated) {
-      let summary = DaySummaryStats.makeReviewSummary(
-        segments: storageManager.fetchReviewRatingSegments(
-          overlapping: Int(dayInfo.startOfDay.timeIntervalSince1970),
-          endTs: Int(dayInfo.endOfDay.timeIntervalSince1970)
-        ),
-        dayStartTs: Int(dayInfo.startOfDay.timeIntervalSince1970),
-        dayEndTs: Int(dayInfo.endOfDay.timeIntervalSince1970)
-      )
-
-      guard !Task.isCancelled else { return }
-
-      await MainActor.run {
-        guard loadToken.matches(latest: self.reviewLoadToken) else { return }
-
-        self.reviewSummary = summary
-        self.reviewLoadTask = nil
-      }
-    }
-  }
-
   private func cancelLoadTasks() {
     dataLoadTask?.cancel()
-    reviewLoadTask?.cancel()
     categoryStatsTask?.cancel()
     dataLoadTask = nil
-    reviewLoadTask = nil
     categoryStatsTask = nil
     dataLoadToken = nil
-    reviewLoadToken = nil
     categoryStatsToken = nil
   }
 
@@ -497,14 +437,6 @@ struct DaySummaryView: View {
         .foregroundColor(theme.textSecondary)
     }
     .padding(.vertical, 20)
-  }
-
-  private var reviewSection: some View {
-    TimelineReviewSummaryCard(
-      summary: reviewSummary,
-      cardsToReviewCount: cardsToReviewCount,
-      onReviewTap: onReviewTap
-    )
   }
 
   // MARK: - Focus Section
@@ -951,10 +883,7 @@ struct DaySummaryView: View {
     selectedDate: Date(),
     categories: sampleCategories,
     storageManager: StorageManager.shared,
-    cardsToReviewCount: 3,
-    reviewRefreshToken: 0,
-    recordingControlMode: .active,
-    onReviewTap: {}
+    recordingControlMode: .active
   )
   .frame(width: 358, height: 700)
   .background(Color(red: 0.98, green: 0.97, blue: 0.96))

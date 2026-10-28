@@ -161,14 +161,14 @@ final class AgentClientRegistrationTests: XCTestCase {
   }
 
   func testConnectSurfacesCodexFailureDetails() {
+    let detail = "permission denied"
     let registration = makeRegistration { arguments in
       if arguments == ["mcp", "get", "dayflow", "--json"] {
         return self.missingResult
       }
-      return .init(stdout: "", stderr: "permission denied", exitCode: 1)
+      return .init(stdout: "", stderr: detail, exitCode: 1)
     }
 
-    let detail = "permission denied"
     XCTAssertEqual(
       registration.connect(),
       .failed(String(localized: "Codex couldn't connect to Target Flow: \(detail)"))

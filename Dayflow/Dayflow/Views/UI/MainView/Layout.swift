@@ -67,7 +67,6 @@ extension MainView {
         handleSelectedDateChange(newDate)
       }
       .onChange(of: refreshActivitiesTrigger) {
-        updateCardsToReviewCount()
         loadWeeklyTrackedMinutes()
       }
       .onChange(of: selectedActivity?.id) {
@@ -172,14 +171,11 @@ extension MainView {
     showScreenRecordingNoticeIfNeeded()
     startDayChangeTimer()
     loadWeeklyTrackedMinutes()
-    updateCardsToReviewCount()
   }
 
   private func performMainLayoutOnDisappear() {
     // Safety: stop timer if view disappears
     stopDayChangeTimer()
-    reviewCountTask?.cancel()
-    reviewCountTask = nil
     copyTimelineTask?.cancel()
     deleteTimelineTask?.cancel()
   }
@@ -209,10 +205,7 @@ extension MainView {
         AnalyticsService.shared.capture(
           "timeline_viewed", ["date_bucket": dayString(selectedDate)])
       }
-      updateCardsToReviewCount()
       loadWeeklyTrackedMinutes()
-    } else {
-      showTimelineReview = false
     }
   }
 
@@ -247,7 +240,6 @@ extension MainView {
     )
 
     cachedTimelineWeekRange = newWeekRange
-    updateCardsToReviewCount(trigger: "selectedDateChange")
     if weekRangeChanged {
       loadWeeklyTrackedMinutes(trigger: "selectedDateChange")
     }
@@ -279,7 +271,6 @@ extension MainView {
       )
       guard refreshedDay == selectedTimelineDay else { return }
     }
-    updateCardsToReviewCount()
     loadWeeklyTrackedMinutes()
   }
 
@@ -383,20 +374,6 @@ extension MainView {
         expansionState: videoExpansionState,
         namespace: videoHeroNamespace
       )
-
-      if selectedIcon == .timeline, showTimelineReview {
-        TimelineReviewOverlay(
-          isPresented: $showTimelineReview,
-          selectedDate: selectedDate
-        ) {
-          updateCardsToReviewCount()
-          reviewSummaryRefreshToken &+= 1
-        }
-        .environmentObject(categoryStore)
-        .transition(.opacity)
-        .zIndex(2)
-      }
-
     }
   }
 

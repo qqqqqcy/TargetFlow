@@ -520,15 +520,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
                   assessment_json TEXT NOT NULL
               );
 
-              -- Timeline review ratings: stores time-based review segments
-              CREATE TABLE IF NOT EXISTS timeline_review_ratings (
-                  id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  start_ts INTEGER NOT NULL,
-                  end_ts INTEGER NOT NULL,
-                  rating TEXT NOT NULL
-              );
-              CREATE INDEX IF NOT EXISTS idx_review_ratings_time ON timeline_review_ratings(start_ts, end_ts);
-              
               -- Observations: stores LLM transcription outputs
               CREATE TABLE IF NOT EXISTS observations (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,

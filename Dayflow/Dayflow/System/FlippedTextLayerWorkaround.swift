@@ -22,8 +22,8 @@ import QuartzCore
 /// Background: https://oskargroth.com/blog/debugging-strange-calayers-chatgpt
 ///
 /// Only SwiftUI's own drawing layers are redrawn. Calling `setNeedsDisplay` on a
-/// plain CALayer whose `contents` were assigned directly (as the timeline review
-/// and slideshow image views do) would wipe that image.
+/// plain CALayer whose `contents` were assigned directly (as the slideshow image
+/// views do) would wipe that image.
 enum FlippedTextLayerWorkaround {
   private static var isInstalled = false
 

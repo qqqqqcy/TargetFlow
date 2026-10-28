@@ -295,17 +295,8 @@ extension MainView {
     .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
-  private var cardsToReviewPromptCount: Int {
-    guard cardsToReviewCount > 0 else { return 0 }
-    if hasRecentTimelineReviewRating || hasAnyTimelineReviewRating == false {
-      return cardsToReviewCount
-    }
-    return 0
-  }
-
   private var timelineFooter: some View {
     let weeklyHoursOpacity = 1.0
-    let reviewPromptCount = cardsToReviewPromptCount
 
     return VStack(spacing: 8) {
       HStack(alignment: .center) {
@@ -318,15 +309,6 @@ extension MainView {
           .opacity(contentOpacity)
       }
       .padding(.horizontal, 12)
-
-      if timelineMode == .day, reviewPromptCount > 0 {
-        CardsToReviewButton(count: reviewPromptCount) {
-          withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-            showTimelineReview = true
-          }
-        }
-        .opacity(contentOpacity)
-      }
     }
     .padding(.vertical, 10)
     .background(theme.surfaceFill)
@@ -372,36 +354,26 @@ extension MainView {
 
   @ViewBuilder
   private func dayTimelineInspectorContent(geo: GeometryProxy) -> some View {
-    let reviewPromptCount = cardsToReviewPromptCount
-
     if let activity = selectedActivity {
       timelineActivityInspector(activity: activity, geo: geo)
         .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
     } else {
       VStack(spacing: 0) {
-        daySummary(reviewPromptCount: reviewPromptCount)
+        daySummary
       }
       .transition(DayflowMotion.transition(reduceMotion: reduceMotion))
     }
   }
 
-  private func daySummary(reviewPromptCount: Int) -> some View {
+  private var daySummary: some View {
     DaySummaryView(
       selectedDate: selectedDate,
       categories: categoryStore.categories,
       storageManager: StorageManager.shared,
-      cardsToReviewCount: reviewPromptCount,
-      reviewRefreshToken: reviewSummaryRefreshToken,
       recordingControlMode: RecordingControl.currentMode(
         appState: appState,
         pauseManager: pauseManager
-      ),
-      onReviewTap: {
-        guard reviewPromptCount > 0 else { return }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-          showTimelineReview = true
-        }
-      }
+      )
     )
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }

@@ -23,23 +23,31 @@ final class NotchNotificationTests: XCTestCase {
     XCTAssertFalse(panel.canBecomeMain)
   }
   @MainActor
-  func testPointerExitDuringRetractionCannotRestartTheDismissalTimer() async throws {
-    let controller = NotchNotificationController.shared
+  func testExplicitDismissalRetractsAndHidesReminder() async throws {
+    let controller = NotchNotificationController()
     defer { controller.dismissImmediately() }
     XCTAssertTrue(controller.show(body: "回到目标"))
-    controller.hover(true)
+    try await Task.sleep(for: .milliseconds(250))
     XCTAssertTrue(controller.isExpanded)
     controller.dismiss()
-    controller.hover(false)
-    controller.hover(true)
     XCTAssertFalse(controller.isExpanded)
     try await Task.sleep(for: .milliseconds(650))
     XCTAssertFalse(controller.isPresented)
   }
 
   @MainActor
+  func testReminderStaysExpandedPastFormerAutomaticDismissalDeadline() async throws {
+    let controller = NotchNotificationController()
+    defer { controller.dismissImmediately() }
+    XCTAssertTrue(controller.show(body: "持续提醒"))
+    try await Task.sleep(for: .seconds(13))
+    XCTAssertTrue(controller.isPresented)
+    XCTAssertTrue(controller.isExpanded)
+  }
+
+  @MainActor
   func testNewReminderSurvivesThePreviousRemindersRetraction() async throws {
-    let controller = NotchNotificationController.shared
+    let controller = NotchNotificationController()
     defer { controller.dismissImmediately() }
     XCTAssertTrue(controller.show(body: "旧提醒"))
     controller.dismiss()

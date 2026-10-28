@@ -160,13 +160,6 @@ struct TimelineCardDebugEntry: Sendable {
   let detailedSummary: String?
 }
 
-struct TimelineReviewRatingSegment: Sendable {
-  let id: Int64
-  let startTs: Int
-  let endTs: Int
-  let rating: String
-}
-
 struct LLMCallDebugEntry: Sendable {
   let createdAt: Date?
   let batchId: Int64?

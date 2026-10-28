@@ -1,6 +1,10 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Dismiss manually" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "手动收起"}}}},
+    "Stays expanded until you click Collapse or View Events & Goals." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "展开后持续显示，直到你点击“折叠”或“查看事件与目标”。"}}}},
+    "The notch notification will stay expanded until you click “Collapse” or “View Events & Goals”." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "刘海通知将持续展开，直到你点击“折叠”或“查看事件与目标”。"}}}},
+    "This is a test notch reminder. Choose a current goal and take one small, concrete step. This reminder stays expanded until you click Collapse or View Events & Goals." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "这是一条刘海测试提醒。先选一个当前目标，从一个具体的小步骤继续。提醒将持续展开，直到你点击“折叠”或“查看事件与目标”。"}}}},
     "Model: %@" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "模型：%@"}}}},
     "Reasoning effort: %@" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "推理强度：%@"}}}},
     "Returned model: %@" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "返回模型：%@"}}}},
@@ -2911,16 +2915,6 @@
         }
       }
     },
-    "Collapses automatically after 12 seconds. Hover to keep it expanded; it collapses 5 seconds after the pointer leaves.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "展开 12 秒后自动收回，鼠标悬停时保持展开；移开后 5 秒收回。"
-          }
-        }
-      }
-    },
     "Current goal reminder": {
       "localizations": {
         "zh-Hans": {
@@ -3157,16 +3151,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "评估时的目标：%@"
-          }
-        }
-      }
-    },
-    "Hover to keep expanded": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "悬停保持展开"
           }
         }
       }
@@ -3587,16 +3571,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "测试提醒失败：%@"
-          }
-        }
-      }
-    },
-    "The notch notification is expanded. Hover to view it or click “View Events & Goals”.": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "刘海通知已展开，可悬停查看或点击“查看事件与目标”。"
           }
         }
       }
@@ -4095,189 +4069,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "（本週已追蹤的活動時間）"
-          }
-        }
-      }
-    },
-    " Review %lld cards to update your data." : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Prüfe %lld Karte, um deine Daten zu aktualisieren."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Prüfe %lld Karten, um deine Daten zu aktualisieren."
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : " Review %lld card to update your data."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : " Review %lld cards to update your data."
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Vérifiez %lld carte pour mettre à jour vos données."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Vérifiez %lld cartes pour mettre à jour vos données."
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " %lld件のカードを確認してデータを更新してください。"
-                }
-              }
-            }
-          }
-        },
-        "ko" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " 카드 %lld개를 검토하여 데이터를 업데이트하세요."
-                }
-              }
-            }
-          }
-        },
-        "ru" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Проверьте %lld карточки, чтобы обновить данные."
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Проверьте %lld карточек, чтобы обновить данные."
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Проверьте %lld карточку, чтобы обновить данные."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " Проверьте %lld карточки, чтобы обновить данные."
-                }
-              }
-            }
-          }
-        },
-        "zh-Hans" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " 回顾 %lld 张卡片以更新数据。"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hant" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : " 回顧 %lld 張卡片以更新資料。"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    " to update your data." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : ", um deine Daten zu aktualisieren."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : " pour mettre à jour vos données."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : " してデータを更新します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : " 데이터 업데이트를 위해 사용합니다."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : ", чтобы обновить ваши данные."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : " 以更新你的数据。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : " 以更新你的資料。"
           }
         }
       }
@@ -6237,142 +6028,6 @@
                 "stringUnit" : {
                   "state" : "needs_review",
                   "value" : "%lld 張卡片"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld cards to review" : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld Karte zu prüfen"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld Karten zu prüfen"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld card to review"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld cards to review"
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld carte à vérifier"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld cartes à vérifier"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "確認するカード%lld件"
-                }
-              }
-            }
-          }
-        },
-        "ko" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "검토할 카드 %lld개"
-                }
-              }
-            }
-          }
-        },
-        "ru" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld карточки для проверки"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld карточек для проверки"
-                }
-              },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld карточка для проверки"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld карточки для проверки"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hans" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld 张待回顾卡片"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hant" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld 張待回顧卡片"
                 }
               }
             }
@@ -12652,52 +12307,6 @@
         }
       }
     },
-    "All caught up!" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Alles erledigt!"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Vous êtes à jour !"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "すべて確認しました！"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "모두 확인했습니다!"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Всё просмотрено!"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "已全部处理完毕！"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "已全部處理完畢！"
-          }
-        }
-      }
-    },
     "All set!" : {
       "localizations" : {
         "de" : {
@@ -15849,53 +15458,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "卡片約每 15 分鐘產生一次。如果 Target Flow 已開啟，但 30 分鐘內仍未顯示卡片，請回報錯誤。"
-          }
-        }
-      }
-    },
-    "cards to review" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "zu überprüfende Karten"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "cartes à examiner"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "件の確認待ちカード"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "개의 검토할 카드"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "карточек для проверки"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "张卡片待查看"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "張卡片待檢視"
           }
         }
       }
@@ -20555,99 +20117,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "com.dayflow.slideshow.decode.sync"
-          }
-        }
-      }
-    },
-    "com.dayflow.timelineReview.decode.sync" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "com.dayflow.timelineReview.decode.sync"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "com.dayflow.timelineReview.decode.sync"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "com.dayflow.timelineReview.decode.sync"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "com.dayflow.timelineReview.decode.sync"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "com.dayflow.timelineReview.decode.sync"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "com.dayflow.timelineReview.decode.sync"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "com.dayflow.timelineReview.decode.sync"
-          }
-        }
-      }
-    },
-    "Come back after a few timeline cards appear." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Komm wieder, sobald einige Zeitleistenkarten angezeigt werden."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Revenez lorsque quelques cartes apparaîtront dans la chronologie."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "タイムラインカードがいくつか表示されたら、もう一度確認してください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "타임라인 카드가 몇 개 생성된 후 다시 확인하세요."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Вернитесь, когда в хронологии появится несколько карточек."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "时间线上出现几张卡片后再回来。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "時間軸中出現幾張卡片後再回來。"
           }
         }
       }
@@ -40957,52 +40426,6 @@
         }
       }
     },
-    "Last reviewed at %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Zuletzt um %@ überprüft."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Dernier examen à %@."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "最終確認時刻：%@。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "마지막 검토 시간: %@."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Последний просмотр: %@."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "上次回顾时间为 %@。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "上次檢視於 %@。"
-          }
-        }
-      }
-    },
     "Last step!" : {
       "localizations" : {
         "de" : {
@@ -45944,52 +45367,6 @@
         }
       }
     },
-    "No reviews yet." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Noch keine Rückblicke."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Aucun bilan pour le moment."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "振り返りはまだありません。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "아직 검토 기록이 없습니다."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Обзоров пока нет."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "暂无回顾。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "尚無回顧。"
-          }
-        }
-      }
-    },
     "No saved chats yet" : {
       "localizations" : {
         "de" : {
@@ -46828,52 +46205,6 @@
     },
     "Nothing saved yet" : {
 
-    },
-    "Nothing to review yet" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Noch nichts zu überprüfen"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Rien à examiner pour le moment"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "まだ振り返る内容はありません"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "아직 검토할 내용이 없습니다"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Пока нечего просматривать"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "暂无可回顾的内容"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "目前沒有可回顧的內容"
-          }
-        }
-      }
     },
     "Notifications are already enabled. We'll open Daily automatically." : {
       "localizations" : {
@@ -55071,52 +54402,6 @@
         }
       }
     },
-    "Review cards" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Karten prüfen"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Examiner les cartes"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "カードを確認"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "카드 검토"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Просмотреть карточки"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "审阅卡片"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "檢視卡片"
-          }
-        }
-      }
-    },
     "Review ready" : {
       "localizations" : {
         "de" : {
@@ -61752,52 +61037,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "目前無法取得支援。"
-          }
-        }
-      }
-    },
-    "Swipe on each card on your Timeline to review your day." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Wische über jede Karte in deiner Zeitleiste, um deinen Tag Revue passieren zu lassen."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Balayez chaque carte de votre chronologie pour passer votre journée en revue."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "タイムラインの各カードをスワイプして、1日を振り返りましょう。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "타임라인의 각 카드를 쓸어 넘기며 하루를 돌아보세요."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Смахивайте каждую карточку в хронологии, чтобы вспомнить, как прошёл день."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "在时间线的每张卡片上滑动，回顾你的一天。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "逐張滑動時間軸上的卡片，回顧你的一天。"
           }
         }
       }
@@ -74575,52 +73814,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "你的推薦獎勵已準備就緒。"
-          }
-        }
-      }
-    },
-    "Your review" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Dein Rückblick"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Votre revue"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "振り返り"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "내 검토"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Ваш обзор"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "你的回顾"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "你的回顧"
           }
         }
       }

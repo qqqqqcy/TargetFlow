@@ -130,46 +130,6 @@ extension MainView {
     }
   }
 
-  func updateCardsToReviewCount(trigger: String = "unspecified") {
-    reviewCountTask?.cancel()
-    let timelineDate = timelineDisplayDate(from: selectedDate, now: Date())
-    let dayString = DateFormatter.yyyyMMdd.string(from: timelineDate)
-
-    timelinePerfLog("reviewCount.schedule trigger=\(trigger) day=\(dayString)")
-
-    reviewCountTask = Task.detached(priority: .userInitiated) {
-      let fetchStart = CFAbsoluteTimeGetCurrent()
-      let count = StorageManager.shared.fetchUnreviewedTimelineCardCount(
-        forDay: dayString, coverageThreshold: 0.8)
-      let hasAnyReviewRating = StorageManager.shared.hasAnyTimelineReviewRating()
-      let hasRecentReviewRating = StorageManager.shared.hasReviewRatingInRecentTimelineDays(days: 7)
-      let fetchMs = Int((CFAbsoluteTimeGetCurrent() - fetchStart) * 1000)
-
-      guard !Task.isCancelled else { return }
-
-      await MainActor.run {
-        let currentDayString = DateFormatter.yyyyMMdd.string(
-          from: timelineDisplayDate(from: selectedDate, now: Date())
-        )
-        guard currentDayString == dayString else {
-          timelinePerfLog(
-            "reviewCount.discardStale trigger=\(trigger) requestedDay=\(dayString) currentDay=\(currentDayString) fetch_ms=\(fetchMs)"
-          )
-          return
-        }
-
-        let commitStart = CFAbsoluteTimeGetCurrent()
-        cardsToReviewCount = count
-        hasAnyTimelineReviewRating = hasAnyReviewRating
-        hasRecentTimelineReviewRating = hasRecentReviewRating
-        let commitMs = Int((CFAbsoluteTimeGetCurrent() - commitStart) * 1000)
-        timelinePerfLog(
-          "reviewCount.complete trigger=\(trigger) day=\(dayString) count=\(count) hasAnyReviewRating=\(hasAnyReviewRating) hasRecentReviewRating=\(hasRecentReviewRating) fetch_ms=\(fetchMs) commit_ms=\(commitMs)"
-        )
-      }
-    }
-  }
-
   func copyTimelineToClipboard() {
     guard copyTimelineState != .copying else { return }
 

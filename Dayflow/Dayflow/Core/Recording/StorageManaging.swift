@@ -48,14 +48,6 @@ protocol StorageManaging: Sendable {
   func updateTimelineCardCategory(cardId: Int64, category: String)
   func updateTimelineCardTitle(cardId: Int64, title: String)
 
-  // Timeline review ratings (time-based)
-  func fetchReviewRatingSegments(overlapping startTs: Int, endTs: Int)
-    -> [TimelineReviewRatingSegment]
-  func applyReviewRating(startTs: Int, endTs: Int, rating: String)
-  func hasAnyTimelineReviewRating() -> Bool
-  func hasReviewRatingInRecentTimelineDays(days: Int) -> Bool
-  func fetchUnreviewedTimelineCardCount(forDay day: String, coverageThreshold: Double) -> Int
-
   // Daily goals
   func fetchDayGoalPlan(forDay day: String) -> DayGoalPlan?
   func fetchMostRecentDayGoalPlan(beforeOrOn day: String) -> DayGoalPlan?

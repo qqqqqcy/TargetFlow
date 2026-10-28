@@ -87,11 +87,9 @@ final class NotchNotificationController: ObservableObject {
   private var panel: NotchNotificationPanel?
   private var layout: NotchNotificationLayout?
   private var lifecycle: Task<Void, Never>?
-  private var isHovering = false
-  private var isRetracting = false
   private var screenObserver: NSObjectProtocol?
 
-  private init() {
+  init() {
     screenObserver = NotificationCenter.default.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
     ) { [weak self] _ in
@@ -99,7 +97,7 @@ final class NotchNotificationController: ObservableObject {
     }
   }
 
-  /// The latest reminder replaces the current one and receives a fresh reading interval.
+  /// The latest reminder replaces the current one and stays expanded until dismissed.
   @discardableResult
   func show(body: String) -> Bool {
     guard let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) })
@@ -119,8 +117,6 @@ final class NotchNotificationController: ObservableObject {
     self.layout = layout
     cameraHeight = max(32, layout.cameraHeight)
     self.body = body
-    isHovering = false
-    isRetracting = false
     isExpanded = false
     isPresented = true
     let panel = self.panel ?? makePanel()
@@ -132,26 +128,13 @@ final class NotchNotificationController: ObservableObject {
       try? await Task.sleep(for: .milliseconds(120))
       guard !Task.isCancelled, let self else { return }
       self.expand()
-      self.scheduleRetraction(after: .seconds(12))
     }
     return true
-  }
-
-  func hover(_ hovering: Bool) {
-    guard isPresented, !isRetracting, isHovering != hovering else { return }
-    isHovering = hovering
-    if hovering {
-      lifecycle?.cancel()
-      expand()
-    } else {
-      scheduleRetraction(after: .seconds(5))
-    }
   }
 
   func dismiss() {
     guard isPresented else { return }
     lifecycle?.cancel()
-    isRetracting = true
     resize(expanded: false)
     lifecycle = Task { [weak self] in
       try? await Task.sleep(for: .milliseconds(400))
@@ -165,8 +148,6 @@ final class NotchNotificationController: ObservableObject {
     lifecycle = nil
     isPresented = false
     isExpanded = false
-    isHovering = false
-    isRetracting = false
     panel?.orderOut(nil)
   }
 
@@ -183,15 +164,6 @@ final class NotchNotificationController: ObservableObject {
   private func expand() {
     guard isPresented else { return }
     resize(expanded: true)
-  }
-
-  private func scheduleRetraction(after delay: Duration) {
-    lifecycle?.cancel()
-    lifecycle = Task { [weak self] in
-      try? await Task.sleep(for: delay)
-      guard !Task.isCancelled, let self, !self.isHovering else { return }
-      self.dismiss()
-    }
   }
 
   private func resize(expanded: Bool) {
@@ -343,7 +315,6 @@ private struct NotchNotificationView: View {
     .background(.black)
     .clipShape(NotchNotificationShape())
     .contentShape(Rectangle())
-    .onHover(perform: controller.hover)
     .accessibilityElement(children: .contain)
     .accessibilityLabel(String(localized: "Current goal reminder"))
     .preferredColorScheme(.dark)

@@ -75,12 +75,6 @@ struct MainView: View {
   @State var deleteTimelineTask: Task<Void, Never>? = nil
   @State var timelineHeaderTrailingWidth: CGFloat = 120
   @State var weeklyTrackedMinutes: Double = 0
-  @State var cardsToReviewCount: Int = 0
-  @State var hasAnyTimelineReviewRating = false
-  @State var hasRecentTimelineReviewRating = false
-  @State var showTimelineReview = false
-  @State var reviewCountTask: Task<Void, Never>? = nil
-  @State var reviewSummaryRefreshToken: Int = 0
   @StateObject var retryCoordinator = RetryCoordinator()
   @State var weeklyHoursFrame: CGRect = .zero
   @State var timelineTimeLabelFrames: [CGRect] = []
