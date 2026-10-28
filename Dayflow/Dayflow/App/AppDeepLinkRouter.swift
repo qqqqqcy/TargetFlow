@@ -74,7 +74,7 @@ final class AppDeepLinkRouter {
       print("[DeepLink] Recording already active; ignoring start request")
       return
     }
-    RecordingControl.start(reason: "deeplink")
+    RecordingControl.start()
   }
 
   private func stopRecording() {
@@ -82,6 +82,6 @@ final class AppDeepLinkRouter {
       print("[DeepLink] Recording already stopped; ignoring stop request")
       return
     }
-    RecordingControl.stop(reason: "deeplink")
+    RecordingControl.stop()
   }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 extension GeminiDirectProvider {
   func uploadAndAwait(
-    _ fileURL: URL, mimeType: String, key: String, maxWaitTime: TimeInterval = 3 * 60
+    _ fileURL: URL, mimeType: String, maxWaitTime: TimeInterval = 3 * 60
   ) async throws -> (fileSize: Int64, fileURI: String) {
     let fileData = try Data(contentsOf: fileURL)
     let fileSize = fileData.count
@@ -124,31 +124,6 @@ extension GeminiDirectProvider {
 
     // Don't retry on API key issues, file format problems, etc.
     return false
-  }
-
-  func uploadSimple(data: Data, mimeType: String) async throws -> String {
-    var request = URLRequest(url: URL(string: fileEndpoint + "?key=\(apiKey)")!)
-    request.httpMethod = "POST"
-    request.setValue(mimeType, forHTTPHeaderField: "Content-Type")
-    request.httpBody = data
-
-    let requestStart = Date()
-    let (responseData, response) = try await URLSession.shared.data(for: request)
-    let requestDuration = Date().timeIntervalSince(requestStart)
-    let statusCode = (response as? HTTPURLResponse)?.statusCode
-    logCallDuration(operation: "upload.simple", duration: requestDuration, status: statusCode)
-
-    if let json = try JSONSerialization.jsonObject(with: responseData) as? [String: Any],
-      let file = json["file"] as? [String: Any],
-      let uri = file["uri"] as? String
-    {
-      return uri
-    }
-    // Log unexpected response to help debugging
-    logGeminiFailure(context: "uploadSimple", response: response, data: responseData, error: nil)
-    throw NSError(
-      domain: "GeminiError", code: 3,
-      userInfo: [NSLocalizedDescriptionKey: "Failed to parse upload response"])
   }
 
   func uploadResumable(data: Data, mimeType: String) async throws -> String {

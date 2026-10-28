@@ -75,9 +75,9 @@ struct AIProviderConnection: Identifiable, Codable, Equatable, Sendable {
 }
 
 enum AIFeature: String, Codable, CaseIterable, Identifiable, Sendable {
-  case timeline, transcription, activityCards, chat, text, targetEvaluation, dailyRecap, flow
+  case timeline, transcription, activityCards, text, targetEvaluation
 
-  /// Features exposed by the current app. Other saved routes remain available to legacy runtimes.
+  /// Features exposed in Settings; the other cases are shared pipeline stages.
   static let configurableCases: [AIFeature] = [.timeline, .targetEvaluation]
 
   var id: String { rawValue }
@@ -86,11 +86,8 @@ enum AIFeature: String, Codable, CaseIterable, Identifiable, Sendable {
     case .timeline: return String(localized: "Timeline")
     case .transcription: return String(localized: "Transcription")
     case .activityCards: return String(localized: "Activity cards")
-    case .chat: return String(localized: "Chat")
     case .text: return String(localized: "Text generation")
     case .targetEvaluation: return String(localized: "Target evaluation")
-    case .dailyRecap: return String(localized: "Daily recap")
-    case .flow: return String(localized: "Flow")
     }
   }
 }
@@ -155,7 +152,7 @@ struct AIConfiguration: Codable, Equatable, Sendable {
     let values = try decoder.container(keyedBy: CodingKeys.self)
     schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
     connections = try values.decode([AIProviderConnection].self, forKey: .connections)
-    routes = try values.decode([AIFeature: AIFeatureRoute].self, forKey: .routes)
+    routes = try values.decode(SavedFeatureValues<AIFeature, AIFeatureRoute>.self, forKey: .routes).values
     // A missing key identifies the old schema. An explicit null preserves a cleared default.
     defaultModel = values.contains(.defaultModel)
       ? try values.decodeIfPresent(AIModelAssignment.self, forKey: .defaultModel)
@@ -280,7 +277,7 @@ final class AIConfigurationStore: @unchecked Sendable {
   private let deleteSecret: (String) -> Bool
 
   init(
-    defaults: UserDefaults = .standard,
+    defaults: UserDefaults = AppStoragePaths.defaults,
     readSecret: @escaping (String) -> String? = { LocalProviderCredentialStore.shared.retrieve(for: $0) },
     writeSecret: @escaping (String, String) -> Bool = { LocalProviderCredentialStore.shared.store($0, for: $1) },
     deleteSecret: @escaping (String) -> Bool = { LocalProviderCredentialStore.shared.delete(for: $0) }
@@ -371,8 +368,6 @@ final class AIConfigurationStore: @unchecked Sendable {
       ?? .default
     var configuration = AIConfiguration()
     var byProvider: [LLMProviderID: AIProviderConnection] = [:]
-    let dailyRaw = defaults.string(forKey: "dailyRecapProvider_v1")
-    let dailyProvider = dailyRaw.flatMap { LLMProviderID(rawValue: $0) }
     for kind in AIProviderKind.allCases {
       let provider = kind.providerID
       let oldSecretID: String?
@@ -384,7 +379,7 @@ final class AIConfigurationStore: @unchecked Sendable {
       }
       let oldSecret = oldSecretID.flatMap(readSecret)
       let hasPreferences = defaults.object(forKey: ModelPreferences.storageKey(for: provider)) != nil
-      let selected = routing.primary == provider || routing.secondary == provider || dailyProvider == provider
+      let selected = routing.primary == provider || routing.secondary == provider
       let configured = selected || hasPreferences || (oldSecret?.isEmpty == false)
         || LLMProviderSetupPreferences.isComplete(provider, in: defaults)
         || (kind == .local && (defaults.string(forKey: "llmLocalModelId") != nil || defaults.bool(forKey: "ollamaSetupComplete")))
@@ -423,8 +418,7 @@ final class AIConfigurationStore: @unchecked Sendable {
       configuration.connections.append(connection)
     }
     for feature in AIFeature.allCases {
-      if feature == .dailyRecap && dailyRaw == "none" { continue }
-      let provider = feature == .dailyRecap ? (dailyProvider ?? routing.primary) : routing.primary
+      let provider = routing.primary
       guard let connection = byProvider[provider] else { continue }
       let preferences = ModelPreferences.load(provider: provider, from: defaults)
       // An absent stage override preserves the existing one-step timeline pipeline.
@@ -439,7 +433,7 @@ final class AIConfigurationStore: @unchecked Sendable {
       var fallbacks = (fallbackModels ?? []).filter { $0 != primary.modelID }.map {
         AIModelAssignment(connectionID: connection.id, modelID: $0, effort: primary.effort)
       }
-      if feature != .dailyRecap, let secondary = routing.secondary, let backup = byProvider[secondary] {
+      if let secondary = routing.secondary, let backup = byProvider[secondary] {
         let backupPreferences = ModelPreferences.load(provider: secondary, from: defaults)
         let fallback = legacySelection(provider: secondary, feature: feature, preferences: backupPreferences,
           compatible: compatible, gemini: geminiPreference, connectionID: backup.id)
@@ -461,9 +455,7 @@ final class AIConfigurationStore: @unchecked Sendable {
     let effort: String?
     switch provider {
     case .chatGPT:
-      (model, effort) = feature == .flow
-        ? (defaults.string(forKey: "flowAgentModel") ?? "", defaults.string(forKey: "flowAgentReasoning"))
-        : ("", nil)
+      (model, effort) = ("", nil)
     case .claude: (model, effort) = ("", nil)
     case .gemini:
       (model, effort) = defaults.object(forKey: "geminiSelectedModel_v5") != nil
@@ -479,5 +471,28 @@ final class AIConfigurationStore: @unchecked Sendable {
       defaultModel: model, defaultEffort: effort)
     return AIModelAssignment(connectionID: connectionID,
       modelID: resolved.model, effort: resolved.reasoningEffort)
+  }
+}
+
+/// Reads saved enum-keyed dictionaries while ignoring routes from retired features.
+struct SavedFeatureValues<Key: RawRepresentable & Hashable, Value: Decodable>: Decodable
+where Key.RawValue == String {
+  let values: [Key: Value]
+
+  init(from decoder: Decoder) throws {
+    if let keyed = try? decoder.singleValueContainer().decode([String: Value].self) {
+      values = keyed.reduce(into: [:]) { result, entry in
+        if let key = Key(rawValue: entry.key) { result[key] = entry.value }
+      }
+      return
+    }
+    var container = try decoder.unkeyedContainer()
+    var result: [Key: Value] = [:]
+    while !container.isAtEnd {
+      let rawKey = try container.decode(String.self)
+      let value = try container.decode(Value.self)
+      if let key = Key(rawValue: rawKey) { result[key] = value }
+    }
+    values = result
   }
 }

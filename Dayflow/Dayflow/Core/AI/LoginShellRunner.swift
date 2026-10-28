@@ -114,18 +114,6 @@ struct LoginShellRunner {
     return result.exitCode == 0
   }
 
-  /// Get version string of a CLI tool, or nil if not installed
-  static func version(of toolName: String) -> String? {
-    if toolName == "codex" {
-      return CodexExecutableResolver.shared.resolve()?.versionSummary
-    }
-
-    let result = run("\(toolName) --version", timeout: 10)
-    guard result.exitCode == 0 else { return nil }
-    let trimmed = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-    return trimmed.components(separatedBy: .newlines).first ?? trimmed
-  }
-
   /// Escape a string for safe inclusion in a shell command (single-quote escaping)
   static func shellEscape(_ string: String) -> String {
     let sanitized = string.replacingOccurrences(of: "\0", with: "")

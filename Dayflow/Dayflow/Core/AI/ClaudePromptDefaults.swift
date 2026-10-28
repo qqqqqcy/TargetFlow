@@ -3,11 +3,11 @@ import Foundation
 enum ClaudePromptPreferences {
   private static let overridesKey = "claudePromptOverrides"
 
-  static func hasStoredOverrides(in defaults: UserDefaults = .standard) -> Bool {
+  static func hasStoredOverrides(in defaults: UserDefaults = AppStoragePaths.defaults) -> Bool {
     defaults.object(forKey: overridesKey) != nil
   }
 
-  static func load(from defaults: UserDefaults = .standard) -> ActivityCardPromptOverrides {
+  static func load(from defaults: UserDefaults = AppStoragePaths.defaults) -> ActivityCardPromptOverrides {
     guard let data = defaults.data(forKey: overridesKey),
       let overrides = try? JSONDecoder().decode(ActivityCardPromptOverrides.self, from: data)
     else {
@@ -18,13 +18,9 @@ enum ClaudePromptPreferences {
 
   static func save(
     _ overrides: ActivityCardPromptOverrides,
-    to defaults: UserDefaults = .standard
+    to defaults: UserDefaults = AppStoragePaths.defaults
   ) {
     try? saveVerified(overrides, to: defaults)
-  }
-
-  static func reset(in defaults: UserDefaults = .standard) {
-    defaults.removeObject(forKey: overridesKey)
   }
 
   static func saveVerified(

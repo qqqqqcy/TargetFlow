@@ -98,14 +98,12 @@ final class StorageSettingsViewModel: ObservableObject {
     guard height != captureHeight else { return }
     ScreenshotConfig.captureHeight = height
     captureHeight = height
-    AnalyticsService.shared.capture("capture_height_changed", ["height": height])
   }
 
   func setCaptureInterval(_ interval: TimeInterval) {
     guard interval != captureInterval else { return }
     ScreenshotConfig.interval = interval
     captureInterval = interval
-    AnalyticsService.shared.capture("capture_interval_changed", ["interval_seconds": interval])
   }
 
   func setAnalysisInterval(_ interval: TimeInterval) {
@@ -170,7 +168,6 @@ final class StorageSettingsViewModel: ObservableObject {
     guard Self.storageOptions.indices.contains(index) else { return }
     let option = Self.storageOptions[index]
     let newBytes = option.resolvedBytes
-    let previousBytes = limitBytes(for: category)
 
     switch category {
     case .recordings:
@@ -185,14 +182,6 @@ final class StorageSettingsViewModel: ObservableObject {
 
     pendingLimit = nil
     showLimitConfirmation = false
-
-    AnalyticsService.shared.capture(
-      "storage_limit_changed",
-      [
-        "category": category.analyticsKey,
-        "previous_limit_bytes": previousBytes,
-        "new_limit_bytes": newBytes,
-      ])
 
     refreshStorageMetrics()
   }
@@ -279,22 +268,11 @@ struct StorageLimitOption: Identifiable {
   let bytes: Int64?
 
   var resolvedBytes: Int64 { bytes ?? Int64.max }
-  var shortLabel: String {
-    guard let bytes else { return "∞" }
-    return (bytes / 1_000_000_000).formatted()
-  }
 }
 
 enum StorageCategory {
   case recordings
   case timelapses
-
-  var analyticsKey: String {
-    switch self {
-    case .recordings: return "recordings"
-    case .timelapses: return "timelapses"
-    }
-  }
 
   var displayName: String {
     switch self {

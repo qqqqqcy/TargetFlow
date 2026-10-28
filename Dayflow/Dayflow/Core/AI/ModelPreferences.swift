@@ -1,21 +1,10 @@
 import Foundation
 
 enum ModelFeature: String, Codable, CaseIterable, Identifiable {
-  case timeline, transcription, activityCards, chat, text, dailyRecap, flow
+  case timeline, transcription, activityCards, text
 
   var id: String { rawValue }
 
-  var displayName: String {
-    switch self {
-    case .timeline: return String(localized: "Timeline")
-    case .transcription: return String(localized: "Transcription")
-    case .activityCards: return String(localized: "Activity cards")
-    case .chat: return String(localized: "Chat")
-    case .text: return String(localized: "Text generation")
-    case .dailyRecap: return String(localized: "Daily recap")
-    case .flow: return String(localized: "Flow")
-    }
-  }
 }
 
 enum ModelReasoningEffort: String, Codable, CaseIterable, Identifiable {
@@ -24,9 +13,6 @@ enum ModelReasoningEffort: String, Codable, CaseIterable, Identifiable {
 
   var id: String { rawValue }
   var output: String? { self == .providerDefault ? nil : rawValue }
-  var displayName: String {
-    self == .providerDefault ? String(localized: "Provider default (omit effort)") : rawValue
-  }
 
   static func choices(for provider: LLMProviderID) -> [Self] {
     switch provider {
@@ -82,11 +68,30 @@ struct ModelPreferences: Codable, Equatable {
   /// nil preserves the existing provider cascade; [] explicitly disables model fallback.
   var fallbackModels: [String]? = nil
 
+  init(defaultSelection: ModelOverride = ModelOverride(),
+    featureOverrides: [ModelFeature: ModelOverride] = [:], fallbackModels: [String]? = nil) {
+    self.defaultSelection = defaultSelection
+    self.featureOverrides = featureOverrides
+    self.fallbackModels = fallbackModels
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case defaultSelection, featureOverrides, fallbackModels
+  }
+
+  init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    defaultSelection = try values.decode(ModelOverride.self, forKey: .defaultSelection)
+    featureOverrides = try values.decode(SavedFeatureValues<ModelFeature, ModelOverride>.self,
+      forKey: .featureOverrides).values
+    fallbackModels = try values.decodeIfPresent([String].self, forKey: .fallbackModels)
+  }
+
   static func storageKey(for provider: LLMProviderID) -> String {
     "modelPreferences.v1.\(provider.rawValue)"
   }
 
-  static func load(provider: LLMProviderID, from defaults: UserDefaults = .standard)
+  static func load(provider: LLMProviderID, from defaults: UserDefaults = AppStoragePaths.defaults)
     -> ModelPreferences
   {
     guard let data = defaults.data(forKey: storageKey(for: provider)),
@@ -95,7 +100,7 @@ struct ModelPreferences: Codable, Equatable {
     return value.normalized
   }
 
-  func save(provider: LLMProviderID, to defaults: UserDefaults = .standard) throws {
+  func save(provider: LLMProviderID, to defaults: UserDefaults = AppStoragePaths.defaults) throws {
     let value = normalized
     try value.validate(provider: provider)
     let data = try JSONEncoder().encode(value)
@@ -132,7 +137,7 @@ struct ModelPreferences: Codable, Equatable {
     feature: ModelFeature,
     defaultModel: String,
     defaultEffort: String?,
-    defaults: UserDefaults = .standard
+    defaults: UserDefaults = AppStoragePaths.defaults
   ) -> ModelSelection {
     if let assignment = AIRequestContext.assignment {
       return ModelSelection(model: assignment.modelID, reasoningEffort: assignment.effort)
@@ -178,12 +183,4 @@ struct ModelPreferences: Codable, Equatable {
     value.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
-  static func recommendedModels(for provider: LLMProviderID) -> [String] {
-    switch provider {
-    case .chatGPT: return ["gpt-6-luna", "gpt-6.1-sol"]
-    case .claude: return ["haiku", "sonnet", "opus"]
-    case .gemini: return GeminiModel.allCases.map(\.rawValue)
-    case .local, .openAICompatible, .dayflow: return []
-    }
-  }
 }

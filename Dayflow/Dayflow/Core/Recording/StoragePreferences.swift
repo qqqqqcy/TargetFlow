@@ -1,7 +1,7 @@
 import Foundation
 
 enum StoragePreferences {
-  private static let defaults = UserDefaults.standard
+  private static let defaults = AppStoragePaths.defaults
 
   private static let recordingsKey = "storageLimitRecordingsBytes"
   private static let timelapsesKey = "storageLimitTimelapsesBytes"

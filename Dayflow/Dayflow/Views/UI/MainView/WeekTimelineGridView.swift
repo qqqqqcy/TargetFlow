@@ -36,7 +36,6 @@ struct WeekPositionedActivity: Identifiable {
   let height: CGFloat
   let durationMinutes: Double
   let title: String
-  let hoverTimeLabel: String
   let categoryName: String
   let faviconPrimaryRaw: String?
   let faviconSecondaryRaw: String?
@@ -44,18 +43,6 @@ struct WeekPositionedActivity: Identifiable {
   let faviconSecondaryHost: String?
   let failureCount: Int
   let batchIds: [Int64]
-}
-
-// Published by the week view's cards layer; consumed locally to drive the
-// weekly-hours-footer overlap check (mirrors the day view's equivalent key).
-private struct WeekCardsLayerFramePreferenceKey: PreferenceKey {
-  static var defaultValue: CGRect = .zero
-  static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-    let next = nextValue()
-    if next != .zero {
-      value = next
-    }
-  }
 }
 
 struct WeekTimelineGridView: View {
@@ -68,11 +55,6 @@ struct WeekTimelineGridView: View {
   let onSelectActivity: (TimelineActivity) -> Void
   let onClearSelection: () -> Void
 
-  // Frame of the "X hours tracked" footer label in the TimelinePane coord
-  // space; the grid compares against this to hide the label when it'd sit
-  // over a card. Defaults to .zero so Xcode previews don't need to wire it.
-  var weeklyHoursFrame: CGRect = .zero
-  var weeklyHoursIntersectsCard: Binding<Bool> = .constant(false)
   var hideCardsForModeSwitch = false
   // Categories turned off in the chip row; their cards render dimmed.
   var mutedCategoryKeys: Set<String> = []
@@ -82,7 +64,6 @@ struct WeekTimelineGridView: View {
 
   @State private var positionedActivities: [WeekPositionedActivity] = []
   @State private var recordingProjection: TimelineRecordingProjectionWindow?
-  @State private var cardsLayerFrame: CGRect = .zero
   @State private var refreshTimer: Timer?
   @State private var loadTask: Task<Void, Never>?
   @State private var autoScrollWeekKey: String?
@@ -101,7 +82,7 @@ struct WeekTimelineGridView: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  @AppStorage("showTimelineAppIcons") private var showTimelineAppIcons = true
+  @AppStorage("showTimelineAppIcons", store: AppStoragePaths.defaults) private var showTimelineAppIcons = true
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var categoryStore: CategoryStore
   @Environment(\.dayflowTheme) private var theme
@@ -118,10 +99,6 @@ struct WeekTimelineGridView: View {
 
   private var selectedDayString: String {
     DateFormatter.yyyyMMdd.string(from: timelineDisplayDate(from: selectedDate))
-  }
-
-  private var weekAutoScrollKey: String {
-    DateFormatter.yyyyMMdd.string(from: weekRange.weekStart)
   }
 
   private func effectiveHeight(for item: WeekPositionedActivity) -> CGFloat {
@@ -201,9 +178,6 @@ struct WeekTimelineGridView: View {
       loadTask = nil
       pendingHoverWorkItem?.cancel()
       pendingHoverWorkItem = nil
-      if weeklyHoursIntersectsCard.wrappedValue {
-        weeklyHoursIntersectsCard.wrappedValue = false
-      }
     }
     .onChange(of: selectedDate) { oldDate, newDate in
       let oldWeek = TimelineWeekRange.containing(oldDate)
@@ -240,13 +214,7 @@ struct WeekTimelineGridView: View {
         startRefreshTimer()
       }
     }
-    .onPreferenceChange(WeekCardsLayerFramePreferenceKey.self) { frame in
-      cardsLayerFrame = frame
-      updateWeeklyHoursIntersection()
-    }
-    .onChange(of: weeklyHoursFrame) {
-      updateWeeklyHoursIntersection()
-    }
+
   }
 
   private func weekHeader(dayWidth: CGFloat) -> some View {
@@ -369,14 +337,6 @@ struct WeekTimelineGridView: View {
           .padding(.trailing, 6)
           .padding(.top, 2)
           .frame(width: WeekTimelineConfig.timeColumnWidth, alignment: .trailing)
-          .background(
-            GeometryReader { proxy in
-              Color.clear.preference(
-                key: TimelineTimeLabelFramesPreferenceKey.self,
-                value: [proxy.frame(in: .named("TimelinePane"))]
-              )
-            }
-          )
           .frame(height: WeekTimelineConfig.hourHeight, alignment: .top)
           .offset(y: -7)
           .id("week-hour-\(hourIndex)")
@@ -397,7 +357,6 @@ struct WeekTimelineGridView: View {
         WeekTimelineActivityCard(
           cardId: item.id,
           title: item.title,
-          hoverTimeLabel: item.hoverTimeLabel,
           height: item.height,
           effectiveHeight: cardEffectiveHeight,
           durationMinutes: item.durationMinutes,
@@ -430,14 +389,6 @@ struct WeekTimelineGridView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    .background(
-      GeometryReader { proxy in
-        Color.clear.preference(
-          key: WeekCardsLayerFramePreferenceKey.self,
-          value: proxy.frame(in: .named("TimelinePane"))
-        )
-      }
-    )
     // Defensive hover-exit handler. SwiftUI's per-card `.onHover(false)` can
     // miss the exit event when the mouse moves quickly or when the card
     // resizes mid-hover (the expand animation can reach under the cursor
@@ -567,7 +518,6 @@ struct WeekTimelineGridView: View {
               height: height,
               durationMinutes: durationMinutes,
               title: segment.activity.title,
-              hoverTimeLabel: formatRange(start: segment.start, end: segment.end),
               categoryName: segment.activity.category,
               faviconPrimaryRaw: primaryRaw,
               faviconSecondaryRaw: secondaryRaw,
@@ -633,7 +583,6 @@ struct WeekTimelineGridView: View {
           autoScrollWeekKey = requestedWeekID
         }
 
-        updateWeeklyHoursIntersection(visibleWeekRange: requestedWeekRange)
 
         let commitMs = Int((CFAbsoluteTimeGetCurrent() - commitStart) * 1000)
         let totalMs = Int((CFAbsoluteTimeGetCurrent() - overallStart) * 1000)
@@ -641,57 +590,6 @@ struct WeekTimelineGridView: View {
           "weekGrid.load.end trigger=\(trigger) week=\(requestedWeekID) selected=\(requestedSelectedDay) activities=\(activities.count) cards=\(positioned.count) fetch_ms=\(fetchMs) position_ms=\(positioningMs) projection_ms=\(projectionMs) commit_ms=\(commitMs) total_ms=\(totalMs)"
         )
       }
-    }
-  }
-
-  // Mirrors CanvasTimelineDataView.updateWeeklyHoursIntersection but rebuilds
-  // each card's pane-space rect from (columnIndex × dayWidth) since the week
-  // view lays cards across 7 columns instead of one stacked column.
-  private func updateWeeklyHoursIntersection(visibleWeekRange: TimelineWeekRange? = nil) {
-    guard weeklyHoursFrame != .zero,
-      cardsLayerFrame != .zero,
-      weeklyHoursFrame.intersects(cardsLayerFrame)
-    else {
-      if weeklyHoursIntersectsCard.wrappedValue {
-        weeklyHoursIntersectsCard.wrappedValue = false
-      }
-      return
-    }
-
-    let dayWidth = cardsLayerFrame.width / 7
-    let cardWidth = weekCardWidth(for: dayWidth)
-    let activeWeekRange = visibleWeekRange ?? weekRange
-
-    let intersectsTimelineCard = positionedActivities.contains { item in
-      let cardFrame = CGRect(
-        x: cardsLayerFrame.minX + CGFloat(item.columnIndex) * dayWidth
-          + WeekTimelineConfig.cardLeadingGap,
-        y: cardsLayerFrame.minY + item.yPosition,
-        width: cardWidth,
-        height: item.height
-      )
-      return cardFrame.intersects(weeklyHoursFrame)
-    }
-
-    let intersectsStatusCard: Bool
-    if let projection = recordingProjection,
-      let todayIndex = activeWeekRange.days.firstIndex(where: { $0.dayString == todayDayString })
-    {
-      let statusFrame = CGRect(
-        x: cardsLayerFrame.minX + CGFloat(todayIndex) * dayWidth
-          + WeekTimelineConfig.cardLeadingGap,
-        y: cardsLayerFrame.minY + calculateYPosition(for: projection.start) + 1,
-        width: cardWidth,
-        height: recordingProjectionHeight(for: projection)
-      )
-      intersectsStatusCard = statusFrame.intersects(weeklyHoursFrame)
-    } else {
-      intersectsStatusCard = false
-    }
-
-    let intersects = intersectsTimelineCard || intersectsStatusCard
-    if weeklyHoursIntersectsCard.wrappedValue != intersects {
-      weeklyHoursIntersectsCard.wrappedValue = intersects
     }
   }
 
@@ -845,18 +743,6 @@ struct WeekTimelineGridView: View {
       normalizedHour > 12 ? normalizedHour - 12 : (normalizedHour == 0 ? 12 : normalizedHour)
     let period = normalizedHour >= 12 ? "PM" : "AM"
     return "\(adjustedHour):00 \(period)"
-  }
-
-  private static let hoverTimeFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "h:mm a"
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    return formatter
-  }()
-
-  private func formatRange(start: Date, end: Date) -> String {
-    let formatter = Self.hoverTimeFormatter
-    return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
   }
 
   private func weekCardWidth(for dayWidth: CGFloat) -> CGFloat {

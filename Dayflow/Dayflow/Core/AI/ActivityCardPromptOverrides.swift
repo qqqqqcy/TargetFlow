@@ -40,7 +40,7 @@ enum ActivityCardPromptPreferences {
   static let storageKey = "activityCardPromptOverrides.v1"
   private static let lock = NSLock()
 
-  static func load(from defaults: UserDefaults = .standard) -> ActivityCardPromptOverrides {
+  static func load(from defaults: UserDefaults = AppStoragePaths.defaults) -> ActivityCardPromptOverrides {
     lock.lock()
     defer { lock.unlock() }
     if defaults.object(forKey: storageKey) != nil {
@@ -53,7 +53,7 @@ enum ActivityCardPromptPreferences {
   }
 
   static func saveVerified(
-    _ overrides: ActivityCardPromptOverrides, to defaults: UserDefaults = .standard
+    _ overrides: ActivityCardPromptOverrides, to defaults: UserDefaults = AppStoragePaths.defaults
   ) throws {
     lock.lock()
     defer { lock.unlock() }
@@ -67,10 +67,6 @@ enum ActivityCardPromptPreferences {
       else { defaults.removeObject(forKey: storageKey) }
       throw ProviderPromptPreferencesError.writeVerificationFailed
     }
-  }
-
-  static func reset(in defaults: UserDefaults = .standard) {
-    try? saveVerified(ActivityCardPromptOverrides(), to: defaults)
   }
 
   private static func decode(_ key: String, from defaults: UserDefaults) -> ActivityCardPromptOverrides? {

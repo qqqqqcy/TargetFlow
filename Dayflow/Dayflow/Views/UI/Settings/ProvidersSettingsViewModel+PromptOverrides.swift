@@ -4,7 +4,7 @@ extension ProvidersSettingsViewModel {
   func loadSharedPromptOverridesIfNeeded(force: Bool = false) {
     if sharedPromptOverridesLoaded && !force { return }
     isUpdatingSharedPromptState = true
-    let overrides = ActivityCardPromptPreferences.load()
+    let overrides = ActivityCardPromptPreferences.load(from: defaults)
     useCustomTitlePrompt = normalizedOverride(text: overrides.titleBlock ?? "", enabled: true) != nil
     useCustomSummaryPrompt = normalizedOverride(text: overrides.summaryBlock ?? "", enabled: true) != nil
     useCustomDetailedPrompt = normalizedOverride(text: overrides.detailedBlock ?? "", enabled: true) != nil
@@ -23,7 +23,7 @@ extension ProvidersSettingsViewModel {
       detailedBlock: normalizedOverride(text: detailedPromptText, enabled: useCustomDetailedPrompt)
     )
     do {
-      try ActivityCardPromptPreferences.saveVerified(overrides)
+      try ActivityCardPromptPreferences.saveVerified(overrides, to: defaults)
     } catch {
       providerRoutingErrorMessage = String(localized: "The activity-card prompts could not be saved.")
     }
@@ -31,7 +31,7 @@ extension ProvidersSettingsViewModel {
 
   func resetSharedPromptOverrides() {
     do {
-      try ActivityCardPromptPreferences.saveVerified(ActivityCardPromptOverrides())
+      try ActivityCardPromptPreferences.saveVerified(ActivityCardPromptOverrides(), to: defaults)
       loadSharedPromptOverridesIfNeeded(force: true)
     } catch {
       providerRoutingErrorMessage = String(localized: "The activity-card prompts could not be saved.")

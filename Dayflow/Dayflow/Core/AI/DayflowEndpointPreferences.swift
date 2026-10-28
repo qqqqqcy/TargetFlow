@@ -7,16 +7,12 @@ enum DayflowEndpointPreferencesError: Error {
 enum DayflowEndpointPreferences {
   private static let storageKey = "dayflowProviderEndpointV2"
 
-  static func hasStoredValue(in defaults: UserDefaults = .standard) -> Bool {
+  static func hasStoredValue(in defaults: UserDefaults = AppStoragePaths.defaults) -> Bool {
     defaults.object(forKey: storageKey) != nil
   }
 
-  static func load(from defaults: UserDefaults = .standard) -> String? {
+  static func load(from defaults: UserDefaults = AppStoragePaths.defaults) -> String? {
     normalized(defaults.string(forKey: storageKey))
-  }
-
-  static func save(_ endpoint: String?, to defaults: UserDefaults = .standard) {
-    try? saveVerified(endpoint, to: defaults)
   }
 
   static func saveVerified(_ endpoint: String?, to defaults: UserDefaults) throws {

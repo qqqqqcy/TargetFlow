@@ -3,7 +3,7 @@ import Foundation
 extension ClaudeProvider {
   // MARK: - Claude screenshot transcription
 
-  static func transcriptionModelConfiguration(defaults: UserDefaults = .standard) -> (
+  static func transcriptionModelConfiguration(defaults: UserDefaults = AppStoragePaths.defaults) -> (
     model: String, reasoningEffort: String?
   ) {
     ModelPreferences.resolve(
@@ -92,10 +92,7 @@ extension ClaudeProvider {
         do {
           let segments = try validatedClaudeSegments(
             from: currentRun,
-            durationSeconds: durationSeconds,
-            batchId: batchId,
-            model: model,
-            attempt: attempt
+            durationSeconds: durationSeconds
           )
           let observations = observations(
             from: segments,
@@ -180,23 +177,10 @@ extension ClaudeProvider {
 
   private func validatedClaudeSegments(
     from run: ChatCLIRunResult,
-    durationSeconds: Int,
-    batchId: Int64?,
-    model: String,
-    attempt: Int
+    durationSeconds: Int
   ) throws -> [SegmentMergeResponse.Segment] {
     let segments = try parseSegments(from: run.stdout, stderr: run.stderr)
     if let validationError = validateSegments(segments, duration: TimeInterval(durationSeconds)) {
-      AnalyticsService.shared.captureValidationFailure(
-        provider: "chat_cli",
-        providerID: providerID,
-        operation: "transcribe_screenshots",
-        validationType: "timeline",
-        attempt: attempt,
-        model: model,
-        batchId: batchId,
-        errorDetail: validationError
-      )
       throw NSError(
         domain: "ClaudeProvider",
         code: -98,
@@ -212,7 +196,6 @@ extension ClaudeProvider {
   ) -> String {
     basePrompt
       + """
-
 
       The one attached image is a labeled 5-column by 3-row contact sheet containing all screenshots. Tiles are chronological in row-major order and map to the timestamps in the metadata below. Treat each numbered tile as a distinct screenshot. Small text in the contact sheet may be unreadable.
       Apple Vision OCR/app hints for the matching tiles follow. They are fallible side-channel evidence: pixels decide the foreground and OCR may add exact text only when consistent with the pixels.

@@ -1,41 +1,5 @@
 import Foundation
 
-struct OllamaPromptOverrides: Codable, Equatable {
-  var summaryBlock: String?
-  var titleBlock: String?
-
-  var isEmpty: Bool {
-    [summaryBlock, titleBlock].allSatisfy { value in
-      let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-      return trimmed.isEmpty
-    }
-  }
-}
-
-enum OllamaPromptPreferences {
-  private static let overridesKey = "ollamaPromptOverrides"
-  private static let store = UserDefaults.standard
-
-  static func load() -> OllamaPromptOverrides {
-    guard let data = store.data(forKey: overridesKey) else {
-      return OllamaPromptOverrides()
-    }
-    guard let overrides = try? JSONDecoder().decode(OllamaPromptOverrides.self, from: data) else {
-      return OllamaPromptOverrides()
-    }
-    return overrides
-  }
-
-  static func save(_ overrides: OllamaPromptOverrides) {
-    guard let data = try? JSONEncoder().encode(overrides) else { return }
-    store.set(data, forKey: overridesKey)
-  }
-
-  static func reset() {
-    store.removeObject(forKey: overridesKey)
-  }
-}
-
 enum OllamaPromptDefaults {
   static let summaryBlock = """
           SUMMARY GUIDELINES:

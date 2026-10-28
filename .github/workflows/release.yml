@@ -1,4 +1,4 @@
-name: Release test builds
+name: Release builds
 
 on:
   push:
@@ -107,7 +107,7 @@ jobs:
           pattern: installer-*
           path: dist
           merge-multiple: true
-      - name: Publish prerelease and advance release branch
+      - name: Publish release and advance release branch
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -115,22 +115,15 @@ jobs:
         run: |
           (cd dist && sha256sum -c *.sha256)
           cat > notes.md <<'NOTES'
-          Automated test build / 自动构建测试版
+          Requires macOS 14 or later. Choose arm64 for Apple silicon or x86_64 for Intel.
 
-          Requires macOS 14+. Choose arm64 for Apple silicon or x86_64 for Intel.
-          系统要求 macOS 14+。Apple 芯片选择 arm64，Intel 选择 x86_64。
+          This build uses a persistent self-signed certificate and is not notarized by Apple.
+          If macOS blocks the first launch, open System Settings → Privacy & Security and choose Open Anyway.
 
-          Uses the persistent self-signed certificate; not notarized by Apple.
-          使用固定自签名证书，未经 Apple 公证。
-          On first launch, use System Settings → Privacy & Security → Open Anyway if blocked.
-          首次打开如被阻止，请在「系统设置 → 隐私与安全性」中选择「仍要打开」。
-          Migration from the original ad-hoc Test 1 may require granting Screen Recording permission again.
-          从原临时签名 Test 1 迁移时，可能需要重新授权录屏。
-
-          Configure your own AI provider. / 需要配置自己的 AI 提供商。
-          Installation details / 安装说明: docs/test-release-install.txt
+          Configure your own AI provider.
+          Installation details: docs/release-install.txt
           NOTES
-          gh release create "$TAG" dist/* --title "Target Flow $VERSION Test / 测试版" --notes-file notes.md --prerelease --verify-tag
+          gh release create "$TAG" dist/* --title "Target Flow $VERSION" --notes-file notes.md --prerelease --verify-tag
           if git ls-remote --exit-code --heads origin release >/dev/null 2>&1; then
             git fetch origin release
             git push --force-with-lease=refs/heads/release:$(git rev-parse FETCH_HEAD) origin HEAD:refs/heads/release

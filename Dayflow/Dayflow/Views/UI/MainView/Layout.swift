@@ -1,5 +1,4 @@
 import AppKit
-import Sentry
 import SwiftUI
 
 extension MainView {
@@ -21,11 +20,8 @@ extension MainView {
     contentStack
       .padding([.top, .trailing, .bottom], 7)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(theme.sidebarBackground)
       .ignoresSafeArea()
-      // Hero animation overlay for video expansion (Emil Kowalski: shared element transitions)
-      .overlay { overlayContent }
       .overlay(alignment: .bottomTrailing) { timelineFailureToastOverlayContent }
       .overlay(alignment: .bottomTrailing) { screenRecordingPermissionNoticeOverlayContent }
       .overlay {
@@ -69,9 +65,6 @@ extension MainView {
       .onChange(of: refreshActivitiesTrigger) {
         loadWeeklyTrackedMinutes()
       }
-      .onChange(of: selectedActivity?.id) {
-        handleSelectedActivityIdChange()
-      }
       // Second observer on selectedIcon: if user returns from Settings and a
       // reset was pending, perform it once. SwiftUI allows multiple onChange
       // handlers for the same value — they fire in declaration order.
@@ -112,12 +105,8 @@ extension MainView {
     if let payload = timelineFailureToastPayload {
       TimelineFailureToastView(
         payload: payload,
-        onOpenSettings: { handleTimelineFailureToastOpenSettings(payload) },
-        onCopyCommand: {
-          AnalyticsService.shared.capture(
-            "llm_timeline_failure_toast_copied_command", payload.analyticsProps)
-        },
-        onDismiss: { handleTimelineFailureToastDismiss(payload) }
+        onOpenSettings: handleTimelineFailureToastOpenSettings,
+        onDismiss: handleTimelineFailureToastDismiss
       )
       .padding(.trailing, 24)
       .padding(.bottom, 24)
@@ -139,26 +128,15 @@ extension MainView {
   }
 
   private func performMainLayoutOnAppear() {
-    syncCurrentUIContext()
 
     // screen viewed and initial timeline view
-    AnalyticsService.shared.screen("timeline")
-    AnalyticsService.shared.withSampling(probability: 0.01) {
-      AnalyticsService.shared.capture(
-        "timeline_viewed", ["date_bucket": dayString(selectedDate)])
-    }
     // Orchestrated entrance animations following Emil Kowalski principles —
     // fast, under 300ms, natural spring motion, staggered by 50ms.
-    withAnimation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0)) {
-      logoScale = 1.0
-      logoOpacity = 1
-    }
     withAnimation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0).delay(0.1)) {
       timelineOffset = 0
       timelineOpacity = 1
     }
     withAnimation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0).delay(0.15)) {
-      sidebarOffset = 0
       sidebarOpacity = 1
     }
     withAnimation(.spring(response: 0.5, dampingFraction: 0.8, blendDuration: 0).delay(0.2)) {
@@ -181,30 +159,8 @@ extension MainView {
   }
 
   private func handleTabSelectionChange(_ newIcon: SidebarIcon) {
-    let tabName = newIcon.analyticsTabName
-    syncCurrentUIContext(selectedTab: newIcon)
 
-    SentryHelper.configureScope { scope in
-      scope.setContext(
-        value: [
-          "active_view": tabName,
-          "selected_date": dayString(selectedDate),
-          "is_recording": appState.isRecording,
-        ], key: "app_state")
-    }
-
-    let navBreadcrumb = Breadcrumb(level: .info, category: "navigation")
-    navBreadcrumb.message = "Navigated to \(tabName)"
-    navBreadcrumb.data = ["view": tabName]
-    SentryHelper.addBreadcrumb(navBreadcrumb)
-
-    AnalyticsService.shared.capture("tab_selected", ["tab": tabName])
-    AnalyticsService.shared.screen(tabName)
     if newIcon == .timeline {
-      AnalyticsService.shared.withSampling(probability: 0.01) {
-        AnalyticsService.shared.capture(
-          "timeline_viewed", ["date_bucket": dayString(selectedDate)])
-      }
       loadWeeklyTrackedMinutes()
     }
   }
@@ -216,21 +172,7 @@ extension MainView {
     let newDay = dayString(newDate)
     let oldWeekRange = cachedTimelineWeekRange
 
-    if let method = lastDateNavMethod, method == "picker" {
-      AnalyticsService.shared.capture(
-        "date_navigation",
-        [
-          "method": method,
-          "timeline_mode": timelineMode.rawValue,
-          "from_day": oldDay,
-          "to_day": newDay,
-        ])
-    }
-
     previousDate = newDate
-    AnalyticsService.shared.withSampling(probability: 0.01) {
-      AnalyticsService.shared.capture("timeline_viewed", ["date_bucket": newDay])
-    }
 
     let newWeekRange = TimelineWeekRange.containing(newDate)
     let weekRangeChanged = newWeekRange != oldWeekRange
@@ -248,19 +190,6 @@ extension MainView {
     timelinePerfLog(
       "selectedDateChange.end mode=\(timelineMode.rawValue) old=\(oldDay) new=\(newDay) weekChanged=\(weekRangeChanged) duration_ms=\(durationMs)"
     )
-  }
-
-  private func handleSelectedActivityIdChange() {
-    dismissFeedbackModal(animated: false)
-    guard let a = selectedActivity else { return }
-    let dur = a.endTime.timeIntervalSince(a.startTime)
-    AnalyticsService.shared.capture(
-      "activity_card_opened",
-      [
-        "activity_type": a.category,
-        "duration_bucket": AnalyticsService.shared.secondsBucket(dur),
-        "has_video": a.videoSummaryURL != nil,
-      ])
   }
 
   private func handleTimelineDataUpdatedNotification(_ notification: Notification) {
@@ -329,9 +258,7 @@ extension MainView {
     loadWeeklyTrackedMinutes()
   }
 
-  private func handleTimelineFailureToastOpenSettings(_ payload: TimelineFailureToastPayload) {
-    AnalyticsService.shared.capture(
-      "llm_timeline_failure_toast_clicked_settings", payload.analyticsProps)
+  private func handleTimelineFailureToastOpenSettings() {
     withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
       selectedIcon = .settings
       timelineFailureToastPayload = nil
@@ -342,15 +269,13 @@ extension MainView {
     }
   }
 
-  private func handleTimelineFailureToastDismiss(_ payload: TimelineFailureToastPayload) {
-    AnalyticsService.shared.capture("llm_timeline_failure_toast_dismissed", payload.analyticsProps)
+  private func handleTimelineFailureToastDismiss() {
     withAnimation(.spring(response: 0.25, dampingFraction: 0.92)) {
       timelineFailureToastPayload = nil
     }
   }
 
   private func handleScreenRecordingPermissionNoticeOpenSettings() {
-    AnalyticsService.shared.capture("screen_permission_notice_clicked_settings")
     didDismissScreenRecordingPermissionNoticeThisSession = true
     screenCaptureIsFailing = false
     withAnimation(.spring(response: 0.25, dampingFraction: 0.92)) {
@@ -360,20 +285,10 @@ extension MainView {
   }
 
   private func handleScreenRecordingPermissionNoticeDismiss() {
-    AnalyticsService.shared.capture("screen_permission_notice_dismissed")
     didDismissScreenRecordingPermissionNoticeThisSession = true
     screenCaptureIsFailing = false
     withAnimation(.spring(response: 0.25, dampingFraction: 0.92)) {
       showScreenRecordingPermissionNotice = false
-    }
-  }
-
-  private var overlayContent: some View {
-    ZStack {
-      VideoExpansionOverlay(
-        expansionState: videoExpansionState,
-        namespace: videoHeroNamespace
-      )
     }
   }
 
@@ -382,8 +297,7 @@ extension MainView {
     if showCategoryEditor {
       ColorOrganizerRoot(
         presentationStyle: .sheet,
-        onDismiss: { showCategoryEditor = false }, completionButtonTitle: String(localized: "Done"),
-        showsTitles: true
+        onDismiss: { showCategoryEditor = false }, completionButtonTitle: String(localized: "Done")
       )
       .environmentObject(categoryStore)
       .transition(.opacity)
@@ -399,7 +313,6 @@ private struct TimelineFailureToastView: View {
   @Environment(\.dayflowTheme) private var theme
   let payload: TimelineFailureToastPayload
   let onOpenSettings: () -> Void
-  let onCopyCommand: () -> Void
   let onDismiss: () -> Void
   @State private var didCopy = false
 
@@ -527,7 +440,6 @@ private struct TimelineFailureToastView: View {
       Button {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(command, forType: .string)
-        onCopyCommand()
         didCopy = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
           didCopy = false
@@ -682,7 +594,7 @@ private struct ScreenRecordingPermissionNoticeView: View {
         }
         .buttonStyle(.plain)
         .hoverScaleEffect(scale: 1.02)
-        .pointingHandCursorOnHover(reassertOnPressEnd: true)
+        .pointingHandCursor()
       }
 
       DayflowSurfaceButton(

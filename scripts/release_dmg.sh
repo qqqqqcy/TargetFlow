@@ -51,7 +51,7 @@ if [[ ! -d "$PROJECT_PATH" ]]; then
   exit 1
 fi
 
-echo "[1/7] Building ${APP_NAME} (${SCHEME}|${CONFIG}) using project ${PROJECT_PATH} with code signing disabled…"
+echo "[1/6] Building ${APP_NAME} (${SCHEME}|${CONFIG}) using project ${PROJECT_PATH} with code signing disabled…"
 xcodebuild \
   -project "${PROJECT_PATH}" \
   -scheme "${SCHEME}" \
@@ -67,38 +67,7 @@ if [[ ! -d "${APP_PATH}" ]]; then
   exit 1
 fi
 
-echo "[2/8] Uploading dSYM to Sentry for crash symbolication…"
-if [[ -n "${SENTRY_AUTH_TOKEN:-}" && -n "${SENTRY_ORG:-}" && -n "${SENTRY_PROJECT:-}" ]]; then
-  if ! command -v sentry-cli >/dev/null 2>&1; then
-    echo "WARNING: sentry-cli not found. Install with: brew install getsentry/tools/sentry-cli" >&2
-    echo "         Skipping dSYM upload. Crash reports will not be symbolicated." >&2
-  else
-    # Find the dSYM bundle in DerivedData
-    DSYM_PATH="${DERIVED_DATA}/Build/Products/${CONFIG}/${APP_NAME}.app.dSYM"
-    if [[ -d "${DSYM_PATH}" ]]; then
-      # Get version and build number from Info.plist
-      VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${APP_PATH}/Contents/Info.plist" 2>/dev/null || echo "unknown")
-      BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${APP_PATH}/Contents/Info.plist" 2>/dev/null || echo "unknown")
-      RELEASE="${VERSION}+${BUILD}"
-
-      echo "Uploading dSYM for release ${RELEASE} to ${SENTRY_ORG}/${SENTRY_PROJECT}..."
-      SENTRY_AUTH_TOKEN="${SENTRY_AUTH_TOKEN}" sentry-cli upload-dif \
-        --org "${SENTRY_ORG}" \
-        --project "${SENTRY_PROJECT}" \
-        "${DSYM_PATH}"
-
-      echo "✓ dSYM uploaded successfully"
-    else
-      echo "WARNING: dSYM not found at ${DSYM_PATH}" >&2
-      echo "         Check that DEBUG_INFORMATION_FORMAT is set to 'dwarf-with-dsym' in build settings." >&2
-    fi
-  fi
-else
-  echo "Skipping dSYM upload: SENTRY_AUTH_TOKEN, SENTRY_ORG, or SENTRY_PROJECT not set"
-  echo "Add these to scripts/release.env to enable crash symbolication"
-fi
-
-echo "[3/8] Determining Developer ID signing identity…"
+echo "[2/6] Determining Developer ID signing identity…"
 SIGN_ID=${SIGN_ID:-}
 if [[ -z "${SIGN_ID}" ]]; then
   # Try to pick the first available Developer ID Application identity.
@@ -111,13 +80,13 @@ if [[ -z "${SIGN_ID}" ]]; then
 fi
 echo "Using signing identity: ${SIGN_ID}"
 
-echo "[4/8] Creating sanitized copy for signing…"
+echo "[3/6] Creating sanitized copy for signing…"
 rm -rf "${SANITIZED_DIR}"
 mkdir -p "${SANITIZED_DIR}"
 # Copy without extended attributes or resource forks
 ditto --noextattr --norsrc "${APP_PATH}" "${SANITIZED_APP}"
 
-echo "[5/8] Codesigning (no --deep, proper Sparkle helpers)…"
+echo "[4/6] Codesigning…"
 # Ensure any stray metadata is gone
 rm -f "${SANITIZED_APP}"/Icon? 2>/dev/null || true
 find -L "${SANITIZED_APP}" -name ".DS_Store" -delete || true
@@ -125,91 +94,9 @@ if command -v xattr >/dev/null 2>&1; then
   xattr -rc "${SANITIZED_APP}" 2>/dev/null || true
 fi
 
-# Re-sign Sparkle helpers first per Sparkle sandboxing guide
-SPARKLE_DIR="${SANITIZED_APP}/Contents/Frameworks/Sparkle.framework/Versions/B"
-if [[ -d "${SPARKLE_DIR}" ]]; then
-  if [[ -d "${SPARKLE_DIR}/XPCServices/Installer.xpc" ]]; then
-    codesign -vvv --force -o runtime --sign "${SIGN_ID}" \
-      "${SPARKLE_DIR}/XPCServices/Installer.xpc"
-  fi
-  if [[ -d "${SPARKLE_DIR}/XPCServices/Downloader.xpc" ]]; then
-    # Preserve the XPC's own entitlements
-    codesign -vvv --force -o runtime --preserve-metadata=entitlements --sign "${SIGN_ID}" \
-      "${SPARKLE_DIR}/XPCServices/Downloader.xpc"
-  fi
-  if [[ -f "${SPARKLE_DIR}/Autoupdate" ]]; then
-    codesign -vvv --force -o runtime --sign "${SIGN_ID}" \
-      "${SPARKLE_DIR}/Autoupdate"
-  fi
-  if [[ -d "${SPARKLE_DIR}/Updater.app" ]]; then
-    codesign -vvv --force -o runtime --sign "${SIGN_ID}" \
-      "${SPARKLE_DIR}/Updater.app"
-  fi
-  # Finally sign the framework container itself
-  codesign -vvv --force -o runtime --sign "${SIGN_ID}" \
-    "${SPARKLE_DIR}/../../Current" 2>/dev/null || \
-  codesign -vvv --force -o runtime --sign "${SIGN_ID}" \
-    "${SPARKLE_DIR}"
-fi
-
-# Re-sign Sentry framework to ensure proper resource sealing
-SENTRY_DIR="${SANITIZED_APP}/Contents/Frameworks/Sentry.framework"
-if [[ -d "${SENTRY_DIR}" ]]; then
-  # Sign the versioned framework (handles both Current symlink and direct path)
-  codesign -vvv --force -o runtime --sign "${SIGN_ID}" \
-    "${SENTRY_DIR}/Versions/Current" 2>/dev/null || \
-  codesign -vvv --force -o runtime --sign "${SIGN_ID}" \
-    "${SENTRY_DIR}"
-fi
-
-# Inject analytics and crash reporting keys (optional) before final app signing
-if [[ -n "${POSTHOG_API_KEY:-}" ]]; then
-  /usr/libexec/PlistBuddy -c "Set :PHPostHogApiKey ${POSTHOG_API_KEY}" "${SANITIZED_APP}/Contents/Info.plist" \
-    >/dev/null 2>&1 || /usr/libexec/PlistBuddy -c "Add :PHPostHogApiKey string ${POSTHOG_API_KEY}" "${SANITIZED_APP}/Contents/Info.plist"
-fi
-if [[ -n "${POSTHOG_HOST:-}" ]]; then
-  /usr/libexec/PlistBuddy -c "Set :PHPostHogHost ${POSTHOG_HOST}" "${SANITIZED_APP}/Contents/Info.plist" \
-    >/dev/null 2>&1 || /usr/libexec/PlistBuddy -c "Add :PHPostHogHost string ${POSTHOG_HOST}" "${SANITIZED_APP}/Contents/Info.plist"
-fi
-if [[ -n "${SENTRY_DSN:-}" ]]; then
-  /usr/libexec/PlistBuddy -c "Set :SentryDSN ${SENTRY_DSN}" "${SANITIZED_APP}/Contents/Info.plist" \
-    >/dev/null 2>&1 || /usr/libexec/PlistBuddy -c "Add :SentryDSN string ${SENTRY_DSN}" "${SANITIZED_APP}/Contents/Info.plist"
-fi
-if [[ -n "${SENTRY_ENV:-}" ]]; then
-  /usr/libexec/PlistBuddy -c "Set :SentryEnvironment ${SENTRY_ENV}" "${SANITIZED_APP}/Contents/Info.plist" \
-    >/dev/null 2>&1 || /usr/libexec/PlistBuddy -c "Add :SentryEnvironment string ${SENTRY_ENV}" "${SANITIZED_APP}/Contents/Info.plist"
-fi
-if [[ -z "${DAYFLOW_BACKEND_URL:-}" ]]; then
-  echo "ERROR: DAYFLOW_BACKEND_URL must be set before building a release DMG." >&2
-  exit 1
-fi
-RESOLVED_DAYFLOW_BACKEND_URL="${DAYFLOW_BACKEND_URL}"
-/usr/libexec/PlistBuddy -c "Set :DayflowBackendURL ${RESOLVED_DAYFLOW_BACKEND_URL}" "${SANITIZED_APP}/Contents/Info.plist" \
-  >/dev/null 2>&1 || /usr/libexec/PlistBuddy -c "Add :DayflowBackendURL string ${RESOLVED_DAYFLOW_BACKEND_URL}" "${SANITIZED_APP}/Contents/Info.plist"
-
-# Resolve $(PRODUCT_BUNDLE_IDENTIFIER) in entitlements before codesigning
-BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${SANITIZED_APP}/Contents/Info.plist" 2>/dev/null || true)
+# Use the app's current recording and network entitlements.
 RESOLVED_ENTS="${SANITIZED_DIR}/resolved.entitlements"
-if [[ -n "${BUNDLE_ID}" && -f "${ENTITLEMENTS}" ]]; then
-  cp "${ENTITLEMENTS}" "${RESOLVED_ENTS}"
-  # Force-set Sparkle's mach-lookup exceptions with the resolved bundle id
-  /usr/libexec/PlistBuddy -c "Delete :com.apple.security.temporary-exception.mach-lookup.global-name" "${RESOLVED_ENTS}" >/dev/null 2>&1 || true
-  /usr/libexec/PlistBuddy -c "Add :com.apple.security.temporary-exception.mach-lookup.global-name array" "${RESOLVED_ENTS}" >/dev/null 2>&1 || true
-  /usr/libexec/PlistBuddy -c "Add :com.apple.security.temporary-exception.mach-lookup.global-name:0 string ${BUNDLE_ID}-spks" "${RESOLVED_ENTS}" >/dev/null 2>&1 || true
-  /usr/libexec/PlistBuddy -c "Add :com.apple.security.temporary-exception.mach-lookup.global-name:1 string ${BUNDLE_ID}-spki" "${RESOLVED_ENTS}" >/dev/null 2>&1 || true
-else
-  cp "${ENTITLEMENTS}" "${RESOLVED_ENTS}"
-fi
-
-# Sign the bundled dayflow CLI before the app container seals over it.
-# It's a plain hardened-runtime binary with no entitlements of its own.
-CLI_BINARY="${SANITIZED_APP}/Contents/Helpers/dayflow"
-if [[ -f "${CLI_BINARY}" ]]; then
-  codesign -vvv --force -o runtime --timestamp --sign "${SIGN_ID}" "${CLI_BINARY}"
-else
-  echo "WARNING: bundled dayflow CLI not found at ${CLI_BINARY}." >&2
-  echo "         The 'Embed Dayflow CLI' build phase may not have run." >&2
-fi
+cp "${ENTITLEMENTS}" "${RESOLVED_ENTS}"
 
 # Now sign the top-level app bundle (no --deep), using resolved entitlements
 codesign -vvv --force --strict \
@@ -219,34 +106,11 @@ codesign -vvv --force --strict \
   --sign "${SIGN_ID}" \
   "${SANITIZED_APP}"
 
-# Sanity check: ensure mach-lookup exceptions are present
-if command -v rg >/dev/null 2>&1; then
-  ENT_DUMP=$(codesign -dv --entitlements :- "${SANITIZED_APP}" 2>&1 || true)
-  if ! printf "%s" "$ENT_DUMP" | rg -q "com.apple.security.temporary-exception.mach-lookup.global-name"; then
-    echo "WARNING: mach-lookup entitlement missing on app. Check entitlements substitution." >&2
-  fi
-  if ! printf "%s" "$ENT_DUMP" | rg -q -e "-spks|teleportlabs.com.Dayflow-spks"; then
-    echo "WARNING: Sparkle status mach service (-spks) not present in entitlements." >&2
-  fi
-  if ! printf "%s" "$ENT_DUMP" | rg -q -e "-spki|teleportlabs.com.Dayflow-spki"; then
-    echo "WARNING: Sparkle installer mach service (-spki) not present in entitlements." >&2
-  fi
-fi
-
-# Without audio-input the hardened runtime denies the microphone silently and
-# Flow's voice planning fails for every user, so refuse to ship that.
-SIGNED_ENTS="${SANITIZED_DIR}/signed.entitlements"
-codesign -d --entitlements "${SIGNED_ENTS}" --xml "${SANITIZED_APP}" 2>/dev/null || true
-if [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.device.audio-input' "${SIGNED_ENTS}" 2>/dev/null)" != "true" ]]; then
-  echo "ERROR: com.apple.security.device.audio-input entitlement missing on app; Flow voice planning would fail." >&2
-  exit 1
-fi
-
-echo "[6/8] Verifying signature…"
+echo "[5/6] Verifying signature…"
 codesign --verify --deep --strict --verbose=2 "${SANITIZED_APP}"
 spctl -a -vvv --type execute "${SANITIZED_APP}" || true
 
-echo "[7/8] Creating DMG with create-dmg…"
+echo "[6/6] Creating DMG with create-dmg…"
 # Require create-dmg for reliable DMG styling
 if ! command -v create-dmg >/dev/null 2>&1; then
   echo "ERROR: create-dmg is required but not installed." >&2
@@ -279,7 +143,7 @@ create-dmg \
   "${DMG_NAME}" \
   "${SANITIZED_APP}"
 
-echo "[8/8] Submitting DMG for notarization…"
+echo "[6/6] Submitting DMG for notarization…"
 NOTARY_ARGS=("${DMG_NAME}")
 if [[ "${NO_NOTARIZE:-0}" == "1" ]]; then
   echo "Skipping notarization: NO_NOTARIZE=1"
@@ -300,7 +164,7 @@ fi
 
 if [[ ${#NOTARY_ARGS[@]} -gt 0 ]]; then
   xcrun notarytool "${NOTARY_ARGS[@]}"
-echo "[8/8] Stapling notarization ticket…"
+echo "[6/6] Stapling notarization ticket…"
   xcrun stapler staple "${DMG_NAME}"
   xcrun stapler validate "${DMG_NAME}"
 else

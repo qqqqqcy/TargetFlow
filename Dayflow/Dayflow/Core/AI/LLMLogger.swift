@@ -37,94 +37,19 @@ enum LLMLogger {
     let record = makeRecord(
       ctx: ctx, http: http, status: .success, latencyMs: latencyMs, error: nil)
     StorageManager.shared.insertLLMCall(record)
-    Task { @MainActor in
-      var props: [String: Any] = [
-        "provider": ctx.provider,
-        "model": ctx.model ?? "unknown",
-        "latency_ms": latencyMs,
-        "outcome": "success",
-        "operation": ctx.operation,
-        "attempt": ctx.attempt,
-      ]
 
-      if let batchId = ctx.batchId { props["batch_id"] = batchId }
-      if let groupId = ctx.callGroupId { props["group_id"] = groupId }
-      if let providerID = ctx.providerID { props["provider_id"] = providerID }
-
-      // Bubble token usage if present in response headers (non-HTTP calls may stuff them here).
-      if let headers = http.responseHeaders {
-        if let v = headers["x-usage-input"], let n = Int(v) { props["usage_input_tokens"] = n }
-        if let v = headers["x-usage-cached-input"], let n = Int(v) {
-          props["usage_cached_input_tokens"] = n
-        }
-        if let v = headers["x-usage-cache-creation-input"], let n = Int(v) {
-          props["usage_cache_creation_input_tokens"] = n
-        }
-        if let v = headers["x-usage-output"], let n = Int(v) { props["usage_output_tokens"] = n }
-      }
-
-      AnalyticsService.shared.capture("llm_api_call", props)
-    }
   }
 
   static func logFailure(
     ctx: LLMCallContext, http: LLMHTTPInfo?, finishedAt: Date, errorDomain: String?,
-    errorCode: Int?, errorMessage: String?, failureStdout: String? = nil,
-    failureStderr: String? = nil
+    errorCode: Int?, errorMessage: String?
   ) {
     let latencyMs = Int(finishedAt.timeIntervalSince(ctx.startedAt) * 1000)
     let record = makeRecord(
       ctx: ctx, http: http, status: .failure, latencyMs: latencyMs,
       error: (errorDomain, errorCode, errorMessage))
     StorageManager.shared.insertLLMCall(record)
-    Task { @MainActor in
-      var props: [String: Any] = [
-        "provider": ctx.provider,
-        "model": ctx.model ?? "unknown",
-        "latency_ms": latencyMs,
-        "outcome": "error",
-        "operation": ctx.operation,
-        "attempt": ctx.attempt,
-      ]
 
-      if let batchId = ctx.batchId { props["batch_id"] = batchId }
-      if let groupId = ctx.callGroupId { props["group_id"] = groupId }
-      if let providerID = ctx.providerID { props["provider_id"] = providerID }
-      if let errorDomain, !errorDomain.isEmpty { props["error_domain"] = errorDomain }
-      if let errorCode { props["error_code"] = errorCode }
-      if let errorMessage {
-        props["error_message_length"] = errorMessage.count
-        if let sanitizedMessage = TelemetryErrorSanitizer.sanitize(errorMessage) {
-          props["error_message"] = sanitizedMessage
-          props["error_message_sanitized"] = true
-        }
-      }
-      props.merge(
-        TelemetryErrorSanitizer.failureOutputProperties(failureStdout, prefix: "stdout")
-      ) { _, new in new }
-      props.merge(
-        TelemetryErrorSanitizer.failureOutputProperties(failureStderr, prefix: "stderr")
-      ) { _, new in new }
-      if let httpStatus = http?.httpStatus { props["http_status"] = httpStatus }
-      if let headers = http?.responseHeaders {
-        if let v = headers["x-usage-input"], let n = Int(v) { props["usage_input_tokens"] = n }
-        if let v = headers["x-usage-cached-input"], let n = Int(v) {
-          props["usage_cached_input_tokens"] = n
-        }
-        if let v = headers["x-usage-cache-creation-input"], let n = Int(v) {
-          props["usage_cache_creation_input_tokens"] = n
-        }
-        if let v = headers["x-usage-output"], let n = Int(v) { props["usage_output_tokens"] = n }
-      }
-      if let body = http?.responseBody {
-        props["has_response_body"] = true
-        props["response_body_bytes"] = body.count
-      } else {
-        props["has_response_body"] = false
-      }
-
-      AnalyticsService.shared.capture("llm_api_call", props)
-    }
   }
 
   private static func makeRecord(

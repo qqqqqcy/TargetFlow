@@ -24,7 +24,7 @@ final class NotchNotificationTests: XCTestCase {
   }
   @MainActor
   func testExplicitDismissalRetractsAndHidesReminder() async throws {
-    let controller = NotchNotificationController()
+    let controller = NotchNotificationController(notificationCenter: NotificationCenter())
     defer { controller.dismissImmediately() }
     XCTAssertTrue(controller.show(body: "回到目标"))
     try await Task.sleep(for: .milliseconds(250))
@@ -37,7 +37,7 @@ final class NotchNotificationTests: XCTestCase {
 
   @MainActor
   func testReminderStaysExpandedPastFormerAutomaticDismissalDeadline() async throws {
-    let controller = NotchNotificationController()
+    let controller = NotchNotificationController(notificationCenter: NotificationCenter())
     defer { controller.dismissImmediately() }
     XCTAssertTrue(controller.show(body: "持续提醒"))
     try await Task.sleep(for: .seconds(13))
@@ -47,7 +47,7 @@ final class NotchNotificationTests: XCTestCase {
 
   @MainActor
   func testNewReminderSurvivesThePreviousRemindersRetraction() async throws {
-    let controller = NotchNotificationController()
+    let controller = NotchNotificationController(notificationCenter: NotificationCenter())
     defer { controller.dismissImmediately() }
     XCTAssertTrue(controller.show(body: "旧提醒"))
     controller.dismiss()
@@ -56,6 +56,24 @@ final class NotchNotificationTests: XCTestCase {
     XCTAssertTrue(controller.isPresented)
     XCTAssertTrue(controller.isExpanded)
     XCTAssertEqual(controller.body, "最新建议")
+  }
+
+  @MainActor
+  func testScreenChangeDismissesReminderThroughItsNotificationCenter() async throws {
+    let center = NotificationCenter()
+    let controller = NotchNotificationController(notificationCenter: center)
+    defer { controller.dismissImmediately() }
+    XCTAssertTrue(controller.show(body: "屏幕变化"))
+    XCTAssertTrue(controller.isPresented)
+
+    center.post(name: NSApplication.didChangeScreenParametersNotification, object: nil)
+    // The observer schedules its dismissal on the main actor.
+    for _ in 0..<100 {
+      if !controller.isPresented { break }
+      try await Task.sleep(for: .milliseconds(10))
+    }
+    XCTAssertFalse(controller.isPresented)
+    XCTAssertFalse(controller.isExpanded)
   }
 
   func testNotchedDisplayKeepsBothStatesAttachedToCameraEdge() {

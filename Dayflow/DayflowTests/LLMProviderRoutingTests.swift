@@ -18,7 +18,7 @@ final class LLMProviderRoutingTests: XCTestCase {
 
   override func tearDown() {
     for suiteName in suiteNames {
-      UserDefaults.standard.removePersistentDomain(forName: suiteName)
+      AppStoragePaths.defaults.removePersistentDomain(forName: suiteName)
     }
     suiteNames = []
     super.tearDown()
@@ -580,12 +580,9 @@ final class LLMProviderRoutingTests: XCTestCase {
 }
 
 final class OnboardingSetupMigrationTests: XCTestCase {
-  func testPersistedStepValuesAndPermissionBoundaryStayStable() {
+  func testPersistedStepValuesStayStable() {
     XCTAssertEqual(OnboardingStep.allCases.map(\.rawValue), Array(0...7))
     XCTAssertEqual(OnboardingStep.screen.rawValue, 5)
-    XCTAssertFalse(OnboardingStep.hasPassedScreenRecordingStep(rawValue: 5))
-    XCTAssertTrue(OnboardingStep.hasPassedScreenRecordingStep(rawValue: 6))
-    XCTAssertTrue(OnboardingStep.hasPassedScreenRecordingStep(rawValue: 7))
   }
 
   func testExcludedSavedStepsNormalizeWithoutSkippingProviderSetup() throws {
@@ -608,48 +605,5 @@ final class OnboardingSetupMigrationTests: XCTestCase {
     defaults.set(OnboardingStep.screen.rawValue, forKey: "onboardingStep")
     XCTAssertEqual(OnboardingStepMigration.restoredStep(defaults: defaults), .llmSelection)
     XCTAssertEqual(defaults.string(forKey: "onboardingSelectedProviderID"), "gemini")
-  }
-}
-
-final class TimelineProviderStartupSelectionTests: XCTestCase {
-  private enum StartupError: Error {
-    case unavailable
-  }
-
-  func testHealthyPrimaryKeepsConfiguredBackupAvailable() throws {
-    let selection = try selectTimelineProviderStartup(
-      primary: Result<String, Error>.success("gemini"),
-      backup: "claude"
-    )
-
-    XCTAssertEqual(selection.baselineContext, "gemini")
-    XCTAssertEqual(selection.activeContext, "gemini")
-    XCTAssertEqual(selection.fallbackContext, "claude")
-    XCTAssertFalse(selection.usedProviderBackup)
-    XCTAssertNil(selection.primaryInitializationError)
-  }
-
-  func testPrimaryInitializationFailurePinsBatchToBackup() throws {
-    let selection = try selectTimelineProviderStartup(
-      primary: Result<String, Error>.failure(StartupError.unavailable),
-      backup: "claude"
-    )
-
-    XCTAssertEqual(selection.baselineContext, "claude")
-    XCTAssertEqual(selection.activeContext, "claude")
-    XCTAssertNil(selection.fallbackContext)
-    XCTAssertTrue(selection.usedProviderBackup)
-    XCTAssertNotNil(selection.primaryInitializationError)
-  }
-
-  func testPrimaryInitializationFailureWithoutBackupThrowsOriginalError() {
-    XCTAssertThrowsError(
-      try selectTimelineProviderStartup(
-        primary: Result<String, Error>.failure(StartupError.unavailable),
-        backup: nil
-      )
-    ) { error in
-      XCTAssertTrue(error is StartupError)
-    }
   }
 }

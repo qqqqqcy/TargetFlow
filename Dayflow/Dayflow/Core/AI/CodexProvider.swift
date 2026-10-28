@@ -40,14 +40,4 @@ final class CodexProvider: AgentCLISupporting {
     default: return nil
     }
   }
-
-  static func recordModelFallback(from: String, to: String, operation: String) {
-    AnalyticsService.shared.capture(
-      "llm_model_fallback",
-      [
-        "provider": "chat_cli", "provider_id": LLMProviderID.chatGPT.rawValue,
-        "operation": operation, "from_model": from, "to_model": to,
-        "reason": "model_unavailable",
-      ])
-  }
 }

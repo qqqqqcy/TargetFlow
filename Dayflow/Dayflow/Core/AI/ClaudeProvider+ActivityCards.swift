@@ -30,7 +30,7 @@ struct ClaudeCardGenerationPlan {
 extension ClaudeProvider {
   // MARK: - Claude activity cards
 
-  static func activityCardModelConfiguration(defaults: UserDefaults = .standard) -> (
+  static func activityCardModelConfiguration(defaults: UserDefaults = AppStoragePaths.defaults) -> (
     model: String, reasoningEffort: String?
   ) {
     ModelPreferences.resolve(
@@ -90,10 +90,7 @@ extension ClaudeProvider {
             requiresSingleCard: generationPlan.requiresSingleCard,
             expectedStartTime: generationPlan.expectedStartTime,
             expectedEndTime: generationPlan.expectedEndTime,
-            allowsSingleShortCard: generationPlan.allowsSingleShortCard,
-            batchId: batchId,
-            model: model,
-            attempt: attempt
+            allowsSingleShortCard: generationPlan.allowsSingleShortCard
           )
         } catch {
           guard currentAttempt < maxAttempts else { throw error }
@@ -164,10 +161,7 @@ extension ClaudeProvider {
     requiresSingleCard: Bool,
     expectedStartTime: String?,
     expectedEndTime: String?,
-    allowsSingleShortCard: Bool,
-    batchId: Int64?,
-    model: String,
-    attempt: Int
+    allowsSingleShortCard: Bool
   ) throws -> [ActivityCardData] {
     let parsedCards = try parseCards(from: run.stdout, stderr: run.stderr)
     guard !parsedCards.isEmpty else { throw ClaudeCardGenerationError.empty }
@@ -188,29 +182,9 @@ extension ClaudeProvider {
 
     var validationErrors: [String] = []
     if !coverageValid, let coverageError {
-      AnalyticsService.shared.captureValidationFailure(
-        provider: "chat_cli",
-        providerID: providerID,
-        operation: "generate_activity_cards",
-        validationType: "time_coverage",
-        attempt: attempt,
-        model: model,
-        batchId: batchId,
-        errorDetail: coverageError
-      )
       validationErrors.append(coverageError)
     }
     if !policyValid, let policyError {
-      AnalyticsService.shared.captureValidationFailure(
-        provider: "chat_cli",
-        providerID: providerID,
-        operation: "generate_activity_cards",
-        validationType: requiresSingleCard ? "fresh_segment" : "duration",
-        attempt: attempt,
-        model: model,
-        batchId: batchId,
-        errorDetail: policyError
-      )
       validationErrors.append(policyError)
     }
 

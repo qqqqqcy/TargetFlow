@@ -25,7 +25,7 @@ enum AIConfiguredProvider: @unchecked Sendable {
   }
 
   /// Reuses the configured transports. Gemini's existing vision transcription runs before the text turn.
-  func imageText(prompt: String, imageURLs: [URL], feature: AIFeature = .flow) async throws -> String {
+  func imageText(prompt: String, imageURLs: [URL], feature: AIFeature = .timeline) async throws -> String {
     guard let selection = AIRequestContext.assignment, !imageURLs.isEmpty else {
       throw AIConfiguredRuntimeError.invalidSelection
     }
@@ -45,7 +45,7 @@ enum AIConfiguredProvider: @unchecked Sendable {
         content.append(.init(type: "image_url", text: nil, image_url: .init(url: "data:image/jpeg;base64,\(image.base64EncodedString())")))
       }
       let request = transport.configuredRequest(.init(model: selection.modelID, messages: [.init(role: "user", content: content)]), feature: feature.modelFeature)
-      let response = try await transport.callChatAPI(request, operation: feature == .timeline ? "generate_timeline" : "flow", batchId: nil, maxRetries: 1)
+      let response = try await transport.callChatAPI(request, operation: "generate_timeline", batchId: nil, maxRetries: 1)
       return response.choices.first?.message.content ?? ""
     case .gemini(let provider):
       return try await provider.generateText(prompt: prompt, feature: feature.modelFeature, imageURLs: imageURLs).text
@@ -143,16 +143,6 @@ struct AIConfiguredRuntime {
     self.secret = secret
   }
 
-  static func load() throws -> Self {
-    Self(configuration: try AIConfigurationStore.shared.load())
-  }
-
-  func selections(for feature: AIFeature) throws -> [AIRuntimeSelection] {
-    let assignments = configuration.assignments(for: feature)
-    guard !assignments.isEmpty else { throw AIConfiguredRuntimeError.missingRoute }
-    return try assignments.map { try selection(for: $0) }
-  }
-
   func selection(for assignment: AIModelAssignment) throws -> AIRuntimeSelection {
     try configuration.selection(for: assignment)
   }
@@ -221,10 +211,7 @@ extension AIFeature {
     case .timeline: return .timeline
     case .transcription: return .transcription
     case .activityCards: return .activityCards
-    case .chat: return .chat
     case .text, .targetEvaluation: return .text
-    case .dailyRecap: return .dailyRecap
-    case .flow: return .flow
     }
   }
 }

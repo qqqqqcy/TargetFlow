@@ -47,15 +47,15 @@ extension TargetPreferences {
   static let soundEnabledKey = "target.soundEnabled"
   static let reminderSoundKey = "target.reminderSound"
 
-  static func notificationStyle(defaults: UserDefaults = .standard) -> TargetNotificationStyle {
+  static func notificationStyle(defaults: UserDefaults = AppStoragePaths.defaults) -> TargetNotificationStyle {
     TargetNotificationStyle(rawValue: defaults.string(forKey: notificationStyleKey) ?? "") ?? .notch
   }
 
-  static func soundEnabled(defaults: UserDefaults = .standard) -> Bool {
+  static func soundEnabled(defaults: UserDefaults = AppStoragePaths.defaults) -> Bool {
     defaults.object(forKey: soundEnabledKey) as? Bool ?? true
   }
 
-  static func reminderSound(defaults: UserDefaults = .standard) -> TargetReminderSound {
+  static func reminderSound(defaults: UserDefaults = AppStoragePaths.defaults) -> TargetReminderSound {
     TargetReminderSound(rawValue: defaults.string(forKey: reminderSoundKey) ?? "") ?? .gemCollect
   }
 }

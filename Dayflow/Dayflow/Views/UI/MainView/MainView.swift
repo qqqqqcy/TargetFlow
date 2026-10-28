@@ -9,7 +9,6 @@ import AVFoundation
 import AVKit
 import AppKit
 import Foundation
-import Sentry
 import SwiftUI
 
 struct MainView: View {
@@ -17,7 +16,6 @@ struct MainView: View {
   @EnvironmentObject var categoryStore: CategoryStore
   @Environment(\.accessibilityReduceMotion) var reduceMotion
   @Environment(\.dayflowTheme) var theme
-  @Environment(\.stylePreviewAfter) var stylePreviewAfter
   @State var selectedIcon: SidebarIcon = .timeline
   @State var selectedDate = timelineDisplayDate(from: Date())
   @State var cachedTimelineWeekRange: TimelineWeekRange = TimelineWeekRange.containing(
@@ -39,18 +37,12 @@ struct MainView: View {
   @ObservedObject var pauseManager = PauseManager.shared
 
   // Animation states for orchestrated entrance - Emil Kowalski principles
-  @State var logoScale: CGFloat = 0.8
-  @State var logoOpacity: Double = 0
   @State var timelineOffset: CGFloat = -20
   @State var timelineOpacity: Double = 0
-  @State var sidebarOffset: CGFloat = -30
   @State var sidebarOpacity: Double = 0
   @State var contentOpacity: Double = 0
 
-  // Hero animation for video expansion (Emil Kowalski: shared element transitions)
-  @Namespace var videoHeroNamespace
   @Namespace var timelineModeSwitchNamespace
-  @StateObject var videoExpansionState = VideoExpansionState()
 
   // Track if we've performed the initial scroll to current time
   @State var didInitialScroll = false
@@ -64,49 +56,23 @@ struct MainView: View {
   // Categories the user turned off in the chip row (keys from categoryFilterKey).
   // Session-only on purpose: their cards are dimmed, not hidden.
   @State var mutedCategoryKeys: Set<String> = []
-  @State var feedbackModalVisible = false
-  @State var feedbackMessage: String = ""
-  @State var feedbackShareLogs = true
-  @State var feedbackDirection: TimelineRatingDirection? = nil
-  @State var feedbackActivitySnapshot: TimelineActivity? = nil
-  @State var feedbackMode: TimelineFeedbackMode = .form
   @State var copyTimelineState: TimelineCopyState = .idle
   @State var copyTimelineTask: Task<Void, Never>? = nil
   @State var deleteTimelineTask: Task<Void, Never>? = nil
-  @State var timelineHeaderTrailingWidth: CGFloat = 120
   @State var weeklyTrackedMinutes: Double = 0
   @StateObject var retryCoordinator = RetryCoordinator()
-  @State var weeklyHoursFrame: CGRect = .zero
-  @State var timelineTimeLabelFrames: [CGRect] = []
-  @State var weeklyHoursIntersectsCard: Bool = false
   @State var timelineFailureToastPayload: TimelineFailureToastPayload?
   @State var showScreenRecordingPermissionNotice = false
   @State var didDismissScreenRecordingPermissionNoticeThisSession = false
   /// macOS says access is granted, but the recorder gave up after captures kept failing.
   @State var screenCaptureIsFailing = false
   let rateSummaryFooterHeight: CGFloat = 28
-  let weeklyHoursFadeDistance: CGFloat = 12
-  var rateSummaryFooterInset: CGFloat {
-    selectedActivity == nil ? 0 : rateSummaryFooterHeight
-  }
-  let iso8601Formatter: ISO8601DateFormatter = {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    return formatter
-  }()
 
   var body: some View {
     mainLayout
       .onReceive(NotificationCenter.default.publisher(for: .navigateToEvents)) { _ in
         selectedIcon = .timeline
         showCategoryEditor = true
-      }
-      .onReceive(NotificationCenter.default.publisher(for: .navigateToTimeline)) { _ in
-        selectedActivity = nil
-        setSelectedDate(timelineDisplayDate(from: Date()))
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-          selectedIcon = .timeline
-        }
       }
   }
 }

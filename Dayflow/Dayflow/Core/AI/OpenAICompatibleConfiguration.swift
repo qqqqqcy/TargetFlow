@@ -18,14 +18,6 @@ struct OpenAICompatibleConfiguration: Codable, Equatable {
     self.modelID = modelID.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
-  static func openRouter(modelID: String = "") -> OpenAICompatibleConfiguration {
-    OpenAICompatibleConfiguration(
-      preset: .openRouter,
-      baseURL: openRouterBaseURL,
-      modelID: modelID
-    )
-  }
-
   var chatCompletionsURL: URL? {
     LocalEndpointUtilities.chatCompletionsURL(baseURL: baseURL)
   }
@@ -39,7 +31,7 @@ enum OpenAICompatiblePreferences {
   static let keychainProvider = "openai_compatible"
   private static let configurationKey = "llmOpenAICompatibleConfigurationV1"
 
-  static func load(from defaults: UserDefaults = .standard) -> OpenAICompatibleConfiguration? {
+  static func load(from defaults: UserDefaults = AppStoragePaths.defaults) -> OpenAICompatibleConfiguration? {
     guard let data = defaults.data(forKey: configurationKey) else { return nil }
     return try? JSONDecoder().decode(OpenAICompatibleConfiguration.self, from: data)
   }
@@ -47,7 +39,7 @@ enum OpenAICompatiblePreferences {
   @discardableResult
   static func save(
     _ configuration: OpenAICompatibleConfiguration,
-    to defaults: UserDefaults = .standard
+    to defaults: UserDefaults = AppStoragePaths.defaults
   ) -> Bool {
     guard let data = try? JSONEncoder().encode(configuration) else { return false }
     let previousValue = defaults.object(forKey: configurationKey)
@@ -63,7 +55,7 @@ enum OpenAICompatiblePreferences {
     return true
   }
 
-  static func reset(in defaults: UserDefaults = .standard) {
+  static func reset(in defaults: UserDefaults = AppStoragePaths.defaults) {
     defaults.removeObject(forKey: configurationKey)
   }
 }

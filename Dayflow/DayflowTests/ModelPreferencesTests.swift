@@ -7,7 +7,7 @@ final class ModelPreferencesTests: XCTestCase {
 
   override func tearDown() {
     for name in suiteNames {
-      UserDefaults.standard.removePersistentDomain(forName: name)
+      AppStoragePaths.defaults.removePersistentDomain(forName: name)
     }
     suiteNames = []
     super.tearDown()
@@ -30,32 +30,32 @@ final class ModelPreferencesTests: XCTestCase {
     let preferences = ModelPreferences(
       defaultSelection: ModelOverride(model: "global", reasoningEffort: .medium),
       featureOverrides: [
-        .chat: ModelOverride(model: "chat"),
+        .text: ModelOverride(model: "chat"),
         .transcription: ModelOverride(reasoningEffort: .low),
       ])
     try preferences.save(provider: .chatGPT, to: defaults)
 
-    XCTAssertEqual(resolve(.chat, defaults), ModelSelection(model: "chat", reasoningEffort: "medium"))
+    XCTAssertEqual(resolve(.text, defaults), ModelSelection(model: "chat", reasoningEffort: "medium"))
     XCTAssertEqual(resolve(.transcription, defaults), ModelSelection(model: "global", reasoningEffort: "low"))
-    XCTAssertEqual(resolve(.flow, defaults), ModelSelection(model: "global", reasoningEffort: "medium"))
+    XCTAssertEqual(resolve(.timeline, defaults), ModelSelection(model: "global", reasoningEffort: "medium"))
   }
 
   func testExplicitProviderDefaultOmitsEffortInsteadOfInheriting() throws {
     let defaults = try makeDefaults()
     var preferences = ModelPreferences(
       defaultSelection: ModelOverride(reasoningEffort: .providerDefault),
-      featureOverrides: [.chat: ModelOverride(reasoningEffort: ModelReasoningEffort.none)])
+      featureOverrides: [.text: ModelOverride(reasoningEffort: ModelReasoningEffort.none)])
     try preferences.save(provider: .chatGPT, to: defaults)
-    XCTAssertNil(resolve(.text, defaults).reasoningEffort)
-    XCTAssertEqual(resolve(.chat, defaults).reasoningEffort, "none")
+    XCTAssertNil(resolve(.transcription, defaults).reasoningEffort)
+    XCTAssertEqual(resolve(.text, defaults).reasoningEffort, "none")
 
     preferences.defaultSelection.reasoningEffort = .high
-    preferences.featureOverrides[.chat] = ModelOverride(reasoningEffort: .providerDefault)
+    preferences.featureOverrides[.text] = ModelOverride(reasoningEffort: .providerDefault)
     try preferences.save(provider: .chatGPT, to: defaults)
-    XCTAssertNil(resolve(.chat, defaults).reasoningEffort)
-    preferences.featureOverrides.removeValue(forKey: .chat)
+    XCTAssertNil(resolve(.text, defaults).reasoningEffort)
+    preferences.featureOverrides.removeValue(forKey: .text)
     try preferences.save(provider: .chatGPT, to: defaults)
-    XCTAssertEqual(resolve(.chat, defaults).reasoningEffort, "high")
+    XCTAssertEqual(resolve(.text, defaults).reasoningEffort, "high")
   }
 
   func testAllFeaturesAndProvidersRoundTripIndependently() throws {
@@ -85,12 +85,12 @@ final class ModelPreferencesTests: XCTestCase {
     let defaults = try makeDefaults()
     var preferences = ModelPreferences(
       defaultSelection: ModelOverride(model: "  \n "),
-      featureOverrides: [.chat: ModelOverride(model: " \n ")])
+      featureOverrides: [.text: ModelOverride(model: " \n ")])
     try preferences.save(provider: .chatGPT, to: defaults)
-    XCTAssertEqual(resolve(.chat, defaults).model, "legacy")
-    preferences.featureOverrides[.chat]?.model = " vendor/future-model:custom "
+    XCTAssertEqual(resolve(.text, defaults).model, "legacy")
+    preferences.featureOverrides[.text]?.model = " vendor/future-model:custom "
     try preferences.save(provider: .chatGPT, to: defaults)
-    XCTAssertEqual(resolve(.chat, defaults).model, "vendor/future-model:custom")
+    XCTAssertEqual(resolve(.text, defaults).model, "vendor/future-model:custom")
   }
 
   func testInvalidEffortOrMultilineModelDoesNotReplaceSavedPreferences() throws {
@@ -101,7 +101,7 @@ final class ModelPreferencesTests: XCTestCase {
       try ModelPreferences(defaultSelection: ModelOverride(reasoningEffort: .minimal))
         .save(provider: .claude, to: defaults))
     XCTAssertThrowsError(
-      try ModelPreferences(featureOverrides: [.chat: ModelOverride(model: "model\nother")])
+      try ModelPreferences(featureOverrides: [.text: ModelOverride(model: "model\nother")])
         .save(provider: .claude, to: defaults))
     XCTAssertEqual(ModelPreferences.load(provider: .claude, from: defaults), original)
   }
@@ -112,7 +112,7 @@ final class ModelPreferencesTests: XCTestCase {
     defaults.set(corrupt, forKey: ModelPreferences.storageKey(for: .chatGPT))
     try ModelPreferences(defaultSelection: ModelOverride(model: "sonnet"))
       .save(provider: .claude, to: defaults)
-    XCTAssertEqual(resolve(.chat, defaults), ModelSelection(model: "legacy", reasoningEffort: "high"))
+    XCTAssertEqual(resolve(.text, defaults), ModelSelection(model: "legacy", reasoningEffort: "high"))
     XCTAssertEqual(defaults.data(forKey: ModelPreferences.storageKey(for: .chatGPT)), corrupt)
     XCTAssertEqual(ModelPreferences.load(provider: .claude, from: defaults).defaultSelection.model, "sonnet")
   }
@@ -121,10 +121,10 @@ final class ModelPreferencesTests: XCTestCase {
     let defaults = try makeDefaults()
     let value = ModelPreferences(
       defaultSelection: ModelOverride(reasoningEffort: .low),
-      featureOverrides: [.chat: ModelOverride(reasoningEffort: .minimal)])
+      featureOverrides: [.text: ModelOverride(reasoningEffort: .minimal)])
     defaults.set(try JSONEncoder().encode(value), forKey: ModelPreferences.storageKey(for: .claude))
     let selection = ModelPreferences.resolve(
-      provider: .claude, feature: .chat, defaultModel: "sonnet", defaultEffort: "high", defaults: defaults)
+      provider: .claude, feature: .text, defaultModel: "sonnet", defaultEffort: "high", defaults: defaults)
     XCTAssertEqual(selection.reasoningEffort, "low")
   }
 
@@ -136,7 +136,7 @@ final class ModelPreferencesTests: XCTestCase {
     XCTAssertThrowsError(
       try ModelPreferences(
         defaultSelection: ModelOverride(model: "gemini-3.8-flash", reasoningEffort: .medium),
-        featureOverrides: [.chat: ModelOverride(model: "gemini-3-pro")])
+        featureOverrides: [.text: ModelOverride(model: "gemini-3-pro")])
         .save(provider: .gemini, to: defaults))
     XCTAssertNoThrow(
       try ModelPreferences(defaultSelection: ModelOverride(model: "gemini-3.8-flash", reasoningEffort: .minimal))

@@ -40,8 +40,7 @@ struct CategoryPickerOverlay: View {
           } label: {
             CategoryPickerPill(
               category: category,
-              isSelected: isSelected(category),
-              isDark: theme.isDark
+              isSelected: isSelected(category)
             )
           }
           .buttonStyle(.plain)
@@ -147,7 +146,6 @@ private struct CategoryPickerPill: View {
   @Environment(\.dayflowTheme) private var theme
   let category: TimelineCategory
   let isSelected: Bool
-  var isDark: Bool = false
 
   private var categoryColor: Color {
     if let nsColor = NSColor(hex: category.colorHex) {
@@ -205,12 +203,6 @@ private struct CategoryPickerPill: View {
 private struct FlowLayout: Layout {
   var spacing: CGFloat = 6
   var rowSpacing: CGFloat = 6
-
-  func makeCache(subviews: Subviews) {
-    ()
-  }
-
-  func updateCache(_ cache: inout (), subviews: Subviews) {}
 
   func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
     let maxWidth = proposal.width ?? .infinity

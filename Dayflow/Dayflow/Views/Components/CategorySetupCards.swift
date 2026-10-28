@@ -179,7 +179,6 @@ struct EditableCategoryCard: View {
 
 struct ColorAssignmentCard: View {
   let category: TimelineCategory
-  var showDetails: Bool = true
   var onColorDrop: (String) -> Void
 
   @Environment(\.dayflowTheme) private var theme
@@ -210,9 +209,7 @@ struct ColorAssignmentCard: View {
             .font(Font.system(size: 12).weight(.bold))
             .foregroundColor(theme.textPrimary)
 
-          if showDetails
-            && !category.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-          {
+          if !category.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Text(category.details)
               .font(Font.system(size: 12).weight(.medium))
               .foregroundColor(

@@ -34,7 +34,7 @@ enum RecordingControl {
     return appState.isRecording ? .active : .stopped
   }
 
-  static func start(reason: String) {
+  static func start() {
     Task { @MainActor in
       // Preflight only: an SCShareableContent probe here would be one more
       // ScreenCaptureKit request for macOS to re-check (issue #381), and the
@@ -46,12 +46,12 @@ enum RecordingControl {
       }
 
       PauseManager.shared.clearPauseState()
-      AppState.shared.setRecording(true, analyticsReason: reason)
+      AppState.shared.setRecording(true)
     }
   }
 
-  static func stop(reason: String) {
+  static func stop() {
     PauseManager.shared.clearPauseState()
-    AppState.shared.setRecording(false, analyticsReason: reason)
+    AppState.shared.setRecording(false)
   }
 }

@@ -189,7 +189,6 @@ extension OllamaProvider {
         prompt =
           basePrompt + """
 
-
             PREVIOUS ATTEMPT FAILED — The response was invalid (error: \(error.localizedDescription)).
             Respond with ONLY the JSON object described above. Ensure it contains "reasoning", "summary", "category", and "app_sites" fields.
             """
@@ -251,7 +250,6 @@ extension OllamaProvider {
 
         prompt =
           basePrompt + """
-
 
             PREVIOUS ATTEMPT FAILED — The response was invalid (error: \(error.localizedDescription)).
             Respond with ONLY the title text on a single line. Do not include JSON or quotes.
@@ -381,7 +379,6 @@ extension OllamaProvider {
         prompt =
           basePrompt + """
 
-
             PREVIOUS ATTEMPT FAILED — The response was invalid (error: \(error.localizedDescription)).
             Return ONLY the JSON object described above with "reason" and "combine" fields.
             """
@@ -508,7 +505,6 @@ extension OllamaProvider {
 
         prompt =
           basePrompt + """
-
 
             PREVIOUS ATTEMPT FAILED — The response was invalid (error: \(error.localizedDescription)).
             Respond with ONLY the JSON object described above containing merged "title" and "summary" fields.

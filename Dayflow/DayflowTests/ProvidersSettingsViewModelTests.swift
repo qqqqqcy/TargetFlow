@@ -4,99 +4,38 @@ import XCTest
 
 @MainActor
 final class ProvidersSettingsViewModelTests: XCTestCase {
-  private let defaultKeys = [
-    "llmLocalEngine",
-    "llmLocalBaseURL",
-    "llmLocalModelId",
-    "llmLocalAPIKey",
-    "localSetupComplete",
-    ActivityCardPromptPreferences.storageKey,
-    AIConfigurationStore.storageKey,
-    "geminiPromptOverrides",
-    "ollamaPromptOverrides",
-    "chatCLIPromptOverrides",
-    "chatGPTPromptOverrides",
-    "claudePromptOverrides",
-    "dayflowProviderEndpointV2",
-    "chatgptSetupComplete",
-    "claudeSetupComplete",
-    "geminiSelectedModel_v3",
-    "geminiSelectedModel_v4",
-    "geminiSelectedModel_v5",
-    LLMProviderRoutingStore.storageKey,
-  ]
-
-  private var savedDefaults: [String: Any?] = [:]
+  private var defaults: UserDefaults!
+  private var suiteName: String!
 
   override func setUp() {
     super.setUp()
-    savedDefaults = Dictionary(
-      uniqueKeysWithValues: defaultKeys.map { ($0, UserDefaults.standard.object(forKey: $0)) }
-    )
-    defaultKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
+    suiteName = "ProvidersSettingsViewModelTests.\(UUID().uuidString)"
+    defaults = UserDefaults(suiteName: suiteName)!
   }
 
   override func tearDown() {
-    defaultKeys.forEach { UserDefaults.standard.removeObject(forKey: $0) }
-    for (key, value) in savedDefaults {
-      if let value {
-        UserDefaults.standard.set(value, forKey: key)
-      }
-    }
-    savedDefaults = [:]
+    defaults.removePersistentDomain(forName: suiteName)
+    defaults = nil
+    suiteName = nil
     super.tearDown()
   }
 
-  func testCatalogAndRoutingRejectHostedProvider() throws {
-    try LLMProviderRoutingStore.save(.init(primary: .local))
-    let viewModel = ProvidersSettingsViewModel()
-    viewModel.loadRouting()
-
-    XCTAssertEqual(
-      Set(viewModel.routingProviders.map(\.id)),
-      Set([LLMProviderID.gemini, .chatGPT, .claude, .openAICompatible, .local])
-    )
-    viewModel.beginProviderSetup(.dayflow, role: .primary)
-    viewModel.editProviderConfiguration(.dayflow)
+  func testCLISetupUsesCurrentConnectionEditorWithoutChangingLegacyRouting() throws {
+    let previousRouting = defaults.object(forKey: LLMProviderRoutingStore.storageKey)
+    let viewModel = ProvidersSettingsViewModel(defaults: defaults)
+    viewModel.editProviderConfiguration(.local)
     XCTAssertNil(viewModel.setupModalProvider)
-    XCTAssertFalse(viewModel.isProviderConfigured(.dayflow))
-    XCTAssertFalse(viewModel.handleProviderSetupCompletion(.dayflow))
-    XCTAssertFalse(viewModel.assignPrimaryProvider(.dayflow, requiresReadinessCheck: false))
-    XCTAssertFalse(viewModel.assignSecondaryProvider(.dayflow, requiresReadinessCheck: false))
-    XCTAssertEqual(viewModel.routing, .init(primary: .local))
-  }
-
-  func testProviderSetupCompletionRefreshesLocalModelSettingsFromDefaults() {
-    UserDefaults.standard.set(LocalEngine.ollama.rawValue, forKey: "llmLocalEngine")
-    UserDefaults.standard.set("http://localhost:11434", forKey: "llmLocalBaseURL")
-    UserDefaults.standard.set("qwen2.5vl:7b", forKey: "llmLocalModelId")
-
-    let viewModel = ProvidersSettingsViewModel()
-    XCTAssertEqual(viewModel.localEngine, .ollama)
-    XCTAssertEqual(viewModel.localModelId, "qwen2.5vl:7b")
-
-    UserDefaults.standard.set(LocalEngine.lmstudio.rawValue, forKey: "llmLocalEngine")
-    UserDefaults.standard.set("http://localhost:1234", forKey: "llmLocalBaseURL")
-    UserDefaults.standard.set("gemma-4-local", forKey: "llmLocalModelId")
-    UserDefaults.standard.set("local-test-key", forKey: "llmLocalAPIKey")
-
-    viewModel.handleProviderSetupCompletion(.local)
-
-    XCTAssertEqual(viewModel.localEngine, .lmstudio)
-    XCTAssertEqual(viewModel.localBaseURL, "http://localhost:1234")
-    XCTAssertEqual(viewModel.localModelId, "gemma-4-local")
-    XCTAssertEqual(viewModel.localAPIKey, "local-test-key")
-  }
-
-  func testProviderSetupCompletionRefreshesGeminiModelPreference() {
-    GeminiModelPreference(primary: .flash36).save()
-    let viewModel = ProvidersSettingsViewModel()
-    XCTAssertEqual(viewModel.selectedGeminiModel, .flash36)
-
-    GeminiModelPreference(primary: .flashLite35).save()
-
-    XCTAssertTrue(viewModel.handleProviderSetupCompletion(.gemini))
-    XCTAssertEqual(viewModel.selectedGeminiModel, .flashLite35)
+    viewModel.editProviderConfiguration(.claude)
+    XCTAssertEqual(viewModel.setupModalProvider, .claude)
+    XCTAssertFalse(viewModel.handleProviderSetupCompletion(.local))
+    XCTAssertTrue(viewModel.handleProviderSetupCompletion(.claude))
+    // The setup screen allows switching between Codex and Claude before completion.
+    XCTAssertTrue(viewModel.handleProviderSetupCompletion(.chatGPT))
+    viewModel.cancelProviderSetup()
+    XCTAssertNil(viewModel.setupModalProvider)
+    XCTAssertFalse(viewModel.handleProviderSetupCompletion(.claude))
+    XCTAssertEqual(defaults.object(forKey: LLMProviderRoutingStore.storageKey) as? Data,
+      previousRouting as? Data)
   }
 
   func testGeminiModelPreferenceUsesTheNewFallbackChain() {
@@ -120,20 +59,20 @@ final class ProvidersSettingsViewModelTests: XCTestCase {
   }
 
   func testGeminiPreferencePreservesSavedSelectionAndDefaultsToFlash38() {
-    XCTAssertEqual(GeminiModelPreference.load().primary, .flash38)
-    GeminiModelPreference(primary: .flash36).save()
-    XCTAssertEqual(GeminiModelPreference.load().orderedModels, [.flash36, .flash35, .flashLite35])
-    GeminiModelPreference(primary: .flash38).save()
-    XCTAssertEqual(GeminiModelPreference.load().primary, .flash38)
+    XCTAssertEqual(GeminiModelPreference.load(from: defaults).primary, .flash38)
+    GeminiModelPreference(primary: .flash36).save(to: defaults)
+    XCTAssertEqual(GeminiModelPreference.load(from: defaults).orderedModels, [.flash36, .flash35, .flashLite35])
+    GeminiModelPreference(primary: .flash38).save(to: defaults)
+    XCTAssertEqual(GeminiModelPreference.load(from: defaults).primary, .flash38)
   }
 
   func testProviderSetupStateHydratesTheSavedLocalConfiguration() {
-    UserDefaults.standard.set(LocalEngine.custom.rawValue, forKey: "llmLocalEngine")
-    UserDefaults.standard.set("https://local.example.test/v1", forKey: "llmLocalBaseURL")
-    UserDefaults.standard.set("saved-vision-model", forKey: "llmLocalModelId")
-    UserDefaults.standard.set("saved-local-key", forKey: "llmLocalAPIKey")
+    defaults.set(LocalEngine.custom.rawValue, forKey: "llmLocalEngine")
+    defaults.set("https://local.example.test/v1", forKey: "llmLocalBaseURL")
+    defaults.set("saved-vision-model", forKey: "llmLocalModelId")
+    defaults.set("saved-local-key", forKey: "llmLocalAPIKey")
 
-    let state = ProviderSetupState()
+    let state = ProviderSetupState(defaults: defaults)
 
     XCTAssertEqual(state.localEngine, .custom)
     XCTAssertEqual(state.localBaseURL, "https://local.example.test/v1")
@@ -141,48 +80,29 @@ final class ProvidersSettingsViewModelTests: XCTestCase {
     XCTAssertEqual(state.localAPIKey, "saved-local-key")
   }
 
-  func testFailedSetupAssignmentRetainsRoutingIntentForRetry() throws {
-    UserDefaults.standard.set(
-      Data("corrupt-routing".utf8),
-      forKey: LLMProviderRoutingStore.storageKey
-    )
-    let viewModel = ProvidersSettingsViewModel()
-    viewModel.loadRouting()
-    viewModel.beginProviderSetup(.claude, role: .primary)
-
-    XCTAssertFalse(viewModel.handleProviderSetupCompletion(.claude))
-    XCTAssertEqual(viewModel.setupModalProvider, .claude)
-
-    UserDefaults.standard.removeObject(forKey: LLMProviderRoutingStore.storageKey)
-    viewModel.loadRouting()
-
-    XCTAssertTrue(viewModel.handleProviderSetupCompletion(.claude))
-    XCTAssertEqual(viewModel.primaryRoutingProviderId, .claude)
-  }
-
   func testSharedEditorLoadsAndPersistsForEveryProvider() throws {
-    try ActivityCardPromptPreferences.saveVerified(.init(titleBlock: "Shared title"))
-    let viewModel = ProvidersSettingsViewModel()
+    try ActivityCardPromptPreferences.saveVerified(.init(titleBlock: "Shared title"), to: defaults)
+    let viewModel = ProvidersSettingsViewModel(defaults: defaults)
     viewModel.loadSharedPromptOverridesIfNeeded()
     XCTAssertEqual(viewModel.titlePromptText, "Shared title")
     viewModel.useCustomSummaryPrompt = true
     viewModel.summaryPromptText = "Shared summary"
-    viewModel.applyProviderChangeSideEffects(for: .openAICompatible)
+    viewModel.loadSharedPromptOverridesIfNeeded(force: true)
     XCTAssertEqual(viewModel.titlePromptText, "Shared title")
     XCTAssertEqual(viewModel.summaryPromptText, "Shared summary")
-    XCTAssertEqual(ActivityCardPromptPreferences.load().summaryBlock, "Shared summary")
+    XCTAssertEqual(ActivityCardPromptPreferences.load(from: defaults).summaryBlock, "Shared summary")
   }
 
   func testResetSharedEditorDoesNotDeleteLegacyPreferences() throws {
     let legacy = ActivityCardPromptOverrides(titleBlock: "Legacy title")
-    ClaudePromptPreferences.save(legacy)
-    try ActivityCardPromptPreferences.saveVerified(.init(titleBlock: "Shared title"))
-    let viewModel = ProvidersSettingsViewModel()
+    ClaudePromptPreferences.save(legacy, to: defaults)
+    try ActivityCardPromptPreferences.saveVerified(.init(titleBlock: "Shared title"), to: defaults)
+    let viewModel = ProvidersSettingsViewModel(defaults: defaults)
     viewModel.loadSharedPromptOverridesIfNeeded()
     viewModel.resetSharedPromptOverrides()
     XCTAssertFalse(viewModel.useCustomTitlePrompt)
     XCTAssertEqual(viewModel.titlePromptText, CodexPromptDefaults.titleBlock)
-    XCTAssertTrue(ActivityCardPromptPreferences.load().isEmpty)
-    XCTAssertEqual(ClaudePromptPreferences.load(), legacy)
+    XCTAssertTrue(ActivityCardPromptPreferences.load(from: defaults).isEmpty)
+    XCTAssertEqual(ClaudePromptPreferences.load(from: defaults), legacy)
   }
 }

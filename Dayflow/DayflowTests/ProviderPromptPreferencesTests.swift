@@ -16,7 +16,7 @@ final class ProviderPromptPreferencesTests: XCTestCase {
 
   override func tearDown() {
     for suiteName in suiteNames {
-      UserDefaults.standard.removePersistentDomain(forName: suiteName)
+      AppStoragePaths.defaults.removePersistentDomain(forName: suiteName)
     }
     suiteNames = []
     super.tearDown()
@@ -133,7 +133,7 @@ final class ProviderPromptPreferencesTests: XCTestCase {
     XCTAssertEqual(ActivityCardPromptPreferences.load(from: defaults), expected)
     XCTAssertEqual(CodexPromptPreferences.load(from: defaults).titleBlock, "Codex legacy")
     XCTAssertNotNil(defaults.data(forKey: "geminiPromptOverrides"))
-    ActivityCardPromptPreferences.reset(in: defaults)
+    try ActivityCardPromptPreferences.saveVerified(ActivityCardPromptOverrides(), to: defaults)
     XCTAssertTrue(ActivityCardPromptPreferences.load(from: defaults).isEmpty)
     XCTAssertNotNil(defaults.data(forKey: "geminiPromptOverrides"))
   }
@@ -145,7 +145,7 @@ final class ProviderPromptPreferencesTests: XCTestCase {
       connections: [local], defaultModel: .init(connectionID: local.id, modelID: "local"))),
       forKey: AIConfigurationStore.storageKey)
     CodexPromptPreferences.save(.init(titleBlock: "Codex legacy"), to: defaults)
-    defaults.set(try JSONEncoder().encode(OllamaPromptOverrides(summaryBlock: "Local summary")),
+    defaults.set(Data(#"{"summaryBlock":"Local summary"}"#.utf8),
       forKey: "ollamaPromptOverrides")
     XCTAssertEqual(ActivityCardPromptPreferences.load(from: defaults).summaryBlock, "Local summary")
     XCTAssertNil(ActivityCardPromptPreferences.load(from: defaults).titleBlock)

@@ -21,7 +21,7 @@ final class TargetStore: ObservableObject {
   private static let notifiedEndKey = "target.lastNotifiedEnd"
 
   init(
-    defaults: UserDefaults = .standard,
+    defaults: UserDefaults = AppStoragePaths.defaults,
     storage: any TargetStorage = StorageManager.shared,
     notify: @escaping (String, String, @escaping () -> Bool) async throws -> Bool = {
       try await NotificationService.shared.notifyTargetDeviation(
@@ -39,11 +39,6 @@ final class TargetStore: ObservableObject {
       target = try? JSONDecoder().decode(FocusTarget.self, from: data)
     }
     refreshAssessments()
-  }
-
-  var currentAssessments: [TargetAssessment] {
-    assessments.values.filter { $0.targetID == target?.id }
-      .sorted { $0.endTime > $1.endTime }.prefix(50).map { $0 }
   }
 
   func synchronize(events: [TimelineCategory]) {

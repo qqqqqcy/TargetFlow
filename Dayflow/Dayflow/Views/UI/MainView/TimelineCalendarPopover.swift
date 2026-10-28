@@ -13,8 +13,6 @@ import SwiftUI
 // picks via `onSelect`.
 struct TimelineCalendarPopover: View {
   static let horizontalPadding: CGFloat = 16
-  static let topPadding: CGFloat = 20
-  static let bottomPadding: CGFloat = 20
   static let contentSpacing: CGFloat = 16
   static let columnWidth: CGFloat = 24
   static let columnSpacing: CGFloat = 3

@@ -284,7 +284,6 @@ enum ClaudeTimelinePrompt {
     - Titles describe the work, not an outcome, unless a screenshot shows the outcome.
     - Every time in the output carries AM or PM matching the frame labels.
 
-
     READING THE SCREENSHOTS
     - There is one screenshot per minute, each labelled with its clock time. A frame labelled 9:03 AM shows the screen at 9:03 AM and stands for the minute that starts then. The new window runs from the first frame's time to one minute after the last frame's time.
     - Look at every frame. The detailedSummary is the only record kept of this window: every minute of the new window appears in a detailedSummary line of exactly one card, in time order, with no minute skipped. Merge consecutive minutes into one line only when the screen shows the same thing; every change of app, page, thread or document starts a new line.

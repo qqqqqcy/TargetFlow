@@ -7,12 +7,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
   private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
   private let menu = NSMenu()
   private var cancellable: AnyCancellable?
-  /// The live controller, retained for source compatibility with legacy views.
-  private(set) static weak var current: StatusBarController?
-
   override init() {
     super.init()
-    Self.current = self
     menu.delegate = self
     statusItem.menu = menu
 
@@ -30,14 +26,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
       .sink { [weak self] isRecording in
         self?.updateIcon(isRecording: isRecording)
       }
-  }
-
-  /// Where the menu bar icon is on screen, or nil when macOS is hiding it.
-  func iconFrameOnScreen() -> NSRect? {
-    guard let button = statusItem.button, let window = button.window, window.isVisible else {
-      return nil
-    }
-    return window.convertToScreen(button.convert(button.bounds, to: nil))
   }
 
   private func updateIcon(isRecording: Bool) {
@@ -113,7 +101,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
   private func pauseStripItem() -> NSMenuItem {
     let strip = StatusMenuPauseStrip(durations: PausePresets.durations) { [weak self] duration in
       self?.menu.cancelTracking()
-      PauseManager.shared.pause(for: duration, source: .menuBar)
+      PauseManager.shared.pause(for: duration)
     }
     let host = NSHostingView(rootView: strip)
     host.frame = NSRect(x: 0, y: 0, width: 220, height: StatusMenuPauseStrip.height)
@@ -133,14 +121,14 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
   @objc private func resumeRecording() {
     if PauseManager.shared.isPaused {
-      PauseManager.shared.resume(source: .userClickedMenuBar)
+      PauseManager.shared.resume()
     } else {
-      RecordingControl.start(reason: "user_menu_bar")
+      RecordingControl.start()
     }
   }
 
   @objc private func openDayflow() {
-    let showDockIcon = UserDefaults.standard.object(forKey: "showDockIcon") as? Bool ?? true
+    let showDockIcon = AppStoragePaths.defaults.object(forKey: "showDockIcon") as? Bool ?? true
     if showDockIcon {
       NSApp.setActivationPolicy(.regular)
     }
@@ -155,7 +143,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
   }
 
   @objc private func quitDayflow() {
-    AppDelegate.permitTermination(reason: "menu_bar_quit")
+    AppDelegate.permitTermination()
     NSApp.terminate(nil)
   }
 }

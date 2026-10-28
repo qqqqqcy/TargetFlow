@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "dayflow": {
-      "command": "/bin/sh",
-      "args": ["./bin/dayflow-mcp"],
-      "cwd": "."
-    }
-  }
-}

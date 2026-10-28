@@ -106,6 +106,7 @@ final class FrameStore: @unchecked Sendable {
 
   /// Drops the most recent segment if a crash left it unreadable. Call once at launch.
   func reconcileAfterLaunch() {
+    guard !AppStoragePaths.isIsolated else { return }
     writeQueue.async {
       guard let path = StorageManager.shared.mostRecentSegmentPath() else { return }
       let url = URL(fileURLWithPath: path)

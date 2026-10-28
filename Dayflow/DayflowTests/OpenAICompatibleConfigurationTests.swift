@@ -13,7 +13,9 @@ final class OpenAICompatibleConfigurationTests: XCTestCase {
   }
 
   func testOpenRouterPresetBuildsChatCompletionsURL() {
-    let configuration = OpenAICompatibleConfiguration.openRouter(
+    let configuration = OpenAICompatibleConfiguration(
+      preset: .openRouter,
+      baseURL: OpenAICompatibleConfiguration.openRouterBaseURL,
       modelID: "  openai/example-model  ")
 
     XCTAssertEqual(configuration.preset, .openRouter)
@@ -115,7 +117,10 @@ final class OpenAICompatibleConfigurationTests: XCTestCase {
     let suiteName = "OpenAICompatibleConfigurationTests.\(UUID().uuidString)"
     let defaults = try XCTUnwrap(IgnoringUserDefaults(suiteName: suiteName))
     defer { defaults.removePersistentDomain(forName: suiteName) }
-    let previous = OpenAICompatibleConfiguration.openRouter(modelID: "previous-model")
+    let previous = OpenAICompatibleConfiguration(
+      preset: .openRouter,
+      baseURL: OpenAICompatibleConfiguration.openRouterBaseURL,
+      modelID: "previous-model")
     let replacement = OpenAICompatibleConfiguration(
       preset: .custom,
       baseURL: "https://replacement.example/v1",

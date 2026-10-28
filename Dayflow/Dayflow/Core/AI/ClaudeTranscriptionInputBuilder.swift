@@ -1,6 +1,5 @@
 import AppKit
 import Foundation
-import ImageIO
 import Vision
 
 struct ClaudeRecognizedTextBlock: Equatable, Sendable {
@@ -39,20 +38,8 @@ struct AppleVisionClaudeFrameTextRecognizer: ClaudeFrameTextRecognizing {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
     request.usesLanguageCorrection = false
-    if #available(macOS 13.0, *) {
-      request.automaticallyDetectsLanguage = true
-    }
+    request.automaticallyDetectsLanguage = true
     return request
-  }
-
-  /// Convenience for callers that already have an image file on disk.
-  func recognizeText(in imageURL: URL) throws -> [ClaudeRecognizedTextBlock] {
-    guard let source = CGImageSourceCreateWithURL(imageURL as CFURL, nil),
-      let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
-    else {
-      throw ClaudeTranscriptionInputBuilderError.cannotLoadImage(imageURL.path)
-    }
-    return try recognizeText(in: image)
   }
 
   func recognizeText(in image: CGImage) throws -> [ClaudeRecognizedTextBlock] {

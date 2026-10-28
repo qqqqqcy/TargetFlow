@@ -18,53 +18,10 @@ enum TimelineCardLayout {
 
 enum TimelineTypography {
   static let cardTextFontSize: CGFloat = 13
-  static let cardTextFontWeight: TimelineCardTextWeight = .medium
+  static let cardTextFontWeight: Font.Weight = .medium
   static let timeLabelFontSize: CGFloat = 10
 
   static func cardSecondaryTextFontSize(for cardTextFontSize: CGFloat) -> CGFloat {
     max(8, cardTextFontSize - 3)
-  }
-}
-
-enum TimelineCardTextWeight: String, CaseIterable, Identifiable {
-  case regular
-  case medium
-  case semibold
-  case bold
-
-  var id: String { rawValue }
-
-  var label: String {
-    switch self {
-    case .regular:
-      return String(localized: "Reg")
-    case .medium:
-      return String(localized: "Med")
-    case .semibold:
-      return String(localized: "Semi")
-    case .bold:
-      return String(localized: "Bold")
-    }
-  }
-
-  var fontWeight: Font.Weight {
-    switch self {
-    case .regular:
-      return .regular
-    case .medium:
-      return .medium
-    case .semibold:
-      return .semibold
-    case .bold:
-      return .bold
-    }
-  }
-}
-
-struct TimelineTimeLabelFramesPreferenceKey: PreferenceKey {
-  static var defaultValue: [CGRect] = []
-
-  static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) {
-    value.append(contentsOf: nextValue())
   }
 }

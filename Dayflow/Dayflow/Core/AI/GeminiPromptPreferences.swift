@@ -1,43 +1,5 @@
 import Foundation
 
-struct GeminiPromptOverrides: Codable, Equatable {
-  var titleBlock: String?
-  var summaryBlock: String?
-  var detailedBlock: String?
-
-  var isEmpty: Bool {
-    let values = [titleBlock, summaryBlock, detailedBlock]
-    return values.allSatisfy { value in
-      let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-      return trimmed.isEmpty
-    }
-  }
-}
-
-enum GeminiPromptPreferences {
-  private static let overridesKey = "geminiPromptOverrides"
-  private static let store = UserDefaults.standard
-
-  static func load() -> GeminiPromptOverrides {
-    guard let data = store.data(forKey: overridesKey) else {
-      return GeminiPromptOverrides()
-    }
-    guard let overrides = try? JSONDecoder().decode(GeminiPromptOverrides.self, from: data) else {
-      return GeminiPromptOverrides()
-    }
-    return overrides
-  }
-
-  static func save(_ overrides: GeminiPromptOverrides) {
-    guard let data = try? JSONEncoder().encode(overrides) else { return }
-    store.set(data, forKey: overridesKey)
-  }
-
-  static func reset() {
-    store.removeObject(forKey: overridesKey)
-  }
-}
-
 enum GeminiPromptDefaults {
   static let titleBlock = """
     Titles

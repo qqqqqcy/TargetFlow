@@ -12,7 +12,6 @@ import Combine
 import CoreGraphics
 import Foundation
 @preconcurrency import ScreenCaptureKit
-import Sentry
 
 // MARK: - Configuration
 // Capture interval and resolution live in `ScreenshotConfig` (RecordingPreferences.swift).
@@ -70,7 +69,6 @@ private enum RecorderState: Equatable {
 
 private enum ScreenRecorderError: Error {
   case noDisplay
-  case screenshotFailed
   case imageConversionFailed
 }
 
@@ -92,6 +90,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
   init(autoStart: Bool = true) {
     super.init()
     dbg("init – autoStart = \(autoStart)")
+    guard !AppStoragePaths.isIsolated else { return }
 
     wantsRecording = AppState.shared.isRecording
 
@@ -177,7 +176,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
   private var displayRefreshPending = false
   private var captureInFlight = false
   private var captureFailureCount = 0
-  private var firstCaptureFailureAt: Date?
   private var lastCaptureFailureReason: String?
   private var setupRetryWorkItem: DispatchWorkItem?
   private var setupFailureCount = 0
@@ -208,21 +206,12 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
       ?? "\(oldState.description) → \(newState.description)"
     dbg("State: \(message)")
 
-    let breadcrumb = Breadcrumb(level: .info, category: "recorder_state")
-    breadcrumb.message = message
-    breadcrumb.data = [
-      "old_state": oldState.description,
-      "new_state": newState.description,
-    ]
-    if let ctx = context {
-      breadcrumb.data?["context"] = ctx
-    }
-    SentryHelper.addBreadcrumb(breadcrumb)
   }
 
   // MARK: - Start/Stop
 
   func start() {
+    guard !AppStoragePaths.isIsolated else { return }
     q.async { [weak self] in
       guard let self else { return }
       guard self.wantsRecording else {
@@ -237,7 +226,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
       self.setupRetryWorkItem?.cancel()
       self.setupRetryWorkItem = nil
       self.captureFailureCount = 0
-      self.firstCaptureFailureAt = nil
       self.lastCaptureFailureReason = nil
       self.captureFailingSince = nil
       self.transition(to: .starting, context: "user/system start")
@@ -277,7 +265,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
 
     do {
       // 1. Get shareable content (requires screen recording permission)
-      monitor.recordRequest(.shareableContent, source: .recorderSetup)
+
       let content = try await SCShareableContent.excludingDesktopWindows(
         false, onScreenWindowsOnly: true)
       cachedContent = content
@@ -334,12 +322,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
         self.captureTick()
       }
 
-      Task { @MainActor in
-        AnalyticsService.shared.withSampling(probability: 0.01) {
-          AnalyticsService.shared.capture("recording_started", ["mode": "screenshot"])
-        }
-      }
-
     } catch {
       dbg("setupCapture failed – \(error.localizedDescription)")
 
@@ -350,11 +332,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
 
       // A missing display isn't ScreenCaptureKit refusing us; keep waiting for one.
       let isCaptureKitFailure = !(error is ScreenRecorderError)
-      if isCaptureKitFailure {
-        monitor.recordFailure(error, source: .recorderSetup)
-      }
 
-      let nsError = error as NSError
       q.async { [weak self] in
         guard let self else { return }
         // stop() or a sleep/lock pause may have landed while we were waiting.
@@ -362,15 +340,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
         self.transition(to: .idle, context: "setupCapture failed")
         self.setupFailureCount += 1
 
-        if self.setupFailureCount == 1 {
-          AnalyticsService.shared.capture(
-            "recording_startup_failed",
-            [
-              "attempt": self.setupFailureCount,
-              "error_domain": nsError.domain,
-              "error_code": nsError.code,
-            ])
-        }
         guard isCaptureKitFailure else {
           self.scheduleSetupRetry()
           return
@@ -394,7 +363,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
     setupFailureCount = 0
     setupFailingSince = nil
     captureFailingSince = nil
-    AnalyticsService.shared.capture("recording_gave_up_while_granted")
     handleMissingScreenRecordingPermission(
       reason: ScreenRecordingPermissionNotice.captureFailingReason)
   }
@@ -471,15 +439,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
 
     case .succeeded:
       guard captureFailureCount > 0 else { return }
-      let downSeconds = firstCaptureFailureAt.map { Date().timeIntervalSince($0) } ?? 0
-      AnalyticsService.shared.capture(
-        "recording_capture_recovered",
-        [
-          "failure_count": captureFailureCount,
-          "down_duration_bucket": AnalyticsService.shared.secondsBucket(downSeconds),
-        ])
       captureFailureCount = 0
-      firstCaptureFailureAt = nil
       lastCaptureFailureReason = nil
       captureFailingSince = nil
 
@@ -507,9 +467,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
   private func backOffCapture(reason: String, error: Error?, maxDelay: TimeInterval = .infinity) {
     captureFailureCount += 1
     lastCaptureFailureReason = reason
-    if captureFailureCount == 1 {
-      firstCaptureFailureAt = Date()
-    }
 
     let delay = min(
       Self.backoffDelay(Self.captureBackoffDelays, failureCount: captureFailureCount), maxDelay)
@@ -529,7 +486,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
       props["error_domain"] = nsError.domain
       props["error_code"] = nsError.code
     }
-    AnalyticsService.shared.capture("recording_capture_backoff", props)
   }
 
   // MARK: - Screenshot Capture
@@ -596,7 +552,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
       config.showsCursor = true
 
       // 3. Capture screenshot
-      monitor.recordRequest(.screenshot, source: .recorderCapture)
+
       let image = try await SCScreenshotManager.captureImage(
         contentFilter: filter,
         configuration: config
@@ -620,7 +576,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
         return .skipped
       }
 
-      monitor.recordFailure(error, source: .recorderCapture)
       return .captureKitFailed(error)
     }
   }
@@ -708,7 +663,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
     }
 
     do {
-      monitor.recordRequest(.shareableContent, source: .recorderRefresh)
+
       let content = try await SCShareableContent.excludingDesktopWindows(
         false, onScreenWindowsOnly: true)
       cachedContent = content
@@ -737,7 +692,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
         return
       }
 
-      monitor.recordFailure(error, source: .recorderRefresh)
       dbg("Failed to refresh display: \(error)")
     }
   }
@@ -759,7 +713,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
       if AppState.shared.isRecording {
         AppState.shared.setRecording(
           false,
-          analyticsReason: "permission_missing",
+
           persistPreference: false
         )
       }
@@ -851,11 +805,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
         }
       }
       self.stop()
-      Task { @MainActor in
-        AnalyticsService.shared.withSampling(probability: 0.01) {
-          AnalyticsService.shared.capture("recording_stopped", ["stop_reason": "system_sleep"])
-        }
-      }
     }
 
     // System did wake
@@ -892,11 +841,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
         }
       }
       self.stop()
-      Task { @MainActor in
-        AnalyticsService.shared.withSampling(probability: 0.01) {
-          AnalyticsService.shared.capture("recording_stopped", ["stop_reason": "lock"])
-        }
-      }
     }
 
     // Screen unlocked
@@ -933,11 +877,6 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
         }
       }
       self.stop()
-      Task { @MainActor in
-        AnalyticsService.shared.withSampling(probability: 0.01) {
-          AnalyticsService.shared.capture("recording_stopped", ["stop_reason": "screensaver"])
-        }
-      }
     }
 
     // Screensaver stopped

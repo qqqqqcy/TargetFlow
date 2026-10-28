@@ -88,13 +88,19 @@ final class NotchNotificationController: ObservableObject {
   private var layout: NotchNotificationLayout?
   private var lifecycle: Task<Void, Never>?
   private var screenObserver: NSObjectProtocol?
+  private let notificationCenter: NotificationCenter
 
-  init() {
-    screenObserver = NotificationCenter.default.addObserver(
+  init(notificationCenter: NotificationCenter = .default) {
+    self.notificationCenter = notificationCenter
+    screenObserver = notificationCenter.addObserver(
       forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
     ) { [weak self] _ in
       Task { @MainActor in self?.dismissImmediately() }
     }
+  }
+
+  deinit {
+    if let screenObserver { notificationCenter.removeObserver(screenObserver) }
   }
 
   /// The latest reminder replaces the current one and stays expanded until dismissed.
@@ -154,7 +160,7 @@ final class NotchNotificationController: ObservableObject {
   func openEvents() {
     dismissImmediately()
     AppDelegate.pendingNotificationNavigationDestination = .events
-    let showDockIcon = UserDefaults.standard.object(forKey: "showDockIcon") as? Bool ?? true
+    let showDockIcon = AppStoragePaths.defaults.object(forKey: "showDockIcon") as? Bool ?? true
     if showDockIcon { NSApp.setActivationPolicy(.regular) }
     NSApp.unhide(nil)
     MainWindowController.shared.showMainWindow()

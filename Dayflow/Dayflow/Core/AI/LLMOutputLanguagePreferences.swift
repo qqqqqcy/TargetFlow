@@ -2,7 +2,7 @@ import Foundation
 
 enum LLMOutputLanguagePreferences {
   private static let overrideKey = "llmOutputLanguageOverride"
-  private static let store = UserDefaults.standard
+  private static let store = AppStoragePaths.defaults
 
   static var override: String {
     get { store.string(forKey: overrideKey) ?? "" }

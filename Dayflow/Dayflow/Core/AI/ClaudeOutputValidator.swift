@@ -203,66 +203,6 @@ enum ClaudeOutputValidator {
       }
     }
   }
-
-  /// Exact, order-preserving validation for Claude transcription output.
-  ///
-  /// Unlike the shared tolerant validator, this does not sort segments or permit boundary drift.
-  static func validateTranscriptionSegments(
-    _ segments: [SegmentMergeResponse.Segment],
-    durationSeconds: Int
-  ) -> String? {
-    guard durationSeconds > 0 else { return "Transcription duration must be positive." }
-    guard !segments.isEmpty else { return "No segments returned." }
-
-    var expectedStart = 0
-    for (index, segment) in segments.enumerated() {
-      guard let start = strictSegmentTimestamp(segment.start),
-        let end = strictSegmentTimestamp(segment.end)
-      else {
-        return "Segments must use exact HH:MM:SS timestamps: \(segment.start) -> \(segment.end)"
-      }
-      guard !segment.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        return "Every segment must include a non-empty factual description."
-      }
-      guard end > start else {
-        return "Segment end time must be after start time: \(segment.start) -> \(segment.end)"
-      }
-
-      if index == 0, start != 0 {
-        return "First segment must start at 00:00:00 (starts at \(segment.start))."
-      }
-      if start != expectedStart {
-        let relationship = start < expectedStart ? "Overlap" : "Gap"
-        return
-          "\(relationship) detected between segments: \(formatSegmentTimestamp(expectedStart)) -> \(segment.start)"
-      }
-      guard end <= durationSeconds else {
-        return
-          "Segment out of bounds: \(segment.start) -> \(segment.end) (duration \(formatSegmentTimestamp(durationSeconds)))"
-      }
-      expectedStart = end
-    }
-
-    guard expectedStart == durationSeconds else {
-      return
-        "Last segment must end at \(formatSegmentTimestamp(durationSeconds)) (ends at \(formatSegmentTimestamp(expectedStart)))."
-    }
-    return nil
-  }
-
-  static func validateExactSegments(
-    _ segments: [SegmentMergeResponse.Segment],
-    duration: TimeInterval
-  ) -> String? {
-    guard duration.isFinite,
-      duration > 0,
-      duration.rounded(.towardZero) == duration,
-      duration <= TimeInterval(Int.max)
-    else {
-      return "Transcription duration must be a positive whole number of seconds."
-    }
-    return validateTranscriptionSegments(segments, durationSeconds: Int(duration))
-  }
 }
 
 extension ClaudeOutputValidator {
@@ -503,33 +443,4 @@ extension ClaudeOutputValidator {
     return coveredThrough >= interval.upperBound - tolerance
   }
 
-  fileprivate static func strictSegmentTimestamp(_ timestamp: String) -> Int? {
-    let bytes = Array(timestamp.utf8)
-    guard bytes.count == 8,
-      bytes[2] == Character(":").asciiValue,
-      bytes[5] == Character(":").asciiValue,
-      bytes.enumerated().allSatisfy({ index, byte in
-        index == 2 || index == 5
-          || (Character("0").asciiValue!...Character("9").asciiValue!)
-            .contains(byte)
-      })
-    else {
-      return nil
-    }
-
-    guard let hour = Int(timestamp.prefix(2)),
-      let minute = Int(timestamp.dropFirst(3).prefix(2)),
-      let second = Int(timestamp.suffix(2)),
-      (0..<24).contains(hour),
-      (0..<60).contains(minute),
-      (0..<60).contains(second)
-    else {
-      return nil
-    }
-    return hour * 3600 + minute * 60 + second
-  }
-
-  fileprivate static func formatSegmentTimestamp(_ seconds: Int) -> String {
-    String(format: "%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60)
-  }
 }

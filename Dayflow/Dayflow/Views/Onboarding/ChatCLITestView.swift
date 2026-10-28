@@ -7,8 +7,6 @@ struct ChatCLITestView: View {
   let onTestComplete: (Bool) -> Void
   var usesOnboardingStyle: Bool = false
 
-  let accentColor = SettingsStyle.ink
-  let successAccentColor = SettingsStyle.statusGood
 
   @State var isTesting = false
   @State var success = false
@@ -19,7 +17,7 @@ struct ChatCLITestView: View {
     VStack(alignment: .leading, spacing: 14) {
       Text("We'll ask your CLI a simple question to verify it's working and signed in.")
         .font(.system(size: usesOnboardingStyle ? 16 : 12))
-        .foregroundColor(usesOnboardingStyle ? SettingsStyle.secondary : SettingsStyle.secondary)
+        .foregroundColor(SettingsStyle.secondary)
         .fixedSize(horizontal: false, vertical: true)
 
       if usesOnboardingStyle {
@@ -116,9 +114,6 @@ struct ChatCLITestView: View {
     success = false
     resultMessage = nil
     debugOutput = nil
-    let testStartedAt = Date()
-
-    captureChatCLITestStarted(for: tool)
 
     Task.detached {
       let outcome: Result<CLIResult, Error> = {
@@ -130,7 +125,6 @@ struct ChatCLITestView: View {
       }()
 
       await MainActor.run {
-        let durationMs = Int(Date().timeIntervalSince(testStartedAt) * 1000)
         isTesting = false
         switch outcome {
         case .success(let cliResult):
@@ -174,12 +168,6 @@ struct ChatCLITestView: View {
             let stderrTrimmed = cliResult.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             if let authError = detectAuthError(cliResult, for: tool) {
               resultMessage = authError
-              captureChatCLITestFailed(
-                for: tool,
-                durationMs: durationMs,
-                failureReason: "auth_error",
-                exitCode: Int(cliResult.exitCode)
-              )
             } else {
               if stderrTrimmed.isEmpty {
                 if tool == .claude {
@@ -198,52 +186,27 @@ struct ChatCLITestView: View {
               } else {
                 resultMessage = String(localized: "CLI error: \(String(stderrTrimmed.prefix(150)))")
               }
-              captureChatCLITestFailed(
-                for: tool,
-                durationMs: durationMs,
-                failureReason: stderrTrimmed.isEmpty
-                  ? "nonzero_exit_no_stderr" : "nonzero_exit_with_stderr",
-                exitCode: Int(cliResult.exitCode)
-              )
             }
             onTestComplete(false)
             return
           }
 
           // Exit code is 0, now check for expected response
-          let passed = parseForSuccess(cliResult, for: tool)
+          let passed = parseForSuccess(cliResult)
           success = passed
           if passed {
             resultMessage = String(localized: "CLI is working!")
-            captureChatCLITestSucceeded(
-              for: tool,
-              durationMs: durationMs,
-              exitCode: Int(cliResult.exitCode)
-            )
           } else if cliResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             resultMessage = String(
               localized: "CLI returned empty response. Make sure you're signed in.")
-            captureChatCLITestFailed(
-              for: tool,
-              durationMs: durationMs,
-              failureReason: "empty_response",
-              exitCode: Int(cliResult.exitCode)
-            )
           } else {
             let preview = cliResult.stdout.prefix(100)
             resultMessage = "Got: \"\(preview)\" — expected '4'"
-            captureChatCLITestFailed(
-              for: tool,
-              durationMs: durationMs,
-              failureReason: "unexpected_output",
-              exitCode: Int(cliResult.exitCode)
-            )
           }
           onTestComplete(passed)
         case .failure(let error):
           success = false
           resultMessage = error.localizedDescription
-          let nsError = error as NSError
 
           // Build debug output even for errors
           var debugParts: [String] = []
@@ -263,75 +226,10 @@ struct ChatCLITestView: View {
           }
 
           debugOutput = debugParts.joined(separator: "\n\n")
-          captureChatCLITestFailed(
-            for: tool,
-            durationMs: durationMs,
-            failureReason: analyticsFailureReason(for: nsError),
-            errorCode: nsError.code,
-            errorDomain: nsError.domain
-          )
           onTestComplete(false)
         }
       }
     }
-  }
-
-  func captureChatCLITestStarted(for tool: CLITool) {
-    AnalyticsService.shared.capture(
-      "chat_cli_test_started",
-      chatCLITestAnalyticsProperties(for: tool)
-    )
-  }
-
-  func captureChatCLITestSucceeded(
-    for tool: CLITool,
-    durationMs: Int,
-    exitCode: Int
-  ) {
-    var props = chatCLITestAnalyticsProperties(for: tool)
-    props["duration_ms"] = durationMs
-    props["exit_code"] = exitCode
-    AnalyticsService.shared.capture("chat_cli_test_succeeded", props)
-  }
-
-  func captureChatCLITestFailed(
-    for tool: CLITool,
-    durationMs: Int,
-    failureReason: String,
-    exitCode: Int? = nil,
-    errorCode: Int? = nil,
-    errorDomain: String? = nil
-  ) {
-    var props = chatCLITestAnalyticsProperties(for: tool)
-    props["duration_ms"] = durationMs
-    props["failure_reason"] = failureReason
-    if let exitCode {
-      props["exit_code"] = exitCode
-    }
-    if let errorCode {
-      props["error_code"] = errorCode
-    }
-    if let errorDomain {
-      props["error_domain"] = errorDomain
-    }
-    AnalyticsService.shared.capture("chat_cli_test_failed", props)
-  }
-
-  func chatCLITestAnalyticsProperties(for tool: CLITool) -> [String: Any] {
-    let providerID: LLMProviderID = tool == .claude ? .claude : .chatGPT
-    return [
-      "provider": providerID.analyticsName,
-      "provider_id": providerID.rawValue,
-      "tool": tool.rawValue,
-      "setup_step": "test",
-    ]
-  }
-
-  func analyticsFailureReason(for error: NSError) -> String {
-    if error.domain == "ChatCLITest" && error.code == 1 {
-      return "cli_not_found"
-    }
-    return "execution_error"
   }
 
   func copyDebugLogs() {
@@ -394,7 +292,7 @@ struct ChatCLITestView: View {
     }
   }
 
-  func parseForSuccess(_ result: CLIResult, for tool: CLITool) -> Bool {
+  func parseForSuccess(_ result: CLIResult) -> Bool {
     let combined = (result.stdout + " " + result.stderr)
     // Simple math test - check for "4" in the response
     return combined.contains("4")
@@ -432,26 +330,10 @@ enum CLITool: String, CaseIterable {
   case codex
   case claude
 
-  var displayName: String {
-    switch self {
-    case .codex: return String(localized: "ChatGPT (Codex CLI)")
-    case .claude: return String(localized: "Claude Code")
-    }
-  }
-
   var shortName: String {
     switch self {
     case .codex: return "ChatGPT"
     case .claude: return "Claude"
-    }
-  }
-
-  var subtitle: String {
-    switch self {
-    case .codex:
-      return String(localized: "OpenAI's ChatGPT desktop tooling with codex CLI")
-    case .claude:
-      return String(localized: "Anthropic's Claude Code command-line helper")
     }
   }
 
@@ -462,23 +344,12 @@ enum CLITool: String, CaseIterable {
     }
   }
 
-  var versionCommand: String {
-    "\(executableName) --version"
-  }
-
   var installURL: URL? {
     switch self {
     case .codex:
       return URL(string: "https://developers.openai.com/codex/cli/")
     case .claude:
       return URL(string: "https://docs.anthropic.com/en/docs/claude-code/setup")
-    }
-  }
-
-  var iconName: String {
-    switch self {
-    case .codex: return "terminal"
-    case .claude: return "bolt.horizontal.circle"
     }
   }
 
@@ -514,18 +385,6 @@ enum CLIDetectionState: Equatable {
       return String(localized: "Not installed")
     case .failed:
       return String(localized: "Error")
-    }
-  }
-
-  var detailMessage: String? {
-    switch self {
-    case .installed(let version):
-      return version.trimmingCharacters(in: .whitespacesAndNewlines)
-    case .failed(let message):
-      let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-      return trimmed.isEmpty ? nil : trimmed
-    default:
-      return nil
     }
   }
 }

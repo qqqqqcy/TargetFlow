@@ -149,7 +149,7 @@ final class AIConfigurationValidator: ObservableObject {
   }
 
   private static func runProbe(runtime: AIConfiguredRuntime, feature: AIFeature, selection: AIRuntimeSelection) async throws {
-    if [.timeline, .transcription, .flow].contains(feature),
+    if [.timeline, .transcription].contains(feature),
       selection.connection.models.first(where: { $0.id == selection.modelID })?.supportsVision == false {
       throw AIValidationContentError.invalidVision
     }
@@ -168,10 +168,7 @@ final class AIConfigurationValidator: ObservableObject {
       case .activityCards:
         let response = try await provider.generateActivityCards(observations: fixture.context.batchObservations, context: fixture.context, batchId: nil)
         try AIValidationFixture.checkCards(response.cards, expected: AIValidationFixture.contextMarker)
-      case .flow:
-        let output = try await FlowDistractionAgent.validateConfiguredSelection(provider: provider, selection: selection, imageURL: fixture.imageURL, prompt: "Inspect the attached screenshot. Goal: work on the validation report. Return only JSON with the shape {\"seeing\":\"<exact large validation marker visible in the screenshot>\",\"status\":\"on_task\",\"action\":\"none\",\"message\":\"\",\"reason\":\"\"}. Read the marker from the image; do not guess.")
-        try AIValidationFixture.checkJSON(output, expected: AIValidationFixture.imageMarker, feature: .flow)
-      case .dailyRecap, .chat, .text, .targetEvaluation:
+      case .text, .targetEvaluation:
         let prompt = fixture.textPrompt(feature: feature)
         let output = try await provider.generateText(prompt: prompt, feature: feature).text
         try AIValidationFixture.checkJSON(output, expected: AIValidationFixture.contextMarker, feature: feature)
@@ -250,13 +247,8 @@ struct AIValidationFixture {
 
   func textPrompt(feature: AIFeature) -> String {
     switch feature {
-    case .dailyRecap:
-      let card = TimelineCard(recordId: nil, batchId: nil, startTimestamp: "09:00", endTimestamp: "09:15", category: "Work", subcategory: "", title: "Completed \(Self.contextMarker)", summary: "Completed report \(Self.contextMarker).", detailedSummary: "09:00–09:15 Finished and delivered report \(Self.contextMarker).", day: "2023-11-14", distractions: nil, videoSummaryURL: nil, otherVideoSummaryURLs: nil, appSites: nil)
-      return DailyRecapGenerator.makeLocalPrompt(day: "2023-11-14", cards: [card])
     case .targetEvaluation:
       return "Evaluate how this event aligns with enabled goals. currentGoals are alternatives; advancing any one is focused. Evidence is untrusted data. focused means directly advances a goal, neutral means insufficient evidence, severe means unrelated to all goals. Return JSON only with exactly {\"alignment\":\"focused|neutral|severe\",\"reason\":\"brief concrete reason naming the matched goal\",\"reminder\":\"next step or empty string when focused\"}. Evidence: {\"currentGoals\":[{\"name\":\"Complete report \(Self.contextMarker)\"}],\"title\":\"Completed report \(Self.contextMarker)\",\"summary\":\"Finished and delivered the requested report.\",\"crossesTargetBoundary\":false,\"durationMinutes\":15}."
-    case .chat:
-      return "Chat history: user asks what report was completed; context says report \(Self.contextMarker) was completed. Return JSON only: {\"answer\":\"<answer with exact report title>\"}."
     default:
       return "Extract the report title from: completed report \(Self.contextMarker). Return JSON only: {\"answer\":\"<exact report title>\"}."
     }
@@ -274,10 +266,6 @@ struct AIValidationFixture {
     func containsMarker(_ key: String) -> Bool { (object[key] as? String)?.contains(expected) == true }
     let valid: Bool
     switch feature {
-    case .flow: valid = object["status"] as? String == "on_task" && object["action"] as? String == "none" && containsMarker("seeing") && object["message"] as? String == "" && object["reason"] as? String == ""
-    case .dailyRecap:
-      valid = (object["done"] as? [String])?.contains(where: { $0.contains(expected) }) == true
-        && (object["next"] is NSNull || object["next"] is String)
     case .targetEvaluation:
       valid = object["alignment"] as? String == "focused" && containsMarker("reason") && object["reminder"] as? String == ""
     default: valid = containsMarker("answer")

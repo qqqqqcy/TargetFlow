@@ -1,61 +1,6 @@
 import Foundation
 
 extension ClaudeProvider {
-  func generateChatStreaming(prompt: String, sessionId: String? = nil) -> AsyncThrowingStream<
-    ChatStreamEvent, Error
-  > {
-    let selection = ModelPreferences.resolve(
-      provider: .claude, feature: .chat, defaultModel: "sonnet", defaultEffort: nil)
-    return runner.runStreaming(
-      tool: .claude,
-      prompt: prompt,
-      workingDirectory: config.workingDirectory,
-      model: selection.model,
-      reasoningEffort: selection.reasoningEffort,
-      sessionId: sessionId
-    )
-  }
-
-  func generateTextStreaming(prompt: String) -> AsyncThrowingStream<String, Error> {
-    let stream = generateChatStreaming(prompt: prompt)
-    return AsyncThrowingStream { continuation in
-      Task {
-        do {
-          for try await event in stream {
-            switch event {
-            case .textDelta(let chunk):
-              continuation.yield(chunk)
-            case .error(let message):
-              continuation.finish(
-                throwing: NSError(
-                  domain: "ClaudeProvider",
-                  code: -1,
-                  userInfo: [NSLocalizedDescriptionKey: message]
-                ))
-              return
-            default:
-              break
-            }
-          }
-          continuation.finish()
-        } catch {
-          continuation.finish(throwing: error)
-        }
-      }
-    }
-  }
-
-  func generateText(prompt: String) async throws -> (text: String, log: LLMCall) {
-    let selection = ModelPreferences.resolve(
-      provider: .claude, feature: .text, defaultModel: "sonnet", defaultEffort: "high")
-    return try await generateText(
-      prompt: prompt,
-      model: selection.model,
-      reasoningEffort: selection.reasoningEffort,
-      disableTools: false
-    )
-  }
-
   func generateText(
     prompt: String,
     model: String,

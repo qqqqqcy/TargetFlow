@@ -7,19 +7,6 @@
 
 import Foundation
 
-/// Represents a recording chunk from the database (legacy - video-based)
-struct RecordingChunk: Codable {
-  let id: Int64
-  let startTs: Int
-  let endTs: Int
-  let fileUrl: String
-  let status: String
-
-  var duration: TimeInterval {
-    TimeInterval(endTs - startTs)
-  }
-}
-
 /// Represents a screenshot capture from the database (new - replaces video chunks)
 struct Screenshot: Codable, Sendable {
   let id: Int64

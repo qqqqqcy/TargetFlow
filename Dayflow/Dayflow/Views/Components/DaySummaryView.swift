@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-private let dayGoalReviewShownTimelineDayKey = "dayGoalReviewShownTimelineDay"
-
 struct DaySummaryLoadToken: Equatable, Sendable {
   let id: UUID
   let dayString: String
@@ -32,9 +30,6 @@ struct DaySummaryView: View {
   let categories: [TimelineCategory]
   let storageManager: StorageManaging
   let recordingControlMode: RecordingControlMode
-  var goalPromptDay: String? = nil
-  var onGoalPromptHandled: ((String) -> Void)? = nil
-  var onShowGoalFlow: ((DayGoalFlowPresentation) -> Void)? = nil
 
   @State private var timelineCards: [TimelineCard] = []
   @State private var isLoading = true
@@ -44,11 +39,6 @@ struct DaySummaryView: View {
   @State private var distractionCategoryIDs: Set<UUID> = []
   @State private var isEditingDistractionCategories = false
   @State private var dayGoalPlan: DayGoalPlan?
-  @State private var hasExplicitDayGoalPlan = false
-  @State private var explicitYesterdayGoalPlan: DayGoalPlan?
-  @State private var yesterdayGoalReview: DayGoalReviewSnapshot?
-  @State private var goalSetupReferenceStats = DayGoalSetupReferenceStats.empty
-  @State private var handledGoalPromptDay: String?
 
   // MARK: - Pre-computed Stats (to avoid expensive parsing during body evaluation)
   // These are computed on background thread when data loads, avoiding main thread hangs
@@ -63,14 +53,11 @@ struct DaySummaryView: View {
   @State private var dataLoadToken: DaySummaryLoadToken?
   @State private var categoryStatsToken: DaySummaryLoadToken?
 
-  private let showDistractionPattern = false
   private enum Design {
-    static let contentWidth: CGFloat = 322
     static let horizontalPadding: CGFloat = 18
     static let topPadding: CGFloat = 18
     static let bottomPadding: CGFloat = 48
     static let sectionSpacing: CGFloat = 26
-    static let targetsHeight: CGFloat = 213
     static let headerSpacing: CGFloat = 6
     static let donutSectionSpacing: CGFloat = 20
 
@@ -80,15 +67,6 @@ struct DaySummaryView: View {
 
   private var timelineDayInfo: (dayString: String, startOfDay: Date, endOfDay: Date) {
     let timelineDate = timelineDisplayDate(from: selectedDate)
-    let info = timelineDate.getDayInfoFor4AMBoundary()
-    return (info.dayString, info.startOfDay, info.endOfDay)
-  }
-
-  private var previousTimelineDayInfo: (dayString: String, startOfDay: Date, endOfDay: Date) {
-    let previousDate =
-      Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)
-      ?? selectedDate
-    let timelineDate = timelineDisplayDate(from: previousDate)
     let info = timelineDate.getDayInfoFor4AMBoundary()
     return (info.dayString, info.startOfDay, info.endOfDay)
   }
@@ -123,20 +101,6 @@ struct DaySummaryView: View {
     cachedTotalDistractedTime
   }
 
-  private var distractionPattern: (title: String, description: String)? {
-    let distractions = timelineCards.flatMap { $0.distractions ?? [] }
-    guard !distractions.isEmpty else { return nil }
-
-    let grouped = Dictionary(grouping: distractions) { distraction in
-      distraction.title.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    let mostFrequent = grouped.max { $0.value.count < $1.value.count }
-    guard let title = mostFrequent?.key, let group = mostFrequent?.value else { return nil }
-
-    let description = group.max(by: { ($0.summary.count) < ($1.summary.count) })?.summary ?? ""
-    return (title: title, description: description)
-  }
-
   // MARK: - Body
 
   var body: some View {
@@ -157,14 +121,6 @@ struct DaySummaryView: View {
         .padding(.top, Design.topPadding)
         .padding(.bottom, Design.bottomPadding)
         .padding(.horizontal, Design.horizontalPadding)
-        .onScrollStart(panelName: "day_summary") { direction in
-          AnalyticsService.shared.capture(
-            "right_panel_scrolled",
-            [
-              "panel": "day_summary",
-              "direction": direction,
-            ])
-        }
       }
       .scrollIndicators(.never)
     }
@@ -177,9 +133,6 @@ struct DaySummaryView: View {
     }
     .onChange(of: selectedDate) {
       loadData()
-    }
-    .onChange(of: goalPromptDay) {
-      handleGoalPromptIfReady()
     }
     .onReceive(NotificationCenter.default.publisher(for: .timelineDataUpdated)) { notification in
       if let dayString = notification.userInfo?["dayString"] as? String {
@@ -215,9 +168,7 @@ struct DaySummaryView: View {
     let dayString = dayInfo.dayString
     let loadToken = DaySummaryLoadToken(dayString: dayString)
     dataLoadToken = loadToken
-    let previousDayInfo = previousTimelineDayInfo
     let storageManager = storageManager
-    let currentTimelineDate = timelineDisplayDate(from: selectedDate)
 
     // Capture current state for background computation
     let currentCategories = categories
@@ -225,7 +176,6 @@ struct DaySummaryView: View {
     dataLoadTask = Task.detached(priority: .userInitiated) {
       // Use timeline display date to handle 4 AM boundary
       let cards = storageManager.fetchTimelineCards(forDay: dayString)
-      let explicitPlanForDay = storageManager.fetchDayGoalPlan(forDay: dayString) != nil
       let plan = DaySummaryStats.carriedForwardGoalPlan(
         day: dayString,
         storageManager: storageManager,
@@ -246,17 +196,6 @@ struct DaySummaryView: View {
         categories: currentCategories)
       let totalDistracted = DaySummaryStats.computeTotalDistractedTime(
         from: precomputed, snapshots: plan.distractionCategories, categories: currentCategories)
-      let yesterdayReview = DaySummaryStats.makeGoalReviewSnapshot(
-        dayInfo: previousDayInfo,
-        storageManager: storageManager,
-        categories: currentCategories
-      )
-      let explicitYesterdayPlan = storageManager.fetchDayGoalPlan(forDay: previousDayInfo.dayString)
-      let setupReferenceStats = DaySummaryStats.makeGoalSetupReferenceStats(
-        currentTimelineDate: currentTimelineDate,
-        storageManager: storageManager,
-        categories: currentCategories
-      )
 
       guard !Task.isCancelled else { return }
 
@@ -271,7 +210,6 @@ struct DaySummaryView: View {
 
         self.timelineCards = cards
         self.applyGoalPlan(plan)
-        self.hasExplicitDayGoalPlan = explicitPlanForDay
         self.cardsWithDurations = precomputed
         self.cachedCategoryDurations = catDurations
         self.cachedTotalCapturedTime = totalCaptured
@@ -280,10 +218,6 @@ struct DaySummaryView: View {
         self.cachedTotalDistractedTime = totalDistracted
         self.isLoading = false
         self.hasCompletedInitialLoad = true
-        self.explicitYesterdayGoalPlan = explicitYesterdayPlan
-        self.yesterdayGoalReview = yesterdayReview
-        self.goalSetupReferenceStats = setupReferenceStats
-        self.handleGoalPromptIfReady()
         self.dataLoadTask = nil
       }
     }
@@ -299,104 +233,6 @@ struct DaySummaryView: View {
   }
 
   // MARK: - Header
-
-  private var todayTargetsSection: some View {
-    DayGoalHeader(
-      focusTargetDuration: effectiveGoalPlan.focusTargetDuration,
-      focusDuration: totalFocusTime,
-      focusCategories: targetFocusCategories,
-      distractionLimitDuration: effectiveGoalPlan.distractionLimitDuration,
-      distractedDuration: totalDistractedTime,
-      showsDisabledState: effectiveGoalPlan.isSkipped,
-      recordingControlMode: recordingControlMode,
-      onSetGoals: {
-        presentGoalFlow(source: "right_panel_set_goals")
-      }
-    )
-    .frame(height: Design.targetsHeight)
-  }
-
-  private var canShowYesterdayGoalReview: Bool {
-    guard explicitYesterdayGoalPlan?.isSkipped == false else { return false }
-    return UserDefaults.standard.string(forKey: dayGoalReviewShownTimelineDayKey)
-      != timelineDayInfo.dayString
-  }
-
-  private func presentGoalFlow(
-    initialScreen: DayGoalFlowInitialScreen? = nil,
-    source: String
-  ) {
-    guard let onShowGoalFlow else { return }
-
-    let resolvedInitialScreen = initialScreen ?? (canShowYesterdayGoalReview ? .review : .setup)
-    let review =
-      yesterdayGoalReview
-      ?? DayGoalReviewSnapshot.empty(
-        day: previousTimelineDayInfo.dayString,
-        plan: DayGoalPlan.defaultPlan(
-          day: previousTimelineDayInfo.dayString,
-          categories: categories
-        )
-      )
-    let plan = effectiveGoalPlan
-    let hadExistingPlan = hasExplicitDayGoalPlan
-
-    onShowGoalFlow(
-      DayGoalFlowPresentation(
-        review: review,
-        plan: plan,
-        categories: selectableCategories,
-        setupReferenceStats: goalSetupReferenceStats,
-        initialScreen: resolvedInitialScreen,
-        onSkip: skipGoalPlan,
-        onConfirm: confirmGoalPlan,
-        onSetupStarted: {
-          trackGoalSetupStarted(source: "goal_flow", entryPoint: "review_continue")
-        },
-        onCategoryToggled: { kind, action, draft in
-          trackGoalCategoryToggled(
-            kind: kind,
-            action: action,
-            source: "goal_flow",
-            plan: normalizedPlan(draft),
-            hadExistingPlan: hadExistingPlan
-          )
-        }
-      )
-    )
-    trackGoalFlowOpened(
-      initialScreen: resolvedInitialScreen,
-      source: source,
-      plan: plan,
-      reviewDay: review.day,
-      hadExistingPlan: hadExistingPlan
-    )
-    if resolvedInitialScreen == .review {
-      trackGoalReviewShown(source: source, reviewDay: review.day, hadExistingPlan: hadExistingPlan)
-    } else {
-      trackGoalSetupStarted(source: source, entryPoint: "initial_screen")
-    }
-    markYesterdayGoalReviewShownIfNeeded(initialScreen: resolvedInitialScreen)
-  }
-
-  private func markYesterdayGoalReviewShownIfNeeded(initialScreen: DayGoalFlowInitialScreen) {
-    guard initialScreen == .review else { return }
-    UserDefaults.standard.set(timelineDayInfo.dayString, forKey: dayGoalReviewShownTimelineDayKey)
-  }
-
-  private func handleGoalPromptIfReady() {
-    guard hasCompletedInitialLoad else { return }
-    guard let goalPromptDay else { return }
-    guard goalPromptDay == timelineDayInfo.dayString else { return }
-    guard handledGoalPromptDay != goalPromptDay else { return }
-    guard onShowGoalFlow != nil else { return }
-
-    handledGoalPromptDay = goalPromptDay
-    let initialScreen: DayGoalFlowInitialScreen =
-      canShowYesterdayGoalReview ? .review : .setup
-    presentGoalFlow(initialScreen: initialScreen, source: "daily_prompt")
-    onGoalPromptHandled?(goalPromptDay)
-  }
 
   private var daySoFarSection: some View {
     daySoFarContent
@@ -465,8 +301,6 @@ struct DaySummaryView: View {
       totalCapturedText: formatDurationLowercase(totalCapturedTime),
       totalDistractedText: formatDurationLowercase(totalDistractedTime),
       distractedRatio: distractedRatio,
-      patternTitle: showDistractionPattern ? (distractionPattern?.title ?? "") : "",
-      patternDescription: showDistractionPattern ? (distractionPattern?.description ?? "") : "",
       isSelectionEmpty: isDistractionSelectionEmpty,
       categories: selectableCategories,
       selectedCategoryIDs: distractionCategoryIDs,
@@ -496,29 +330,6 @@ struct DaySummaryView: View {
     return min(max(ratio, 0), 1)
   }
 
-  private var targetFocusCategories: [TargetCategoryProgress] {
-    let durationByID = categoryDurations.reduce(into: [String: TimeInterval]()) { result, item in
-      result[item.id] = item.duration
-    }
-    let durationByName = categoryDurations.reduce(into: [String: TimeInterval]()) { result, item in
-      result[normalizedCategoryName(item.name)] = item.duration
-    }
-
-    return effectiveGoalPlan.focusCategories
-      .map(resolveSnapshot)
-      .sorted { $0.sortOrder < $1.sortOrder }
-      .prefix(4)
-      .map { snapshot in
-        TargetCategoryProgress(
-          id: snapshot.categoryID,
-          name: snapshot.name,
-          colorHex: snapshot.colorHex,
-          duration: durationByID[snapshot.categoryID]
-            ?? durationByName[normalizedCategoryName(snapshot.name), default: 0]
-        )
-      }
-  }
-
   // MARK: - Helpers
 
   nonisolated private func normalizedCategoryName(_ name: String) -> String {
@@ -544,55 +355,27 @@ struct DaySummaryView: View {
   private func toggleFocusCategory(_ category: TimelineCategory) {
     var plan = effectiveGoalPlan
     let categoryID = category.id.uuidString
-    let action: String
     if plan.focusCategories.contains(where: { $0.categoryID == categoryID }) {
       plan.focusCategories.removeAll { $0.categoryID == categoryID }
-      action = "removed"
     } else {
       plan.focusCategories.append(
         DayGoalCategorySnapshot(category: category, sortOrder: plan.focusCategories.count)
       )
-      action = "added"
     }
-    let result = saveGoalPlan(
-      plan,
-      updateSource: "right_panel",
-      updateKind: "focus_category_\(action)"
-    )
-    trackGoalCategoryToggled(
-      kind: .focus,
-      action: action,
-      source: "right_panel",
-      plan: result.plan,
-      hadExistingPlan: result.hadExistingPlan
-    )
+    saveGoalPlan(plan)
   }
 
   private func toggleDistractionCategory(_ category: TimelineCategory) {
     var plan = effectiveGoalPlan
     let categoryID = category.id.uuidString
-    let action: String
     if plan.distractionCategories.contains(where: { $0.categoryID == categoryID }) {
       plan.distractionCategories.removeAll { $0.categoryID == categoryID }
-      action = "removed"
     } else {
       plan.distractionCategories.append(
         DayGoalCategorySnapshot(category: category, sortOrder: plan.distractionCategories.count)
       )
-      action = "added"
     }
-    let result = saveGoalPlan(
-      plan,
-      updateSource: "right_panel",
-      updateKind: "distraction_category_\(action)"
-    )
-    trackGoalCategoryToggled(
-      kind: .distraction,
-      action: action,
-      source: "right_panel",
-      plan: result.plan,
-      hadExistingPlan: result.hadExistingPlan
-    )
+    saveGoalPlan(plan)
   }
 
   private func applyGoalPlan(_ plan: DayGoalPlan) {
@@ -604,55 +387,15 @@ struct DaySummaryView: View {
     )
   }
 
-  private func confirmGoalPlan(_ plan: DayGoalPlan) {
-    let result = saveGoalPlan(plan, updateSource: "goal_flow", updateKind: "confirmed")
-    trackGoalPlanConfirmed(
-      result.plan,
-      source: "goal_flow",
-      hadExistingPlan: result.hadExistingPlan
-    )
-  }
-
-  @discardableResult
-  private func saveGoalPlan(
-    _ plan: DayGoalPlan,
-    updateSource: String,
-    updateKind: String
-  ) -> (plan: DayGoalPlan, hadExistingPlan: Bool) {
+  private func saveGoalPlan(_ plan: DayGoalPlan) {
     let normalized = normalizedPlan(plan)
-    let hadExistingPlan = hasExplicitDayGoalPlan
     applyGoalPlan(normalized)
-    hasExplicitDayGoalPlan = true
     recomputeCachedStatsForCategoryChange()
-    trackGoalPlanUpdated(
-      normalized,
-      source: updateSource,
-      updateKind: updateKind,
-      hadExistingPlan: hadExistingPlan
-    )
 
     let storageManager = storageManager
     Task.detached(priority: .utility) {
       storageManager.saveDayGoalPlan(normalized)
     }
-
-    return (normalized, hadExistingPlan)
-  }
-
-  private func skipGoalPlan() {
-    var skipped = effectiveGoalPlan
-    let now = Int(Date().timeIntervalSince1970)
-    if skipped.createdAt <= 0 {
-      skipped.createdAt = now
-    }
-    skipped.updatedAt = now
-    skipped.isSkipped = true
-    let result = saveGoalPlan(skipped, updateSource: "goal_flow", updateKind: "skipped")
-    trackGoalPlanSkipped(
-      result.plan,
-      source: "goal_flow",
-      hadExistingPlan: result.hadExistingPlan
-    )
   }
 
   private func normalizedPlan(_ plan: DayGoalPlan) -> DayGoalPlan {
@@ -676,129 +419,6 @@ struct DaySummaryView: View {
       )
     }
     return copy
-  }
-
-  private func trackGoalFlowOpened(
-    initialScreen: DayGoalFlowInitialScreen,
-    source: String,
-    plan: DayGoalPlan,
-    reviewDay: String,
-    hadExistingPlan: Bool
-  ) {
-    var payload = goalAnalyticsPayload(
-      for: plan,
-      source: source,
-      hadExistingPlan: hadExistingPlan
-    )
-    payload["initial_screen"] = initialScreen.rawValue
-    payload["review_day"] = reviewDay
-    AnalyticsService.shared.capture("day_goal_flow_opened", payload)
-  }
-
-  private func trackGoalReviewShown(
-    source: String,
-    reviewDay: String,
-    hadExistingPlan: Bool
-  ) {
-    var payload = goalAnalyticsPayload(
-      for: effectiveGoalPlan,
-      source: source,
-      hadExistingPlan: hadExistingPlan
-    )
-    payload["review_day"] = reviewDay
-    AnalyticsService.shared.capture("day_goal_review_shown", payload)
-  }
-
-  private func trackGoalSetupStarted(source: String, entryPoint: String) {
-    var payload = goalAnalyticsPayload(
-      for: effectiveGoalPlan,
-      source: source,
-      hadExistingPlan: hasExplicitDayGoalPlan
-    )
-    payload["entry_point"] = entryPoint
-    AnalyticsService.shared.capture("day_goal_setup_started", payload)
-  }
-
-  private func trackGoalPlanConfirmed(
-    _ plan: DayGoalPlan,
-    source: String,
-    hadExistingPlan: Bool
-  ) {
-    AnalyticsService.shared.capture(
-      "day_goal_plan_confirmed",
-      goalAnalyticsPayload(for: plan, source: source, hadExistingPlan: hadExistingPlan)
-    )
-    AnalyticsService.shared.setPersonProperties([
-      "has_used_day_goals": true,
-      "has_confirmed_day_goal": true,
-      "last_day_goal_action": "confirmed",
-      "last_day_goal_target_day": plan.day,
-    ])
-  }
-
-  private func trackGoalPlanSkipped(
-    _ plan: DayGoalPlan,
-    source: String,
-    hadExistingPlan: Bool
-  ) {
-    AnalyticsService.shared.capture(
-      "day_goal_plan_skipped",
-      goalAnalyticsPayload(for: plan, source: source, hadExistingPlan: hadExistingPlan)
-    )
-    AnalyticsService.shared.setPersonProperties([
-      "has_used_day_goals": true,
-      "last_day_goal_action": "skipped",
-      "last_day_goal_target_day": plan.day,
-    ])
-  }
-
-  private func trackGoalPlanUpdated(
-    _ plan: DayGoalPlan,
-    source: String,
-    updateKind: String,
-    hadExistingPlan: Bool
-  ) {
-    var payload = goalAnalyticsPayload(
-      for: plan,
-      source: source,
-      hadExistingPlan: hadExistingPlan
-    )
-    payload["update_kind"] = updateKind
-    AnalyticsService.shared.capture("day_goal_plan_updated", payload)
-  }
-
-  private func trackGoalCategoryToggled(
-    kind: DayGoalCategoryKind,
-    action: String,
-    source: String,
-    plan: DayGoalPlan,
-    hadExistingPlan: Bool
-  ) {
-    var payload = goalAnalyticsPayload(
-      for: plan,
-      source: source,
-      hadExistingPlan: hadExistingPlan
-    )
-    payload["category_kind"] = kind.rawValue
-    payload["action"] = action
-    AnalyticsService.shared.capture("day_goal_category_toggled", payload)
-  }
-
-  private func goalAnalyticsPayload(
-    for plan: DayGoalPlan,
-    source: String,
-    hadExistingPlan: Bool
-  ) -> [String: Any] {
-    [
-      "target_day": plan.day,
-      "source": source,
-      "focus_target_minutes": plan.focusTargetMinutes,
-      "distraction_limit_minutes": plan.distractionLimitMinutes,
-      "focus_category_count": plan.focusCategories.count,
-      "distraction_category_count": plan.distractionCategories.count,
-      "is_skipped": plan.isSkipped,
-      "had_existing_plan": hadExistingPlan,
-    ]
   }
 
   private func resolveSnapshot(_ snapshot: DayGoalCategorySnapshot) -> DayGoalCategorySnapshot {

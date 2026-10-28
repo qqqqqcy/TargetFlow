@@ -13,7 +13,7 @@ fi
 if [[ -z "$identity" || "$identity" == "-" ]]; then
   printf '%s\n' 'A persistent code-signing certificate is required to keep the signing identity stable across updates.' \
     'Set TARGETFLOW_SIGNING_IDENTITY or scripts/local-signing-identity to its SHA-1 fingerprint.' \
-    'A self-signed code-signing certificate works; Developer ID is not required for this test package.' >&2
+    'A self-signed code-signing certificate works; Developer ID is not required for this release package.' >&2
   exit 1
 fi
 
@@ -31,13 +31,13 @@ xcodebuild -project "$repo_dir/Dayflow/Dayflow.xcodeproj" \
 app_path="$build_dir/Build/Products/Release/TargetFlow.app"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Contents/Info.plist")"
 mkdir -p "$output_dir"
-dmg_path="$output_dir/TargetFlow-$version-test-$architecture.dmg"
+dmg_path="$output_dir/TargetFlow-$version-$architecture.dmg"
 if [[ -e "$dmg_path" ]]; then
   printf 'Output already exists: %s\nMove it aside before packaging again.\n' "$dmg_path" >&2
   exit 1
 fi
 
-stage_dir="$(mktemp -d -t targetflow-test-package)"
+stage_dir="$(mktemp -d -t targetflow-release-package)"
 trap 'rm -rf "$stage_dir"' EXIT
 ditto "$app_path" "$stage_dir/TargetFlow.app"
 codesign --verify --deep --strict --verbose=2 "$stage_dir/TargetFlow.app"
@@ -47,10 +47,10 @@ if [[ "$requirement" != *'identifier "local.targetflow.app"'* || "$requirement" 
   exit 1
 fi
 ln -s /Applications "$stage_dir/Applications"
-cp "$repo_dir/docs/test-release-install.txt" "$stage_dir/READ ME FIRST.txt"
+cp "$repo_dir/docs/release-install.txt" "$stage_dir/READ ME FIRST.txt"
 
-hdiutil create -volname "Target Flow $version Test" -srcfolder "$stage_dir" \
+hdiutil create -volname "Target Flow $version" -srcfolder "$stage_dir" \
   -format UDZO -ov "$dmg_path"
 hdiutil verify "$dmg_path"
 (cd "$output_dir" && shasum -a 256 "$(basename "$dmg_path")") > "$dmg_path.sha256"
-printf '\nTest package: %s\nCertificate signed; not notarized. Architecture: %s\n' "$dmg_path" "$architecture"
+printf '\nRelease package: %s\nCertificate signed; not notarized. Architecture: %s\n' "$dmg_path" "$architecture"

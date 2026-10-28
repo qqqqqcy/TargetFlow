@@ -11,21 +11,6 @@ extension GeminiDirectProvider {
     case noRetry  // Auth/permanent errors - don't retry
   }
 
-  func fallbackReason(for code: Int) -> String {
-    switch code {
-    case 429:
-      return "rate_limit_429"
-    case 404:
-      return "model_unavailable_404"
-    case 503:
-      return "service_unavailable_503"
-    case 403:
-      return "forbidden_quota_403"
-    default:
-      return "http_\(code)"
-    }
-  }
-
   func classifyError(_ error: Error) -> RetryStrategy {
     // JSON/Parsing errors - should retry immediately (different LLM response likely)
     if error is DecodingError {

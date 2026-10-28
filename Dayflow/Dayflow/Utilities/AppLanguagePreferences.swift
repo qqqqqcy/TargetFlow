@@ -35,7 +35,7 @@ enum AppLanguagePreferences {
   private static let key = "AppleLanguages"
 
   static func selection(
-    in defaults: UserDefaults = .standard,
+    in defaults: UserDefaults = AppStoragePaths.defaults,
     domainName: String = Bundle.main.bundleIdentifier ?? "local.targetflow.app"
   ) -> AppLanguage {
     // Read only the app domain, excluding the system's global language preference.
@@ -52,7 +52,7 @@ enum AppLanguagePreferences {
     return AppLanguage(rawValue: match) ?? .english
   }
 
-  static func setSelection(_ language: AppLanguage, in defaults: UserDefaults = .standard) {
+  static func setSelection(_ language: AppLanguage, in defaults: UserDefaults = AppStoragePaths.defaults) {
     if language == .system {
       defaults.removeObject(forKey: key)
     } else {

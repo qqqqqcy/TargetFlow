@@ -304,16 +304,6 @@ struct LLMProviderSetupView: View {
           }
         }
       }
-    case .terminalCommand(let command):
-      VStack(alignment: .leading, spacing: 24) {
-        TerminalCommandView(
-          title: String(localized: "Terminal command:"),
-          subtitle: String(localized: "Copy the code below and try running it in your terminal"),
-          command: command
-        )
-
-      }
-
     case .apiKeyInput:
       VStack(alignment: .leading, spacing: 24) {
         APIKeyInputView(
@@ -373,33 +363,8 @@ struct LLMProviderSetupView: View {
             .foregroundColor(SettingsStyle.secondary)
         }
         .onChange(of: setupState.geminiModel) {
-          setupState.persistGeminiModelSelection(source: "onboarding_picker")
+          setupState.persistGeminiModelSelection()
         }
-
-      }
-
-    case .modelDownload(let command):
-      VStack(alignment: .leading, spacing: 24) {
-        VStack(alignment: .leading, spacing: 8) {
-          Text("Download the AI model")
-            .font(.system(size: 24))
-            .fontWeight(.semibold)
-            .foregroundColor(SettingsStyle.text)
-
-          Text("This model enables Target Flow to understand what's on your screen")
-            .font(.system(size: 14))
-            .foregroundColor(SettingsStyle.text)
-        }
-
-        TerminalCommandView(
-          title: String(localized: "Run this command:"),
-          subtitle:
-            String(
-              localized:
-                "This will download the \(LocalModelPreset.qwen3VL4B.displayName) model (about 5GB)"
-            ),
-          command: command
-        )
 
       }
 
@@ -737,12 +702,11 @@ struct LLMProviderSetupView: View {
 
   func persistLocalSettings() {
     let endpoint = setupState.localBaseURL
-    UserDefaults.standard.set(setupState.localModelId, forKey: "llmLocalModelId")
-    LocalModelPreferences.syncPreset(for: setupState.localEngine, modelId: setupState.localModelId)
+    AppStoragePaths.defaults.set(setupState.localModelId, forKey: "llmLocalModelId")
     // Store local engine selection for header/model defaults
-    UserDefaults.standard.set(setupState.localEngine.rawValue, forKey: "llmLocalEngine")
+    AppStoragePaths.defaults.set(setupState.localEngine.rawValue, forKey: "llmLocalEngine")
     // Also store the endpoint explicitly for other parts of the app if needed
-    UserDefaults.standard.set(endpoint, forKey: "llmLocalBaseURL")
+    AppStoragePaths.defaults.set(endpoint, forKey: "llmLocalBaseURL")
     persistLocalAPIKey(setupState.localAPIKey)
   }
 
@@ -785,9 +749,9 @@ struct LLMProviderSetupView: View {
   func persistLocalAPIKey(_ value: String) {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty {
-      UserDefaults.standard.removeObject(forKey: "llmLocalAPIKey")
+      AppStoragePaths.defaults.removeObject(forKey: "llmLocalAPIKey")
     } else {
-      UserDefaults.standard.set(trimmed, forKey: "llmLocalAPIKey")
+      AppStoragePaths.defaults.set(trimmed, forKey: "llmLocalAPIKey")
     }
   }
 

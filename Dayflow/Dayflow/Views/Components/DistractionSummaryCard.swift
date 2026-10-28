@@ -13,25 +13,8 @@ struct DistractionSummaryCard: View {
   let totalCaptured: String
   let totalDistracted: String
   let distractedRatio: Double
-  let patternTitle: String
-  let patternDescription: String
-
-  init(
-    totalCaptured: String,
-    totalDistracted: String,
-    distractedRatio: Double,
-    patternTitle: String = String(localized: "Main distraction pattern"),
-    patternDescription: String
-  ) {
-    self.totalCaptured = totalCaptured
-    self.totalDistracted = totalDistracted
-    self.distractedRatio = distractedRatio
-    self.patternTitle = patternTitle
-    self.patternDescription = patternDescription
-  }
 
   private enum Design {
-    static let sectionSpacing: CGFloat = 16
     static let rowSpacing: CGFloat = 16
     static let statsSpacing: CGFloat = 24
 
@@ -41,22 +24,16 @@ struct DistractionSummaryCard: View {
 
     static let labelFont = Font.system(size: 14, weight: .semibold)
     static let valueFont = Font.system(size: 20, weight: .semibold)
-    static let patternTitleFont = Font.system(size: 12).weight(.bold)
-    static let patternBodyFont = Font.system(size: 12)
   }
 
   var body: some View {
-    let showPattern = !patternDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
 
-    VStack(alignment: .center, spacing: showPattern ? Design.sectionSpacing : 0) {
+    VStack(alignment: .center, spacing: 0) {
       HStack(alignment: .center, spacing: Design.rowSpacing) {
         donut
         statsBlock
       }
 
-      if showPattern {
-        patternBlock
-      }
     }
     .frame(maxWidth: .infinity, alignment: .center)
   }
@@ -127,35 +104,13 @@ struct DistractionSummaryCard: View {
     .lineSpacing(2)
   }
 
-  private var patternBlock: some View {
-    VStack(alignment: .leading, spacing: 2) {
-      HStack(spacing: 2) {
-        Image("DistractionSummaryIcon")
-          .resizable()
-          .frame(width: 16, height: 16)
-
-        Text(patternTitle)
-          .font(Design.patternTitleFont)
-          .foregroundColor(theme.textPrimary)
-      }
-
-      Text(patternDescription)
-        .font(Design.patternBodyFont)
-        .foregroundColor(theme.textPrimary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-  }
 }
 
 #Preview("Distraction Summary Card") {
   DistractionSummaryCard(
     totalCaptured: "8 hours 49 minutes",
     totalDistracted: "2 hours 7 minutes",
-    distractedRatio: 0.24,
-    patternDescription:
-      "YouTube recommendations pull attention from one video to the next for extended periods."
+    distractedRatio: 0.24
   )
   .padding(24)
   .background(Color.white)

@@ -11,37 +11,16 @@ enum ClaudeCLISessionMode: Sendable, Equatable {
   case resume(id: String)
 }
 
-/// Settings for a one-shot `claude -p` run whose final answer is checked against a
-/// JSON schema (`--json-schema`). Used by the Daily brief.
-struct ClaudeCLIStructuredOutputOptions: Sendable {
-  /// Built-in tools, comma separated (e.g. "Read,WebSearch,WebFetch"); "" for none.
-  var tools: String
-  var jsonSchema: String
-  var name: String
-  /// Permission rules that run without asking, e.g. "WebSearch" or "Read(//abs/path/**)".
-  var allowedTools: [String] = []
-  /// A JSON file with extra MCP servers, passed to `--mcp-config`.
-  var mcpConfigPath: String?
-  /// JSON passed to `--settings`, e.g. hooks.
-  var settingsJSON: String?
-  /// When true the user's own MCP servers (their Claude connectors) load too,
-  /// so `--strict-mcp-config` is left off.
-  var loadsUserMCPServers = false
-}
-
 struct ClaudeCLIExecutionProfile: Sendable {
   enum Kind: Sendable {
     case optimizedTranscription
     case optimizedTranscriptionCorrection
     case optimizedCardGeneration
     case oneStepTimeline
-    case flowAgent
-    case structuredOutput
   }
 
   let kind: Kind
   fileprivate var allowedReadPath: String?
-  fileprivate var structuredOutputOptions: ClaudeCLIStructuredOutputOptions? = nil
   fileprivate var overridesReasoning = false
   fileprivate var preferredReasoningEffort: String?
 
@@ -55,16 +34,9 @@ struct ClaudeCLIExecutionProfile: Sendable {
   }
 
   /// A run that returns JSON matching `options.jsonSchema` (in the envelope's `structured_output`).
-  static func structuredOutput(_ options: ClaudeCLIStructuredOutputOptions)
-    -> ClaudeCLIExecutionProfile
-  {
-    ClaudeCLIExecutionProfile(
-      kind: .structuredOutput, allowedReadPath: nil, structuredOutputOptions: options)
-  }
-
   /// Structured-output runs that use the user's own connectors skip `--strict-mcp-config`.
   fileprivate var loadsUserMCPServers: Bool {
-    structuredOutputOptions?.loadsUserMCPServers == true
+    false
   }
 
   private static let optimizedTranscriptionSystemPrompt =
@@ -101,28 +73,6 @@ struct ClaudeCLIExecutionProfile: Sendable {
     + "before answering and treat the pixels as authoritative. Do not inspect any other files "
     + "or use any other tools. Return only the JSON requested by the user."
 
-  /// The Flow focus companion: one resumable conversation per session that
-  /// reads a screenshot each turn and answers with a JSON verdict.
-  static let flowAgent = ClaudeCLIExecutionProfile(
-    kind: .flowAgent,
-    allowedReadPath: nil
-  )
-
-  private static let flowAgentSystemPrompt =
-    "You are the focus companion inside Target Flow. When a message lists a local image "
-    + "file, use Read exactly once on it to look at the user's screen, then answer with "
-    + "only the JSON the user asked for. The one other file you may touch is timeline.json "
-    + "in your working directory, and only when a message asks for a timeline update. "
-    + "Do not inspect any other files or use any other tools."
-
-  /// The Flow agent's working directory holds only the current screenshot
-  /// and timeline.json; it may read and edit inside it and nowhere else.
-  func allowingFlowWorkspace(at directory: String) -> ClaudeCLIExecutionProfile {
-    var profile = self
-    profile.allowedReadPath = directory
-    return profile
-  }
-
   /// Lets the one-step profile read every frame inside its temporary folder and nothing else.
   func allowingReadDirectory(at directory: String) -> ClaudeCLIExecutionProfile {
     allowingRead(at: directory)
@@ -153,13 +103,6 @@ struct ClaudeCLIExecutionProfile: Sendable {
         settings: #"{"alwaysThinkingEnabled":true,"effortLevel":"medium"}"#,
         persistenceArguments: persistenceArguments)
 
-    case .flowAgent:
-      return transcriptionCommandArguments(
-        systemPrompt: Self.flowAgentSystemPrompt,
-        name: "dayflow-flow",
-        tools: "Read,Edit,Write",
-        persistenceArguments: persistenceArguments)
-
     case .optimizedCardGeneration:
       return [
         "--tools", LoginShellRunner.shellEscape(""),
@@ -172,32 +115,7 @@ struct ClaudeCLIExecutionProfile: Sendable {
         "--name", "dayflow-card-generation",
       ] + persistenceArguments
 
-    case .structuredOutput:
-      return structuredOutputCommandArguments(persistenceArguments: persistenceArguments)
     }
-  }
-
-  private func structuredOutputCommandArguments(persistenceArguments: [String]) -> [String] {
-    guard let options = structuredOutputOptions else { return persistenceArguments }
-    var arguments = [
-      "--disable-slash-commands",
-      "--prompt-suggestions", "false",
-      "--tools", LoginShellRunner.shellEscape(options.tools),
-      "--json-schema", LoginShellRunner.shellEscape(options.jsonSchema),
-      "--name", LoginShellRunner.shellEscape(options.name),
-    ]
-    arguments.append(contentsOf: persistenceArguments)
-    if let settingsJSON = options.settingsJSON {
-      arguments.append(contentsOf: ["--settings", LoginShellRunner.shellEscape(reasoningSettings(settingsJSON))])
-    }
-    if let mcpConfigPath = options.mcpConfigPath {
-      arguments.append(contentsOf: ["--mcp-config", LoginShellRunner.shellEscape(mcpConfigPath)])
-    }
-    if !options.allowedTools.isEmpty {
-      arguments.append("--allowedTools")
-      arguments.append(contentsOf: options.allowedTools.map { LoginShellRunner.shellEscape($0) })
-    }
-    return arguments
   }
 
   private func transcriptionCommandArguments(
@@ -216,13 +134,7 @@ struct ClaudeCLIExecutionProfile: Sendable {
       "--name", name,
     ]
     arguments.append(contentsOf: persistenceArguments)
-    if let allowedReadPath, kind == .flowAgent {
-      arguments.append(contentsOf: [
-        "--allowedTools",
-        LoginShellRunner.shellEscape("Read(/\(allowedReadPath)/**)"),
-        LoginShellRunner.shellEscape("Edit(/\(allowedReadPath)/**)"),
-      ])
-    } else if let allowedReadPath, kind == .oneStepTimeline {
+    if let allowedReadPath, kind == .oneStepTimeline {
       arguments.append(contentsOf: [
         "--allowedTools",
         LoginShellRunner.shellEscape("Read(/\(allowedReadPath)/**)"),
@@ -251,15 +163,15 @@ struct ClaudeCLIExecutionProfile: Sendable {
   fileprivate var environmentOverrides: [String: String] {
     if overridesReasoning { return [:] }
     switch kind {
-    case .optimizedCardGeneration, .oneStepTimeline, .structuredOutput:
+    case .optimizedCardGeneration, .oneStepTimeline:
       return [:]
-    case .optimizedTranscription, .optimizedTranscriptionCorrection, .flowAgent:
+    case .optimizedTranscription, .optimizedTranscriptionCorrection:
       return ["MAX_THINKING_TOKENS": "0"]
     }
   }
 
   fileprivate var environmentKeysToRemove: Set<String> {
-    overridesReasoning || kind == .optimizedCardGeneration || kind == .oneStepTimeline || kind == .structuredOutput
+    overridesReasoning || kind == .optimizedCardGeneration || kind == .oneStepTimeline
       ? ["MAX_THINKING_TOKENS"] : []
   }
 }
@@ -490,31 +402,6 @@ struct ChatCLIProcessRunner {
     }
 
     return URL(fileURLWithPath: String(stderr[range])).standardizedFileURL
-  }
-
-  func isProjectScopedCodexConfig(_ configURL: URL, workingDirectory: URL) -> Bool {
-    let targetPath = configURL.standardizedFileURL.path
-    var currentDirectory = workingDirectory.standardizedFileURL
-
-    while true {
-      let candidatePath =
-        currentDirectory
-        .appendingPathComponent(".codex", isDirectory: true)
-        .appendingPathComponent("config.toml")
-        .standardizedFileURL
-        .path
-      if candidatePath == targetPath {
-        return true
-      }
-
-      let parent = currentDirectory.deletingLastPathComponent().standardizedFileURL
-      if parent.path == currentDirectory.path {
-        break
-      }
-      currentDirectory = parent
-    }
-
-    return false
   }
 
   func makeCodexFallbackContext(
@@ -1715,7 +1602,7 @@ struct ChatCLIProcessRunner {
     return ChatCLIRunResult(
       exitCode: process.terminationStatus, stdout: parsed.text, rawStdout: rawOut, stderr: stderr,
       shellCommand: shellCommand, environmentOverrides: effectiveProcessEnvironment,
-      startedAt: started, finishedAt: finished, usage: parsed.usage)
+      finishedAt: finished, usage: parsed.usage)
   }
 }
 

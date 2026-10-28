@@ -20,7 +20,6 @@ struct WeekTimelineActivityCard: View {
 
   let cardId: String
   let title: String
-  let hoverTimeLabel: String
   let height: CGFloat
   // Parent-computed: equals `height` normally, or the measured natural height when hovered.
   let effectiveHeight: CGFloat

@@ -4,7 +4,7 @@ extension GeminiDirectProvider {
   func truncate(_ text: String, max: Int = 2000) -> String {
     // Default to full debug payloads so dashboard-chat issues are easier to inspect.
     // Set `geminiDebugClipLogs` in UserDefaults to restore clipping behavior.
-    let shouldClipDebugLogs = UserDefaults.standard.bool(forKey: "geminiDebugClipLogs")
+    let shouldClipDebugLogs = AppStoragePaths.defaults.bool(forKey: "geminiDebugClipLogs")
     if !shouldClipDebugLogs { return text }
     if text.count <= max { return text }
     let endIdx = text.index(text.startIndex, offsetBy: max)

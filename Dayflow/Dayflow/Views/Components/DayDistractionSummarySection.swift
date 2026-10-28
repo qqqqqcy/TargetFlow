@@ -13,8 +13,6 @@ struct DayDistractionSummarySection: View {
   let totalCapturedText: String
   let totalDistractedText: String
   let distractedRatio: Double
-  let patternTitle: String
-  let patternDescription: String
   let isSelectionEmpty: Bool
   let categories: [TimelineCategory]
   let selectedCategoryIDs: Set<UUID>
@@ -42,9 +40,7 @@ struct DayDistractionSummarySection: View {
       DistractionSummaryCard(
         totalCaptured: totalCapturedText,
         totalDistracted: totalDistractedText,
-        distractedRatio: distractedRatio,
-        patternTitle: patternTitle,
-        patternDescription: patternDescription
+        distractedRatio: distractedRatio
       )
       .frame(maxWidth: .infinity)
       .opacity(isSelectionEmpty ? 0.45 : 1)

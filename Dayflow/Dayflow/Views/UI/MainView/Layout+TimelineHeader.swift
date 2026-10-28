@@ -6,26 +6,7 @@
 import AppKit
 import SwiftUI
 
-private struct TimelineHeaderTrailingWidthPreferenceKey: PreferenceKey {
-  static var defaultValue: CGFloat = 0
-
-  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-    value = max(value, nextValue())
-  }
-}
-
 extension View {
-  fileprivate func trackTimelineHeaderTrailingWidth() -> some View {
-    background(
-      GeometryReader { proxy in
-        Color.clear.preference(
-          key: TimelineHeaderTrailingWidthPreferenceKey.self,
-          value: proxy.size.width
-        )
-      }
-    )
-  }
-
   fileprivate func trackTimelineCalendarButtonFrame() -> some View {
     background(
       GeometryReader { proxy in
@@ -39,7 +20,7 @@ extension View {
 }
 
 // Priority-based visibility gates for the timeline header's leading controls.
-// Computed once per render from available width + trailing reservation; every
+// Computed once per render from the available width; every
 // conditional in `timelineLeadingControls` reads this, so the full header
 // renders as a single variant (no `ViewThatFits` shuffle).
 private struct TimelineHeaderVisibility {
@@ -93,66 +74,35 @@ private struct TimelineNavigationButton: View {
         isHovering = false
       }
     }
-    .pointingHandCursorOnHover(enabled: isEnabled, reassertOnPressEnd: true)
+    .pointingHandCursor(enabled: isEnabled)
   }
 }
 
 extension MainView {
-  // Priority-based responsive layout.
-  //
-  // The trailing Pause pill is *right-pinned and inviolable* — its measured
-  // width (including expanded duration chips or "paused for HH:MM" status
-  // text) feeds `timelineHeaderTrailingReservation`, which we subtract from
-  // the GeometryReader's reported width to get how much room the leading
-  // cluster has. `computeHeaderVisibility` then walks a priority ladder
-  // (Today → Day/Week → inline date) and decides which optional elements
-  // fit. A single variant of `timelineLeadingControls` renders — no
-  // `ViewThatFits` branch-flipping, no `.fixedSize(horizontal:)` fighting
-  // child widths, no `.animation(...value: trailingReservation)` firing
-  // concurrently with the Day/Week matchedGeometryEffect toggle.
+  // Optional controls appear according to the available header width.
   var timelineHeader: some View {
-    ZStack(alignment: .trailing) {
-      GeometryReader { geo in
-        let visibility = computeHeaderVisibility(availableWidth: geo.size.width)
-        timelineLeadingControls(visibility: visibility)
-          .padding(.trailing, timelineHeaderTrailingReservation)
-          // maxHeight: .infinity is load-bearing — without it the HStack pins
-          // to the GR's top edge while the Pause pill sits center-vertically
-          // in the sibling ZStack, visibly misaligning the two clusters.
-          // `Alignment.leading` = horizontal .leading + vertical .center.
-          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-      }
-
-      timelineTrailingControls
-        .trackTimelineHeaderTrailingWidth()
+    GeometryReader { geo in
+      let visibility = computeHeaderVisibility(availableWidth: geo.size.width)
+      timelineLeadingControls(visibility: visibility)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
     .frame(height: 36)
     .padding(.horizontal, 10)
-    .onPreferenceChange(TimelineHeaderTrailingWidthPreferenceKey.self) { width in
-      timelineHeaderTrailingWidth = width
-    }
   }
 
   // Actual pixel width of the current date label text, measured via NSFont
   // metrics. Replaces a conservative 240pt estimate — "Today, Apr 16" is
   // ~170pt, "September 12 - September 18" is ~330pt, so a single estimate
-  // either over- or under-reserves. This matches the measurement pattern
-  // used in `DateNavigationControls.swift:calculateOptimalPillWidth()`.
+  // either over- or under-reserves.
   private var measuredDateLabelWidth: CGFloat {
     let font =
       NSFont.systemFont(ofSize: 14, weight: .semibold)
     return timelineTitleText.size(withAttributes: [.font: font]).width
   }
 
-  // Walks from "always visible" core upward, adding each optional element
-  // if it fits in the remaining budget. Order matters: Today (smallest,
-  // most task-relevant) is added first; Day/Week is added next; the inline
-  // date is added last. When Pause expands, trailing reservation grows,
-  // `usable` shrinks, and elements drop off in reverse priority order —
-  // automatic, no explicit "if Pause expanded hide X" logic needed.
+  // Add Today, Day/Week, and the inline date in order when space permits.
   private func computeHeaderVisibility(availableWidth: CGFloat) -> TimelineHeaderVisibility {
-    let reservation = timelineHeaderTrailingReservation
-    let usable = max(0, availableWidth - reservation)
+    let usable = max(0, availableWidth)
 
     // Matches the pinned widths of each control (Figma-spec accurate).
     let chevronsWidth = (TimelineNavigationLayout.hoverCircleSize * 2) + 2
@@ -177,17 +127,7 @@ extension MainView {
       used += gap + dayWeekWidth
       vis.showDayWeekToggle = true
     }
-    // The liberal allowance (date shows 55pt earlier than strict fit) only
-    // applies when the trailing cluster is in its *compact* state. When
-    // Pause expands — either the duration-chip menu (~250pt) or the
-    // paused-status text "Target Flow paused for HH:MM" (~290pt) — the trailing
-    // cluster's leftward occupation already fills the header; piling on
-    // a date-allowance at that point produces overlap with the status
-    // text. Threshold of 100pt safely partitions compact (idle 73, paused
-    // 84) from expanded (menu 250+, paused+status 290).
-    let trailingIsCompact = timelineHeaderTrailingWidth < 100
-    let dateLiberalAllowance: CGFloat = 0
-    if used + datePad + measuredDateLabelWidth <= usable + dateLiberalAllowance {
+    if used + datePad + measuredDateLabelWidth <= usable {
       vis.showInlineDate = true
     }
     return vis
@@ -225,14 +165,6 @@ extension MainView {
     .frame(height: DayflowLayout.buttonHeight)
     .offset(x: timelineOffset)
     .opacity(timelineOpacity)
-  }
-
-  private var timelineTrailingControls: some View {
-    EmptyView()
-  }
-
-  private var timelineHeaderTrailingReservation: CGFloat {
-    0
   }
 
   private var timelineNavigationButtons: some View {
@@ -293,7 +225,7 @@ extension MainView {
         animation: .spring(response: 0.18, dampingFraction: 0.88)
       )
     )
-    .pointingHandCursorOnHover(reassertOnPressEnd: true)
+    .pointingHandCursor()
     .animation(timelineCalendarButtonStateAnimation, value: showTimelineCalendarPopover)
     .trackTimelineCalendarButtonFrame()
   }
@@ -443,7 +375,7 @@ extension MainView {
         // the accepted tradeoff for a correctly-behaving matched slide.
         .buttonStyle(PlainButtonStyle())
         .hoverScaleEffect(scale: 1.01)
-        .pointingHandCursorOnHover(reassertOnPressEnd: true)
+        .pointingHandCursor()
       }
     }
     .frame(width: 104, height: DayflowLayout.buttonHeight)
@@ -479,7 +411,7 @@ extension MainView {
     }
     .buttonStyle(DayflowPressScaleButtonStyle(pressedScale: 0.97))
     .hoverScaleEffect(scale: 1.02)
-    .pointingHandCursorOnHover(reassertOnPressEnd: true)
+    .pointingHandCursor()
   }
 
   private var timelineHeaderDateLabel: some View {

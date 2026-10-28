@@ -192,20 +192,6 @@ extension AgentCLISupporting {
       }
     }
 
-    var decodeProperties: [String: Any] = [
-      "provider": "chat_cli",
-      "provider_id": providerID.rawValue,
-      "operation": "parse_cards",
-      "tool": cliTool.rawValue,
-    ]
-    decodeProperties.merge(
-      TelemetryErrorSanitizer.failureOutputProperties(output, prefix: "output")
-    ) { _, new in new }
-    decodeProperties.merge(
-      TelemetryErrorSanitizer.failureOutputProperties(stderr, prefix: "stderr")
-    ) { _, new in new }
-    AnalyticsService.shared.capture("llm_decode_failed", decodeProperties)
-
     // Surface CLI error messages to the user if available
     if let cliError = extractCLIError(stdout: output, stderr: stderr) {
       throw NSError(domain: "ChatCLI", code: -33, userInfo: [NSLocalizedDescriptionKey: cliError])
@@ -217,27 +203,6 @@ extension AgentCLISupporting {
   }
 
   // MARK: - Logging helpers
-
-  func buildDebugResponseBody(stdout: String, rawStdout: String) -> String {
-    let trimmedStdout = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-    let trimmedRawStdout = rawStdout.trimmingCharacters(in: .whitespacesAndNewlines)
-
-    if trimmedStdout.isEmpty && trimmedRawStdout.isEmpty {
-      return ""
-    }
-
-    var sections: [String] = []
-    if !trimmedStdout.isEmpty {
-      sections.append("[assistant_text]\n" + stdout)
-    }
-    if !trimmedRawStdout.isEmpty && trimmedRawStdout != trimmedStdout {
-      sections.append("[raw_stdout]\n" + rawStdout)
-    } else if sections.isEmpty {
-      sections.append(rawStdout)
-    }
-
-    return sections.joined(separator: "\n\n")
-  }
 
   func makeCtx(
     batchId: Int64?, operation: String, model: String, startedAt: Date, attempt: Int = 1
@@ -314,8 +279,7 @@ extension AgentCLISupporting {
 
     LLMLogger.logFailure(
       ctx: ctx, http: http, finishedAt: finishedAt, errorDomain: "ChatCLI",
-      errorCode: (error as NSError).code, errorMessage: error.localizedDescription,
-      failureStdout: stdout, failureStderr: stderr)
+      errorCode: (error as NSError).code, errorMessage: error.localizedDescription)
   }
 
   func cliCommandDebugText(for run: ChatCLIRunResult?) -> String {

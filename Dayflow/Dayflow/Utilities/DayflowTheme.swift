@@ -65,10 +65,6 @@ final class SystemAppearanceObserver: ObservableObject {
 struct DayflowTheme {
   let isDark: Bool
 
-  // Window
-  let windowBackground: AnyShapeStyle
-  let windowBorder: Color
-
   // Main content panel (the big rounded card next to the sidebar)
   let panelFill: AnyShapeStyle
   let panelBorder: Color
@@ -78,14 +74,8 @@ struct DayflowTheme {
   let panelSolid: Color
 
   // Sidebar
-  let sidebarSelectedFill: LinearGradient
-  let sidebarSelectedBorder: Color
-  let sidebarSelectedInnerGlow: Color
-  let sidebarSelectedShadow: Color
   let sidebarLabel: Color
   let sidebarLabelActive: Color
-  let sidebarIcon: Color
-  let sidebarIconActive: Color
 
   // Text
   let textPrimary: Color
@@ -144,14 +134,9 @@ struct DayflowTheme {
   let rightPanelDivider: Color
 
   // Today's targets header
-  let targetsFill: Color
-  let targetsBorder: Color
   let targetsTrackFill: Color
   let targetsTrackBorder: Color
-  let targetsBubbleFill: Color
-  let targetsBubbleBorder: Color
   let targetsInactiveTrack: Color
-  let targetsInactiveFill: Color
 
   // Summary cards (Total focus time, Longest focus, Distractions)
   let summaryCardFill: Color
@@ -181,47 +166,12 @@ struct DayflowTheme {
   let popoverFill: Color
   let popoverBorder: Color
 
-  // Day goal sheet
+  // Sheet backdrop
   let sheetOverlay: Color
-  let sheetCardFill: Color
-  let sheetCardBorder: Color
-  let sheetFocusHeader: Color
-  let sheetDistractionHeader: Color
-  let sheetFocusStatText: Color
-  let sheetDistractionStatText: Color
-  let sheetPanelFill: Color
-  let sheetPanelBorder: Color
-  let sheetInnerBoxFill: Color
-  let sheetInnerBoxBorder: Color
-  let sheetFooterFill: Color
-  let sheetWheelGradient: LinearGradient
-  let sheetWheelBorder: Color
-  let sheetWheelDimText: Color
-
-  // Daily view
-  let dailyGridFill: Color
-  let dailyGridBorder: Color
-  let dailyTotalsFill: Color
-  let dailyEmptyCell: Color
-  let dailyDistractionTrack: Color
-  let dailyDistractionTrackBorder: Color
-  let dailyStatValue: Color
-  let standupCardGradient: LinearGradient
-  let standupCardBorder: Color
-  let standupBlockersFill: Color
-  let standupBlockersBorder: Color
 
   // Standard text field / input
   let inputFill: Color
   let inputBorder: Color
-
-  // Chat
-  let chatBackground: AnyShapeStyle
-  let chatSoftAccentFill: Color
-  let chatSoftAccentBorder: Color
-  let chatSidePanelFill: Color
-  let chatSidePanelHeaderFill: Color
-  let chatCodeFill: Color
 }
 
 // MARK: - Blue-and-white palettes
@@ -230,18 +180,12 @@ extension DayflowTheme {
   static let brandBlue = Color(hex: "2869EF")
   static let light = palette(isDark: false)
   static let dark = palette(isDark: true)
-  // Keep the upstream style-preview API compatible with the active palette.
-  static let lightBefore = light
-  static let darkBefore = dark
 
   var sidebarBackground: Color { isDark ? Color(hex: "163F91") : Self.brandBlue }
   var surfaceFill: Color { rightPanelFill }
   var surfaceMuted: Color { isDark ? Color(hex: "202D43") : Color(hex: "F6F8FB") }
   var separator: Color { rightPanelDivider }
   var accentSoft: Color { isDark ? Color(hex: "213A60") : Color(hex: "EDF3FF") }
-  var accentBorder: Color { isDark ? Color(hex: "385889") : Color(hex: "DCE8FF") }
-  var statusFocused: Color { accent }
-  var statusNeutral: Color { isDark ? Color(hex: "A7B5CB") : Color(hex: "6E7B90") }
   var statusDistracted: Color { isDark ? Color(hex: "E9A29C") : Color(hex: "AF625B") }
 
   private static func palette(isDark: Bool) -> DayflowTheme {
@@ -255,27 +199,17 @@ extension DayflowTheme {
     let blue = Color(hex: isDark ? "79A7FF" : "2869EF")
     let blueSoft = Color(hex: isDark ? "213A60" : "EDF3FF")
     let blueLine = Color(hex: isDark ? "385889" : "DCE8FF")
-    let shell = Color(hex: isDark ? "163F91" : "2869EF")
-    let distraction = Color(hex: isDark ? "E9A29C" : "AF625B")
 
     return DayflowTheme(
       isDark: isDark,
-      windowBackground: AnyShapeStyle(shell),
-      windowBorder: shell,
       panelFill: AnyShapeStyle(canvas),
       panelBorder: .clear,
       panelShadow: Color.black.opacity(isDark ? 0.12 : 0.03),
       panelInnerGlow: .clear,
       panelSolid: canvas,
 
-      sidebarSelectedFill: LinearGradient(colors: [canvas, canvas], startPoint: .top, endPoint: .bottom),
-      sidebarSelectedBorder: .clear,
-      sidebarSelectedInnerGlow: .clear,
-      sidebarSelectedShadow: .clear,
       sidebarLabel: Color.white.opacity(0.85),
       sidebarLabelActive: blue,
-      sidebarIcon: Color.white.opacity(0.85),
-      sidebarIconActive: blue,
 
       textPrimary: primary,
       textSecondary: secondary,
@@ -318,14 +252,9 @@ extension DayflowTheme {
       rightPanelBorder: line,
       rightPanelShadow: Color.black.opacity(isDark ? 0.12 : 0.025),
       rightPanelDivider: line,
-      targetsFill: surface,
-      targetsBorder: line,
       targetsTrackFill: blueSoft,
       targetsTrackBorder: blueLine,
-      targetsBubbleFill: surface,
-      targetsBubbleBorder: blueLine,
       targetsInactiveTrack: inset,
-      targetsInactiveFill: inset,
       summaryCardFill: surface,
       summaryCardBorder: line,
       summaryCardShadow: Color.black.opacity(isDark ? 0.08 : 0.025),
@@ -347,43 +276,9 @@ extension DayflowTheme {
       popoverBorder: line,
 
       sheetOverlay: Color.black.opacity(isDark ? 0.4 : 0.16),
-      sheetCardFill: surface,
-      sheetCardBorder: line,
-      sheetFocusHeader: blue,
-      sheetDistractionHeader: distraction,
-      sheetFocusStatText: blue,
-      sheetDistractionStatText: distraction,
-      sheetPanelFill: inset,
-      sheetPanelBorder: line,
-      sheetInnerBoxFill: surface,
-      sheetInnerBoxBorder: line,
-      sheetFooterFill: surface,
-      sheetWheelGradient: LinearGradient(
-        colors: [inset, surface, surface, inset], startPoint: .top, endPoint: .bottom),
-      sheetWheelBorder: line,
-      sheetWheelDimText: muted,
 
-      dailyGridFill: surface,
-      dailyGridBorder: line,
-      dailyTotalsFill: inset,
-      dailyEmptyCell: line,
-      dailyDistractionTrack: inset,
-      dailyDistractionTrackBorder: line,
-      dailyStatValue: secondary,
-      standupCardGradient: LinearGradient(
-        colors: [surface, surface], startPoint: .leading, endPoint: .trailing),
-      standupCardBorder: line,
-      standupBlockersFill: inset,
-      standupBlockersBorder: line,
       inputFill: surface,
-      inputBorder: line,
-
-      chatBackground: AnyShapeStyle(Color.clear),
-      chatSoftAccentFill: blueSoft,
-      chatSoftAccentBorder: blueLine,
-      chatSidePanelFill: surface,
-      chatSidePanelHeaderFill: inset,
-      chatCodeFill: inset
+      inputBorder: line
     )
   }
 }
@@ -406,14 +301,11 @@ extension EnvironmentValues {
 /// `@Environment(\.dayflowTheme)`.
 private struct DayflowThemeResolver: ViewModifier {
   @Environment(\.colorScheme) private var colorScheme
-  @ObservedObject private var preview = StylePreview.shared
 
   func body(content: Content) -> some View {
     content.environment(
       \.dayflowTheme,
-      colorScheme == .dark
-        ? (preview.showAfter ? .dark : .darkBefore)
-        : (preview.showAfter ? .light : .lightBefore))
+      colorScheme == .dark ? .dark : .light)
   }
 }
 

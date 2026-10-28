@@ -4,7 +4,7 @@ import Foundation
 extension ClaudeProvider {
   // MARK: - Claude one-step timeline
 
-  static func timelineModelConfiguration(defaults: UserDefaults = .standard) -> (model: String, reasoningEffort: String?) {
+  static func timelineModelConfiguration(defaults: UserDefaults = AppStoragePaths.defaults) -> (model: String, reasoningEffort: String?) {
     ModelPreferences.resolve(
       provider: .claude, feature: .timeline,
       defaultModel: "haiku", defaultEffort: "medium", defaults: defaults
@@ -99,10 +99,7 @@ extension ClaudeProvider {
             from: currentRun,
             previousCards: previousCards,
             window: window,
-            categories: context.categories,
-            batchId: batchId,
-            model: model,
-            attempt: attempt
+            categories: context.categories
           )
         } catch {
           guard currentAttempt < Self.timelineMaxAttempts else { throw error }
@@ -173,7 +170,8 @@ extension ClaudeProvider {
   func buildTimelinePrompt(
     frames: OneStepTimelineFrames,
     previousCards: [ActivityCardData],
-    categories: [LLMCategoryDescriptor]
+    categories: [LLMCategoryDescriptor],
+    overrides: ActivityCardPromptOverrides? = nil
   ) -> String {
     let userName = NSFullUserName()
       .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
@@ -196,7 +194,7 @@ extension ClaudeProvider {
         of: ClaudeTimelinePrompt.perMinuteFrames, with: ClaudeTimelinePrompt.irregularFrames)
     }
 
-    prompt += "\n\n" + ActivityCardPromptPreferences.load().instructionBlock
+    prompt += "\n\n" + (overrides ?? ActivityCardPromptPreferences.load()).instructionBlock
 
     let previousCardsData = try? JSONEncoder().encode(previousCards)
     let previousCardsJSON = previousCardsData.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
@@ -253,10 +251,7 @@ extension ClaudeProvider {
     from run: ChatCLIRunResult,
     previousCards: [ActivityCardData],
     window: Observation,
-    categories: [LLMCategoryDescriptor],
-    batchId: Int64?,
-    model: String,
-    attempt: Int
+    categories: [LLMCategoryDescriptor]
   ) throws -> [ActivityCardData] {
     let parsedCards = try parseCards(from: run.stdout, stderr: run.stderr)
     let normalizedCards = normalizeCards(parsedCards, descriptors: categories)
@@ -267,16 +262,6 @@ extension ClaudeProvider {
     )
     guard isValid else {
       let detail = validationError ?? "Timeline cards failed validation."
-      AnalyticsService.shared.captureValidationFailure(
-        provider: "chat_cli",
-        providerID: providerID,
-        operation: "generate_timeline",
-        validationType: "time_coverage",
-        attempt: attempt,
-        model: model,
-        batchId: batchId,
-        errorDetail: detail
-      )
       throw NSError(
         domain: "ClaudeProvider", code: -93,
         userInfo: [NSLocalizedDescriptionKey: detail])

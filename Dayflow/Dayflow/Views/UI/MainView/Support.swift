@@ -2,7 +2,6 @@ import OSLog
 import SwiftUI
 
 // MARK: - Cached DateFormatters (creating DateFormatters is expensive due to ICU initialization)
-// These are internal (not private) so they can be shared with DateNavigationControls
 
 let cachedTodayDisplayFormatter: DateFormatter = {
   let formatter = DateFormatter()
@@ -70,17 +69,6 @@ func timelinePerfLog(_ message: String) {
   #endif
 }
 
-struct WeeklyHoursFramePreferenceKey: PreferenceKey {
-  static var defaultValue: CGRect = .zero
-
-  static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-    let next = nextValue()
-    if next != .zero {
-      value = next
-    }
-  }
-}
-
 enum TimelineCopyState: Equatable {
   case idle
   case copying
@@ -117,20 +105,6 @@ extension MainView {
     case .week:
       return isWeekTimelineInspectorVisible ? weekInspectorWidth : 0
     }
-  }
-
-  var timelineInspectorDividerWidth: CGFloat {
-    let gap: CGFloat = 12
-    switch timelineMode {
-    case .day:
-      return gap
-    case .week:
-      return isWeekTimelineInspectorVisible ? gap : 0
-    }
-  }
-
-  var shellAnimation: Animation {
-    return .spring(duration: 0.28, bounce: 0)
   }
 
   var timelineModeSwitchAnimation: Animation {
@@ -234,19 +208,6 @@ extension MainView {
     return cachedDayStringFormatter.string(from: date)
   }
 
-  func syncCurrentUIContext(
-    selectedTab: SidebarIcon? = nil,
-    timelineModeOverride: TimelineMode? = nil
-  ) {
-    let tab = selectedTab ?? selectedIcon
-    let mode = timelineModeOverride ?? timelineMode
-    let timelineModeName = tab == .timeline ? mode.rawValue : nil
-    appState.updateCurrentUIContext(
-      tabName: tab.analyticsTabName,
-      timelineMode: timelineModeName
-    )
-  }
-
   func setTimelineMode(_ mode: TimelineMode) {
     guard timelineMode != mode else { return }
 
@@ -258,7 +219,6 @@ extension MainView {
       withTransaction(transaction) {
         hideWeekCardsDuringModeSwitch = true
         weekInspectorContentVisible = false
-        weeklyHoursIntersectsCard = false
       }
 
       timelinePerfLog("timelineModeSwitch.prehideWeekCards from=week to=day")
@@ -278,17 +238,6 @@ extension MainView {
         selectedActivity = nil
       }
     }
-
-    syncCurrentUIContext(timelineModeOverride: mode)
-
-    AnalyticsService.shared.capture(
-      "timeline_mode_changed",
-      [
-        "from_mode": previousMode.rawValue,
-        "to_mode": mode.rawValue,
-        "selected_day": dayString(selectedDate),
-      ]
-    )
 
     loadWeeklyTrackedMinutes()
   }
@@ -379,35 +328,6 @@ extension MainView {
     clearTimelineSelection(animated: false)
     setSelectedDate(date)
     lastDateNavMethod = method
-
-    AnalyticsService.shared.capture(
-      "date_navigation",
-      [
-        "method": method,
-        "timeline_mode": timelineMode.rawValue,
-        "from_day": dayString(from),
-        "to_day": dayString(date),
-      ]
-    )
-  }
-}
-
-struct BlurReplaceModifier: ViewModifier {
-  let active: Bool
-
-  func body(content: Content) -> some View {
-    content
-      .blur(radius: active ? 2 : 0)
-      .opacity(active ? 0 : 1)
-  }
-}
-
-extension AnyTransition {
-  static var blurReplace: AnyTransition {
-    .modifier(
-      active: BlurReplaceModifier(active: true),
-      identity: BlurReplaceModifier(active: false)
-    )
   }
 }
 

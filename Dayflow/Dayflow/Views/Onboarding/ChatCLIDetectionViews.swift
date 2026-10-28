@@ -55,18 +55,6 @@ struct CLIDetector {
   static func isInstalled(_ tool: CLITool) -> Bool {
     LoginShellRunner.isInstalled(tool.executableName)
   }
-
-  /// Run an arbitrary debug command via login shell
-  static func runDebugCommand(_ command: String) -> CLIResult {
-    let result = LoginShellRunner.run(command, timeout: 30)
-    return CLIResult(
-      stdout: result.stdout,
-      stderr: result.stderr,
-      exitCode: result.exitCode,
-      shellCommand: command,
-      environmentOverrides: [:]
-    )
-  }
 }
 
 struct ChatCLIDetectionStepView: View {

@@ -27,21 +27,6 @@ final class TimelapseStorageManager {
     }
   }
 
-  func purgeNow(completion: (() -> Void)? = nil) {
-    queue.async { [weak self] in
-      guard let self else {
-        if let completion {
-          DispatchQueue.main.async { completion() }
-        }
-        return
-      }
-      self.performPurge(limitBytes: StoragePreferences.timelapsesLimitBytes)
-      if let completion {
-        DispatchQueue.main.async { completion() }
-      }
-    }
-  }
-
   func purgeIfNeeded(limit: Int64? = nil) {
     queue.async { [weak self] in
       guard let self else { return }
@@ -60,7 +45,7 @@ final class TimelapseStorageManager {
   }
 
   private func performPurge(limitBytes: Int64) {
-    guard !AppStoragePaths.isUIPreview else { return }
+    guard !AppStoragePaths.isIsolated else { return }
     guard limitBytes < Int64.max else { return }
 
     do {

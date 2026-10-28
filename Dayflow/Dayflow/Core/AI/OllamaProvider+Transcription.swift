@@ -380,17 +380,6 @@ extension OllamaProvider {
         lastError = coverageError
         let coveragePercent = max(0, min(100, Int(coverageError.coverageRatio * 100)))
 
-        AnalyticsService.shared.captureValidationFailure(
-          provider: localEngine,
-          providerID: providerID,
-          operation: "segment_video_activity",
-          validationType: "coverage",
-          attempt: attempt,
-          model: savedModelId,
-          batchId: batchId,
-          errorDetail: "Coverage only \(coveragePercent)% (expected >80%)"
-        )
-
         if attempt == maxAttempts {
           print(
             "[OLLAMA] ❌ segment_video_activity retries exhausted (coverage) — returning raw frame observations"
@@ -408,7 +397,6 @@ extension OllamaProvider {
 
         prompt =
           basePrompt + """
-
 
             PREVIOUS ATTEMPT FAILED — Your segments only covered \(coveragePercent)% of the \(durationString) video.
             Merge adjacent snapshots or extend segment boundaries so the segments cover at least 80% of the runtime without inventing events.
@@ -432,7 +420,6 @@ extension OllamaProvider {
 
         prompt =
           basePrompt + """
-
 
             PREVIOUS ATTEMPT FAILED — The response was invalid (error: \(error.localizedDescription)).
             Respond with ONLY the JSON object described above. Ensure it contains a "reasoning" string and a "segments" array with 2-5 items covering at least 80% of the video.

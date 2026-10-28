@@ -7,7 +7,7 @@ import SwiftUI
 
 struct AppRootView: View {
   @EnvironmentObject private var categoryStore: CategoryStore
-  @AppStorage("didOnboard") private var didOnboard = false
+  @AppStorage("didOnboard", store: AppStoragePaths.defaults) private var didOnboard = false
 
   var body: some View {
     Group {
@@ -40,8 +40,6 @@ struct AppRootView: View {
       guard let destination = AppDelegate.pendingNotificationNavigationDestination else { return }
       AppDelegate.pendingNotificationNavigationDestination = nil
       switch destination {
-      case .timeline:
-        NotificationCenter.default.post(name: .navigateToTimeline, object: nil)
       case .events:
         NotificationCenter.default.post(name: .navigateToEvents, object: nil)
       }
@@ -53,7 +51,7 @@ struct AppRootView: View {
 struct DayflowApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
   @StateObject private var systemAppearance = SystemAppearanceObserver()
-  @AppStorage(DayflowAppearance.storageKey) private var appearance: DayflowAppearance = .system
+  @AppStorage(DayflowAppearance.storageKey, store: AppStoragePaths.defaults) private var appearance: DayflowAppearance = .system
   @StateObject private var categoryStore = CategoryStore.shared
 
   init() {
@@ -74,7 +72,6 @@ struct DayflowApp: App {
         }
         .preferredColorScheme(appearance.colorScheme(system: systemAppearance.colorScheme))
         .resolveDayflowTheme()
-        .resolveStylePreview()
         .frame(minWidth: 900, maxWidth: .infinity, minHeight: 558, maxHeight: .infinity)
     }
     .windowStyle(.hiddenTitleBar)
@@ -86,23 +83,14 @@ struct DayflowApp: App {
   }
 }
 
-// Legacy notification names remain available to sources that are no longer mounted.
+// Notifications shared by the active timeline and settings.
 extension Notification.Name {
-  static let analyticsPreferenceChanged = Notification.Name("analyticsPreferenceChanged")
-  static let showWhatsNew = Notification.Name("showWhatsNew")
-  static let showGettingStartedTour = Notification.Name("showGettingStartedTour")
-  static let navigateToDaily = Notification.Name("navigateToDaily")
-  static let navigateToSupport = Notification.Name("navigateToSupport")
-  static let navigateToWeekly = Notification.Name("navigateToWeekly")
   static let timelineDataUpdated = Notification.Name("timelineDataUpdated")
   static let showTimelineFailureToast = Notification.Name("showTimelineFailureToast")
   static let hideTimelineFailureToast = Notification.Name("hideTimelineFailureToast")
   static let showScreenRecordingPermissionNotice = Notification.Name(
     "showScreenRecordingPermissionNotice")
   static let openProvidersSettings = Notification.Name("openProvidersSettings")
-  static let openAccountSettings = Notification.Name("openAccountSettings")
-  static let navigateToFlow = Notification.Name("navigateToFlow")
-  static let navigateToTimeline = Notification.Name("navigateToTimeline")
 }
 
 @MainActor

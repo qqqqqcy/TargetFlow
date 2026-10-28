@@ -27,17 +27,13 @@ class ProviderSetupState: ObservableObject {
   @Published var isCheckingCLIStatus: Bool = false
   @Published var codexCLIReport: CLIDetectionReport?
   @Published var claudeCLIReport: CLIDetectionReport?
-  @Published var debugCommandInput: String = "which codex"
-  @Published var debugCommandOutput: String = ""
-  @Published var isRunningDebugCommand: Bool = false
   @Published var preferredCLITool: CLITool?
 
   var lastSavedGeminiModel: GeminiModel
   var hasStartedCLICheck = false
   @Published private(set) var configuredProviderID: LLMProviderID?
 
-  init() {
-    let defaults = UserDefaults.standard
+  init(defaults: UserDefaults = AppStoragePaths.defaults) {
     let savedLocalEngine =
       defaults.string(forKey: "llmLocalEngine").flatMap(LocalEngine.init(rawValue:)) ?? .lmstudio
     let savedLocalBaseURL =
@@ -55,12 +51,12 @@ class ProviderSetupState: ObservableObject {
       ? LocalModelPreferences.defaultModelId(for: savedLocalEngine) : savedLocalModelID
     self.localAPIKey = defaults.string(forKey: "llmLocalAPIKey") ?? ""
 
-    let preference = GeminiModelPreference.load()
+    let preference = GeminiModelPreference.load(from: defaults)
     self.geminiModel = preference.primary
     self.lastSavedGeminiModel = preference.primary
     self.preferredCLITool = nil
 
-    if let configuration = OpenAICompatiblePreferences.load() {
+    if let configuration = OpenAICompatiblePreferences.load(from: defaults) {
       openAICompatiblePreset = configuration.preset
       openAICompatibleBaseURL = configuration.baseURL
       openAICompatibleModelID = configuration.modelID
@@ -91,8 +87,7 @@ class ProviderSetupState: ObservableObject {
         return testSuccessful
       }
       return true
-    case .terminalCommand(_), .modelDownload(_), .localChoice, .localModelInstall,
-      .apiKeyInstructions:
+    case .localChoice, .localModelInstall, .apiKeyInstructions:
       return true
     }
   }
@@ -295,18 +290,9 @@ class ProviderSetupState: ObservableObject {
     }
   }
 
-  func persistGeminiModelSelection(source: String) {
+  func persistGeminiModelSelection() {
     guard geminiModel != lastSavedGeminiModel else { return }
     lastSavedGeminiModel = geminiModel
-
-    Task { @MainActor in
-      AnalyticsService.shared.capture(
-        "gemini_model_selected",
-        [
-          "source": source,
-          "model": geminiModel.rawValue,
-        ])
-    }
 
     // Changing models should prompt the user to re-run the connection test
     hasTestedConnection = false
@@ -325,10 +311,10 @@ class ProviderSetupState: ObservableObject {
   func ensureCLICheckStarted() {
     guard !hasStartedCLICheck else { return }
     hasStartedCLICheck = true
-    refreshCLIStatuses(source: "initial")
+    refreshCLIStatuses()
   }
 
-  func refreshCLIStatuses(source: String = "manual_recheck") {
+  func refreshCLIStatuses() {
     if isCheckingCLIStatus { return }
     isCheckingCLIStatus = true
     codexCLIStatus = .checking
@@ -349,39 +335,6 @@ class ProviderSetupState: ObservableObject {
         self.claudeCLIStatus = claudeResult.state
         self.isCheckingCLIStatus = false
         self.ensurePreferredCLIToolIsValid()
-        self.captureChatCLIDetectionChecked(source: source)
-      }
-    }
-  }
-
-  @MainActor
-  func runDebugCommand() {
-    guard !debugCommandInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-      debugCommandOutput = "Enter a command to run."
-      return
-    }
-    if isRunningDebugCommand { return }
-    isRunningDebugCommand = true
-    debugCommandOutput = "Running..."
-
-    let command = debugCommandInput
-    Task.detached { [weak self] in
-      let result = CLIDetector.runDebugCommand(command)
-      await MainActor.run { [weak self] in
-        guard let self else { return }
-        var output = ""
-        output += "Exit code: \(result.exitCode)\n"
-        if !result.stdout.isEmpty {
-          output += "\nstdout:\n\(result.stdout)"
-        }
-        if !result.stderr.isEmpty {
-          output += "\nstderr:\n\(result.stderr)"
-        }
-        if result.stdout.isEmpty && result.stderr.isEmpty {
-          output += "\n(no output)"
-        }
-        self.debugCommandOutput = output
-        self.isRunningDebugCommand = false
       }
     }
   }
@@ -390,7 +343,6 @@ class ProviderSetupState: ObservableObject {
     guard preferredCLITool != tool else { return }
     preferredCLITool = tool
     switchChatCLIProvider(to: tool == .claude ? .claude : .chatGPT)
-    captureChatCLIToolSelected(tool)
   }
 
   func ensurePreferredCLIToolIsValid() {
@@ -403,66 +355,6 @@ class ProviderSetupState: ObservableObject {
       preferredCLITool = .codex
     } else if isToolAvailable(.claude) {
       preferredCLITool = .claude
-    }
-  }
-
-  func captureChatCLIDetectionChecked(source: String) {
-    AnalyticsService.shared.capture(
-      "chat_cli_detection_checked",
-      chatCLIDetectionAnalyticsProperties(
-        source: source,
-        selectedTool: preferredCLITool
-      )
-    )
-  }
-
-  func captureChatCLIToolSelected(_ tool: CLITool) {
-    AnalyticsService.shared.capture(
-      "chat_cli_tool_selected",
-      chatCLIDetectionAnalyticsProperties(
-        source: "detection_step",
-        selectedTool: tool
-      )
-    )
-  }
-
-  func chatCLIDetectionAnalyticsProperties(
-    source: String,
-    selectedTool: CLITool?
-  ) -> [String: Any] {
-    let codexAvailable = isToolAvailable(.codex)
-    let claudeAvailable = isToolAvailable(.claude)
-    let availableToolCount = [codexAvailable, claudeAvailable].filter { $0 }.count
-    let selectedToolAvailable = selectedTool.map(isToolAvailable(_:)) ?? false
-
-    return [
-      "source": source,
-      "provider_id": configuredProviderID?.rawValue ?? "unknown",
-      "setup_step": "detect",
-      "selected_tool": selectedTool?.rawValue ?? "none",
-      "selected_tool_available": selectedToolAvailable,
-      "codex_available": codexAvailable,
-      "claude_available": claudeAvailable,
-      "any_cli_available": codexAvailable || claudeAvailable,
-      "both_clis_available": codexAvailable && claudeAvailable,
-      "available_tool_count": availableToolCount,
-      "codex_status": analyticsValue(for: codexCLIStatus),
-      "claude_status": analyticsValue(for: claudeCLIStatus),
-    ]
-  }
-
-  func analyticsValue(for status: CLIDetectionState) -> String {
-    switch status {
-    case .unknown:
-      return "unknown"
-    case .checking:
-      return "checking"
-    case .installed:
-      return "installed"
-    case .notFound:
-      return "not_found"
-    case .failed:
-      return "failed"
     }
   }
 
@@ -491,28 +383,12 @@ struct SetupStep: Identifiable {
 }
 
 enum StepContentType {
-  case terminalCommand(String)
   case apiKeyInput
   case apiKeyInstructions
-  case modelDownload(String)
   case information(String, String)
   case localChoice
   case localModelInstall
   case cliDetection
-
-  var isApiKeyInput: Bool {
-    if case .apiKeyInput = self {
-      return true
-    }
-    return false
-  }
-
-  var informationTitle: String? {
-    if case .information(let title, _) = self {
-      return title
-    }
-    return nil
-  }
 }
 
 extension ProviderSetupState {
@@ -527,23 +403,5 @@ extension ProviderSetupState {
       for: engine == .custom ? .ollama : engine)
     localModelId = defaultModel
 
-    // Track local engine selection for analytics
-    AnalyticsService.shared.capture(
-      "local_engine_selected",
-      [
-        "engine": engine.rawValue,
-        "default_model": defaultModel,
-        "has_api_key": !localAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-      ])
-  }
-
-  var localCurlCommand: String {
-    let payload =
-      "{\"model\":\"\(localModelId)\",\"messages\":[{\"role\":\"user\",\"content\":\"Say 'hello' and your model name.\"}],\"max_tokens\":50}"
-    let authHeader = localEngine == .lmstudio ? " -H \"Authorization: Bearer lm-studio\"" : ""
-    let endpoint =
-      LocalEndpointUtilities.chatCompletionsURL(baseURL: localBaseURL)?.absoluteString
-      ?? "\(localBaseURL)/v1/chat/completions"
-    return "curl -s \(endpoint) -H \"Content-Type: application/json\"\(authHeader) -d '\(payload)'"
   }
 }

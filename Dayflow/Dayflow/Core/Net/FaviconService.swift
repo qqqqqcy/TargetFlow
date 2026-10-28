@@ -78,7 +78,6 @@ final class FaviconService {
     ("finder", "FinderFavicon"),
     ("settings", "SettingsFavicon"),
     ("system preferences", "SettingsFavicon"),
-    ("system settings", "SettingsFavicon"),
     ("calculator", "CalculatorFavicon"),
     ("preview", "PreviewFavicon"),
     ("contacts", "ContactsFavicon"),
@@ -99,7 +98,6 @@ final class FaviconService {
     ("visual studio code", "VSCodeFavicon"),
 
     // Browsers
-    ("google chrome", "ChromeFavicon"),
     ("chrome", "ChromeFavicon"),
   ]
 
@@ -157,17 +155,10 @@ final class FaviconService {
     return nil
   }
 
-  func hasRawFaviconOverride(_ raw: String?) -> Bool {
-    assetName(forRaw: raw) != nil
-  }
-
   static func normalizedHost(from site: String?) -> String? {
     guard var site, !site.isEmpty else { return nil }
     site = site.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     if let url = URL(string: site), let host = url.host {
-      return host
-    }
-    if site.contains("://"), let url = URL(string: site), let host = url.host {
       return host
     }
     if site.contains("/"), let url = URL(string: "https://" + site), let host = url.host {
@@ -260,9 +251,6 @@ final class FaviconService {
 
       if let result {
         self.cache.setObject(result, forKey: key)
-      } else {
-        // Both S2 and direct fetch failed — log to PostHog for visibility
-        AnalyticsService.shared.capture("favicon_fetch_failed", ["host": resolvedHost])
       }
       return result
     }

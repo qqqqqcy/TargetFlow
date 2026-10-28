@@ -59,7 +59,7 @@ struct ScreenshotSlideshowModal: View {
         }
         .buttonStyle(PlainButtonStyle())
         .hoverScaleEffect(scale: 1.02)
-        .pointingHandCursorOnHover(reassertOnPressEnd: true)
+        .pointingHandCursor()
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
@@ -210,7 +210,7 @@ private struct ScreenshotSlideshowStageView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .hoverScaleEffect(scale: 1.02)
-            .pointingHandCursorOnHover(reassertOnPressEnd: true)
+            .pointingHandCursor()
             .padding(12)
           }
         }
@@ -498,7 +498,6 @@ private struct ScreenshotScrubberView: View {
   @State private var images: [NSImage] = []
   @State private var isDragging: Bool = false
 
-  private let frameCount = 8
   private let filmstripHeight: CGFloat = 64
   private let aspect: CGFloat = 16.0 / 9.0
   private let zoom: CGFloat = 1.2

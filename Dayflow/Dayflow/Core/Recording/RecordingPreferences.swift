@@ -17,11 +17,11 @@ enum ScreenshotConfig {
   /// Seconds between captures.
   static var interval: TimeInterval {
     get {
-      let stored = UserDefaults.standard.double(forKey: intervalKey)
+      let stored = AppStoragePaths.defaults.double(forKey: intervalKey)
       return stored > 0 ? stored : defaultInterval
     }
     set {
-      UserDefaults.standard.set(newValue, forKey: intervalKey)
+      AppStoragePaths.defaults.set(newValue, forKey: intervalKey)
       postChange()
     }
   }
@@ -29,11 +29,11 @@ enum ScreenshotConfig {
   /// Height in pixels each frame is scaled to before encoding.
   static var captureHeight: Int {
     get {
-      let stored = UserDefaults.standard.integer(forKey: captureHeightKey)
+      let stored = AppStoragePaths.defaults.integer(forKey: captureHeightKey)
       return heightOptions.contains(stored) ? stored : defaultHeight
     }
     set {
-      UserDefaults.standard.set(newValue, forKey: captureHeightKey)
+      AppStoragePaths.defaults.set(newValue, forKey: captureHeightKey)
       postChange()
     }
   }

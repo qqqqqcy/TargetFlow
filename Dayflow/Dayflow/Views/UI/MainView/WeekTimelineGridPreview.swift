@@ -142,8 +142,6 @@ private struct WeekTimelineHoverPrototypeHarness: View {
       let yPos = CGFloat(spec.startMinutes) * ppm + 1
       let rawHeight = CGFloat(spec.durationMinutes) * ppm
       let height = max(WeekTimelineConfig.minimumCardHeight, rawHeight - 2)
-      let hoverTimeLabel =
-        "\(Self.minutesLabel(fromFourAM: spec.startMinutes)) - \(Self.minutesLabel(fromFourAM: spec.startMinutes + spec.durationMinutes))"
 
       return WeekPositionedActivity(
         id: activity.id,
@@ -153,7 +151,6 @@ private struct WeekTimelineHoverPrototypeHarness: View {
         height: height,
         durationMinutes: Double(spec.durationMinutes),
         title: spec.title,
-        hoverTimeLabel: hoverTimeLabel,
         categoryName: spec.category,
         faviconPrimaryRaw: spec.favicon,
         faviconSecondaryRaw: nil,
@@ -163,18 +160,6 @@ private struct WeekTimelineHoverPrototypeHarness: View {
         batchIds: []
       )
     }
-  }
-
-  private static func minutesLabel(fromFourAM minutes: Int) -> String {
-    let absoluteMinutes = minutes + 4 * 60
-    let hour24 = (absoluteMinutes / 60) % 24
-    let minute = absoluteMinutes % 60
-    let period = hour24 >= 12 ? "PM" : "AM"
-    let hour12: Int = {
-      let raw = hour24 % 12
-      return raw == 0 ? 12 : raw
-    }()
-    return String(format: "%d:%02d %@", hour12, minute, period)
   }
 }
 

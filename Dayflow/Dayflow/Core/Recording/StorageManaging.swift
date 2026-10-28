@@ -5,30 +5,9 @@ import Foundation
 /// _No_ `@MainActor` isolation ⇒ can be called from any thread/actor.
 /// If you add UI‑touching methods later, isolate **those** individually.
 protocol StorageManaging: Sendable {
-  // Recording‑chunk lifecycle
-  func nextFileURL() -> URL
-  func registerChunk(url: URL)
-  func markChunkCompleted(url: URL)
-  func markChunkFailed(url: URL)
-
-  // Fetch unprocessed (completed + not yet batched) chunks
-  func fetchUnprocessedChunks(olderThan oldestAllowed: Int) -> [RecordingChunk]
-  func fetchChunksInTimeRange(startTs: Int, endTs: Int) -> [RecordingChunk]
-
-  // Analysis‑batch management
-  func saveBatch(startTs: Int, endTs: Int, chunkIds: [Int64]) -> Int64?
   func updateBatchStatus(batchId: Int64, status: String)
   func markBatchFailed(batchId: Int64, reason: String)
 
-  // Record details about all LLM calls for a batch
-  func updateBatchLLMMetadata(batchId: Int64, calls: [LLMCall])
-  func fetchBatchLLMMetadata(batchId: Int64) -> [LLMCall]
-
-  // Timeline‑cards
-  func saveTimelineCardShell(batchId: Int64, card: TimelineCardShell) -> Int64?
-  func updateTimelineCardVideoURL(cardId: Int64, videoSummaryURL: String)
-  func deleteTimelineCard(recordId: Int64) -> String?
-  func fetchTimelineCards(forBatch batchId: Int64) -> [TimelineCard]
   func fetchTimelineCard(byId id: Int64) -> TimelineCardWithTimestamps?
   func fetchTimelineCardEndingLast(startingBefore: Date, excludingBatchId: Int64)
     -> TimelineCardWithTimestamps?
@@ -39,63 +18,18 @@ protocol StorageManaging: Sendable {
   // Timeline Queries
   func fetchTimelineCards(forDay day: String) -> [TimelineCard]
   func fetchTimelineCardsByTimeRange(from: Date, to: Date) -> [TimelineCard]
-  func fetchTotalMinutesTracked(from: Date, to: Date) -> Double
-  func fetchTotalMinutesTrackedForWeek(containing date: Date) -> Double
-  func replaceTimelineCardsInRange(from: Date, to: Date, with: [TimelineCardShell], batchId: Int64)
-    -> (insertedIds: [Int64], deletedVideoPaths: [String])
-  func fetchRecentTimelineCardsForDebug(limit: Int) -> [TimelineCardDebugEntry]
-
-  func updateTimelineCardCategory(cardId: Int64, category: String)
-  func updateTimelineCardTitle(cardId: Int64, title: String)
-
   // Daily goals
-  func fetchDayGoalPlan(forDay day: String) -> DayGoalPlan?
   func fetchMostRecentDayGoalPlan(beforeOrOn day: String) -> DayGoalPlan?
   func saveDayGoalPlan(_ plan: DayGoalPlan)
 
-  func fetchRecentLLMCallsForDebug(limit: Int) -> [LLMCallDebugEntry]
-  func fetchRecentAnalysisBatchesForDebug(limit: Int) -> [AnalysisBatchDebugEntry]
-  func fetchLLMCallsForBatches(batchIds: [Int64], limit: Int) -> [LLMCallDebugEntry]
-
-  // Note: Transcript storage methods removed in favor of Observations
-
-  // NEW: Observations Storage
-  func saveObservations(batchId: Int64, observations: [Observation])
-  func fetchObservations(batchId: Int64) -> [Observation]
-  func fetchObservations(startTs: Int, endTs: Int) -> [Observation]
-  func fetchObservationsByTimeRange(from: Date, to: Date) -> [Observation]
-
-  // Helper for GeminiService – map file paths → timestamps
-  func getTimestampsForVideoFiles(paths: [String]) -> [String: (startTs: Int, endTs: Int)]
-
   // Reprocessing Methods
-  func deleteTimelineCards(forDay day: String) -> [String]  // Returns video paths to clean up
-  func deleteTimelineCards(forBatchIds batchIds: [Int64]) -> [String]
   func deleteObservations(forBatchIds batchIds: [Int64])
-  func resetBatchStatuses(forDay day: String) -> [Int64]  // Returns affected batch IDs
   func resetBatchStatuses(forBatchIds batchIds: [Int64]) -> [Int64]
-  func fetchBatches(forDay day: String) -> [(id: Int64, startTs: Int, endTs: Int, status: String)]
-
-  /// Chunks that belong to one batch, already sorted.
-  func chunksForBatch(_ batchId: Int64) -> [RecordingChunk]
 
   /// All batches, newest first
   func allBatches() -> [(id: Int64, start: Int, end: Int, status: String)]
 
   // MARK: - Screenshot Management (new - replaces video chunks)
-
-  /// Returns the URL for a new HEVC segment file
-  func nextSegmentURL() -> URL
-
-  /// Records one frame of a segment, returns the screenshot ID
-  func saveScreenshot(
-    segmentPath: String, frameIndex: Int, capturedAt: Date, idleSecondsAtCapture: Int?
-  ) -> Int64?
-
-  /// Segment lifecycle bookkeeping used by FrameStore
-  func updateScreenshotFileSizes(segmentPath: String, totalBytes: Int64)
-  func markScreenshotsDeleted(segmentPath: String)
-  func mostRecentSegmentPath() -> String?
 
   /// Fetch screenshots that haven't been assigned to a batch yet
   func fetchUnprocessedScreenshots(since oldestTimestamp: Int) -> [Screenshot]

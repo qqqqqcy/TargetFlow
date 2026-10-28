@@ -315,7 +315,7 @@ struct ScreenRecordingPermissionView: View {
   private func quitAndReopen() {
     do {
       try AppRelauncher.schedule()
-      AppDelegate.permitTermination(reason: "screen_permission_quit_and_reopen")
+      AppDelegate.permitTermination()
       NSApp.terminate(nil)
     } catch {
       restartError = String(localized: "Unable to start the restart helper: \(error.localizedDescription). Please quit the app and reopen it from Finder.")

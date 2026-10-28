@@ -25,74 +25,6 @@ func hslToHex(_ h: Double, _ s: Double, _ l: Double) -> String {
   return "#\(hex(r))\(hex(g))\(hex(b))"
 }
 
-extension Color {
-  // Keep only HSL helper to avoid redeclaring `init(hex:)` (already defined elsewhere)
-  static func fromHSL(h: Double, s: Double, l: Double) -> Color {
-    let (r, g, b) = hslToRGB(h, s, l)
-    return Color(.sRGB, red: r, green: g, blue: b, opacity: 1)
-  }
-}
-
-private func makeColorWheelCGImage(
-  size: CGFloat,
-  padding: CGFloat,
-  minLight: Double,
-  maxLight: Double,
-  scale: CGFloat = NSScreen.main?.backingScaleFactor ?? 2.0
-) -> CGImage? {
-  let pixelW = Int((size * scale).rounded())
-  let pixelH = Int((size * scale).rounded())
-  let bytesPerRow = pixelW * 4
-
-  guard
-    let ctx = CGContext(
-      data: nil,
-      width: pixelW,
-      height: pixelH,
-      bitsPerComponent: 8,
-      bytesPerRow: bytesPerRow,
-      space: CGColorSpaceCreateDeviceRGB(),
-      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-    )
-  else { return nil }
-
-  guard let data = ctx.data else { return nil }
-  let ptr = data.bindMemory(to: UInt8.self, capacity: pixelW * pixelH * 4)
-
-  let cx = Double(pixelW) / 2.0
-  let cy = Double(pixelH) / 2.0
-  let R = Double((size / 2.0 - padding) * scale)
-  let deltaL = maxLight - minLight
-
-  for y in 0..<pixelH {
-    for x in 0..<pixelW {
-      let dx = Double(x) - cx
-      let dy = Double(y) - cy
-      let r = sqrt(dx * dx + dy * dy)
-      let offset = (y * pixelW + x) * 4
-
-      if r <= R {
-        var angle = atan2(dy, dx)  // [-π, π]
-        if angle < 0 { angle += .pi * 2 }
-        let hue = angle * 180.0 / .pi
-        let light = minLight + deltaL * (r / R)
-
-        let (rr, gg, bb) = hslToRGB(hue, 100, light)
-        ptr[offset + 0] = UInt8(max(0, min(255, Int(round(rr * 255)))))  // R
-        ptr[offset + 1] = UInt8(max(0, min(255, Int(round(gg * 255)))))  // G
-        ptr[offset + 2] = UInt8(max(0, min(255, Int(round(bb * 255)))))  // B
-        ptr[offset + 3] = 255
-      } else {
-        ptr[offset + 0] = 0
-        ptr[offset + 1] = 0
-        ptr[offset + 2] = 0
-        ptr[offset + 3] = 0
-      }
-    }
-  }
-  return ctx.makeImage()
-}
-
 struct DotPattern: View {
   var width: CGFloat = 10
   var height: CGFloat = 10
@@ -140,19 +72,15 @@ struct ColorPickerView: View {
   var spreadFactor: Double = 0.4
   var minSpread: Double = .pi / 1.5
   var maxSpread: Double = .pi / 3
-  var minLight: Double = 15
   var maxLight: Double = 90
-  var showColorWheel: Bool = false
 
   var numPoints: Int
-  var onColorChange: ([String]) -> Void
   var onRadiusChange: (Double) -> Void
   var onAngleChange: (Double) -> Void
 
   // Internal state
   @State private var angle: Double = -.pi / 2
   @State private var radius: CGFloat = 0
-  @State private var wheelImage: CGImage? = nil
   private var RADIUS: CGFloat { size / 2 - padding }
 
   // Derived (exactly like your React code)
@@ -172,27 +100,6 @@ struct ColorPickerView: View {
   }
 
   private func updateCallbacks() {
-    // Color array ordering mirrors your useEffect:
-    // 1: [color]
-    // 2: [color2, color]
-    // 3: [color2, color, color1]
-    // 4: [color2, color, color1, color3]
-    // 5+: [color4, color2, color, color1, color3]
-    let c = colorHex
-    let c1 = color(at: -spread)
-    let c2 = color(at: +spread)
-    let c3 = color(at: -spread * 2)
-    let c4 = color(at: +spread * 2)
-
-    let out: [String]
-    switch numPoints {
-    case 1: out = [c]
-    case 2: out = [c2, c]
-    case 3: out = [c2, c, c1]
-    case 4: out = [c2, c, c1, c3]
-    default: out = [c4, c2, c, c1, c3]
-    }
-    onColorChange(out)
     onRadiusChange(Double(radius / RADIUS))
     onAngleChange(angle)
   }
@@ -211,21 +118,6 @@ struct ColorPickerView: View {
 
   var body: some View {
     ZStack {
-      // Wheel
-      Group {
-        if let img = wheelImage {
-          Image(decorative: img, scale: 1, orientation: .up)
-            .resizable()
-            .frame(width: size, height: size)
-            .clipShape(Circle())
-            .opacity(showColorWheel ? 1 : 0)
-            .animation(.easeInOut(duration: 0.2), value: showColorWheel)
-        } else {
-          // Lazy placeholder before image is built
-          Circle().fill(Color.clear).frame(width: size, height: size)
-        }
-      }
-
       // Drag area overlay
       GeometryReader { _ in
         Color.clear
@@ -325,21 +217,7 @@ struct ColorPickerView: View {
     .frame(width: size, height: size)
     .onAppear {
       radius = RADIUS * 0.7
-      wheelImage = makeColorWheelCGImage(
-        size: size, padding: padding, minLight: minLight, maxLight: maxLight)
       updateCallbacks()
-    }
-    .onChange(of: size) {
-      wheelImage = makeColorWheelCGImage(
-        size: size, padding: padding, minLight: minLight, maxLight: maxLight)
-    }
-    .onChange(of: minLight) {
-      wheelImage = makeColorWheelCGImage(
-        size: size, padding: padding, minLight: minLight, maxLight: maxLight)
-    }
-    .onChange(of: maxLight) {
-      wheelImage = makeColorWheelCGImage(
-        size: size, padding: padding, minLight: minLight, maxLight: maxLight)
     }
     .onChange(of: angle) { updateCallbacks() }
     .onChange(of: radius) { updateCallbacks() }

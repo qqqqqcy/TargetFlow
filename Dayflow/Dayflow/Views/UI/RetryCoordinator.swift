@@ -96,14 +96,6 @@ final class RetryCoordinator: ObservableObject {
     }
   }
 
-  func reset() {
-    statuses = [:]
-    activeBatchId = nil
-    isRunning = false
-    AnalysisManager.shared.setManualRetryRunning(false)
-    stopDotTimer()
-  }
-
   nonisolated private static func failedBatchIds(for dayString: String) -> [Int64] {
     let cards = StorageManager.shared.fetchTimelineCards(forDay: dayString)
     var seen = Set<Int64>()

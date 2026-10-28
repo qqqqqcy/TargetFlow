@@ -1,23 +1,13 @@
 import Combine
 import SwiftUI
 
-@MainActor  // <--- Add this
-protocol AppStateManaging: ObservableObject {
-  // This requirement must now be fulfilled on the main actor
-  var isRecording: Bool { get }
-  var objectWillChange: ObservableObjectPublisher { get }
-}
-
 @MainActor
-final class AppState: ObservableObject, AppStateManaging {  // <-- Add AppStateManaging here
+final class AppState: ObservableObject {
   static let shared = AppState()
 
   private let recordingKey = "isRecording"
   private var shouldPersist = false
   private var skipNextPersistence = false
-  private var pendingRecordingAnalyticsReason: String?
-  @Published private(set) var currentTabName: String?
-  @Published private(set) var currentTimelineMode: String?
 
   @Published var isRecording: Bool {
     didSet {
@@ -25,7 +15,7 @@ final class AppState: ObservableObject, AppStateManaging {  // <-- Add AppStateM
 
       // Only persist after onboarding is complete
       if shouldPersist && !skipNextPersistence {
-        UserDefaults.standard.set(isRecording, forKey: recordingKey)
+        AppStoragePaths.defaults.set(isRecording, forKey: recordingKey)
       }
     }
   }
@@ -43,32 +33,18 @@ final class AppState: ObservableObject, AppStateManaging {  // <-- Add AppStateM
 
   /// Get the saved recording preference, if any
   func getSavedPreference() -> Bool? {
-    if UserDefaults.standard.object(forKey: recordingKey) != nil {
-      return UserDefaults.standard.bool(forKey: recordingKey)
+    if AppStoragePaths.defaults.object(forKey: recordingKey) != nil {
+      return AppStoragePaths.defaults.bool(forKey: recordingKey)
     }
     return nil
   }
 
   func setRecording(
     _ enabled: Bool,
-    analyticsReason: String? = nil,
     persistPreference: Bool = true
   ) {
-    if let analyticsReason {
-      pendingRecordingAnalyticsReason = analyticsReason
-    }
     skipNextPersistence = !persistPreference
     isRecording = enabled
   }
 
-  func consumePendingRecordingAnalyticsReason() -> String? {
-    let reason = pendingRecordingAnalyticsReason
-    pendingRecordingAnalyticsReason = nil
-    return reason
-  }
-
-  func updateCurrentUIContext(tabName: String, timelineMode: String? = nil) {
-    currentTabName = tabName
-    currentTimelineMode = tabName == "timeline" ? timelineMode : nil
-  }
 }

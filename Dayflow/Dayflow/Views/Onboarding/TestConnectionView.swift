@@ -61,21 +61,15 @@ struct TestConnectionView: View {
     guard !apiKey.isEmpty else {
       testResult = .failure(String(localized: "No API key found. Enter your API key first."))
       onTestComplete?(false)
-      AnalyticsService.shared.capture(
-        "connection_test_failed", ["provider": "gemini", "error_code": "no_api_key"])
       return
     }
 
     isTesting = true
     testResult = nil
-    AnalyticsService.shared.capture(
-      "connection_test_started",
-      ["provider": "gemini", "model": model.rawValue]
-    )
 
     Task {
       do {
-        let result = try await GeminiAPIHelper.shared.testConnection(
+        _ = try await GeminiAPIHelper.shared.testConnection(
           apiKey: apiKey,
           preference: GeminiModelPreference(primary: model)
         )
@@ -84,33 +78,19 @@ struct TestConnectionView: View {
           isTesting = false
           onTestComplete?(true)
         }
-        AnalyticsService.shared.capture(
-          "connection_test_succeeded",
-          ["provider": "gemini", "model": result.model.rawValue]
-        )
-      } catch GeminiAPIHelper.APIError.rateLimited(_, let attemptedModel) {
+      } catch GeminiAPIHelper.APIError.rateLimited(_, _) {
         await MainActor.run {
           testResult = .success(
             String(localized: "API key works, but Gemini is rate limited right now."))
           isTesting = false
           onTestComplete?(true)
         }
-        AnalyticsService.shared.capture(
-          "connection_test_succeeded",
-          [
-            "provider": "gemini",
-            "status": "rate_limited",
-            "model": attemptedModel.rawValue,
-          ])
       } catch {
         await MainActor.run {
           testResult = .failure(error.localizedDescription)
           isTesting = false
           onTestComplete?(false)
         }
-        AnalyticsService.shared.capture(
-          "connection_test_failed",
-          ["provider": "gemini", "error_code": String((error as NSError).code)])
       }
     }
   }

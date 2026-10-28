@@ -95,20 +95,7 @@ extension GeminiDirectProvider {
           let transition = modelState.advance()
         {
 
-          let reason = fallbackReason(for: nsError.code)
           print("↔️ Switching to \(transition.to) after \(nsError.code)")
-
-          Task { @MainActor in
-            AnalyticsService.shared.capture(
-              "llm_model_fallback",
-              [
-                "provider": "gemini",
-                "operation": "generate_text",
-                "from_model": transition.from,
-                "to_model": transition.to,
-                "reason": reason,
-              ])
-          }
 
           // Moving to the next model doesn't use up a retry, so every model in the chain gets tried.
           continue

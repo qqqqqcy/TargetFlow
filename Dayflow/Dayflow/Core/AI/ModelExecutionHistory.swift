@@ -28,7 +28,7 @@ final class ModelExecutionHistory: @unchecked Sendable {
   private let defaults: UserDefaults
   private let limit: Int
 
-  init(defaults: UserDefaults = .standard, limit: Int = maximumRecords) {
+  init(defaults: UserDefaults = AppStoragePaths.defaults, limit: Int = maximumRecords) {
     self.defaults = defaults
     self.limit = max(1, min(limit, Self.maximumRecords))
   }

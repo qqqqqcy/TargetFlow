@@ -54,13 +54,12 @@ extension OllamaProvider {
     case "generate_summary", "generate_title", "evaluate_card_merge", "merge_cards",
       "generate_cards", "generate_activity_cards": return .activityCards
     case "generate_timeline": return .timeline
-    case "dashboard_chat": return .chat
     default: return .text
     }
   }
 
   func configuredRequest(
-    _ request: ChatRequest, feature: ModelFeature, defaults: UserDefaults = .standard
+    _ request: ChatRequest, feature: ModelFeature, defaults: UserDefaults = AppStoragePaths.defaults
   ) -> ChatRequest {
     let isOpenRouter = URL(string: endpoint)?.host?.lowercased() == "openrouter.ai"
     let selection = ModelPreferences.resolve(

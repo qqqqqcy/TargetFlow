@@ -97,7 +97,7 @@ final class ScreenshotSlideshowPlaybackModel: ObservableObject {
   func cycleSpeed() {
     speedOptionIndex = (speedOptionIndex + 1) % speedOptions.count
     timelineState.speedLabel = currentSpeedLabel
-    UserDefaults.standard.set(speedOptions[speedOptionIndex], forKey: Self.speedDefaultsKey)
+    AppStoragePaths.defaults.set(speedOptions[speedOptionIndex], forKey: Self.speedDefaultsKey)
   }
 
   func seek(to index: Int) {
@@ -209,7 +209,7 @@ final class ScreenshotSlideshowPlaybackModel: ObservableObject {
   }
 
   private static func savedSpeedIndex(in options: [Double]) -> Int? {
-    let saved = UserDefaults.standard.double(forKey: speedDefaultsKey)
+    let saved = AppStoragePaths.defaults.double(forKey: speedDefaultsKey)
     guard saved > 0 else { return nil }
     return options.firstIndex(where: { abs($0 - saved) < 0.001 })
   }

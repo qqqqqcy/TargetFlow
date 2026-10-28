@@ -1,23 +1,8 @@
-import AppKit
 import Foundation
-import SwiftUI
 
 enum DayGoalCategoryKind: String, CaseIterable, Sendable {
   case focus
   case distraction
-}
-
-enum DayGoalPreferences {
-  static let showDailyGoalPopupsKey = "showDailyGoalPopups"
-
-  static var showDailyGoalPopups: Bool {
-    get {
-      UserDefaults.standard.object(forKey: showDailyGoalPopupsKey) as? Bool ?? true
-    }
-    set {
-      UserDefaults.standard.set(newValue, forKey: showDailyGoalPopupsKey)
-    }
-  }
 }
 
 struct DayGoalCategorySnapshot: Identifiable, Equatable, Sendable {
@@ -28,13 +13,6 @@ struct DayGoalCategorySnapshot: Identifiable, Equatable, Sendable {
 
   var id: String {
     categoryID
-  }
-
-  var color: Color {
-    if let nsColor = NSColor(hex: colorHex) {
-      return Color(nsColor: nsColor)
-    }
-    return .gray
   }
 
   init(categoryID: String, name: String, colorHex: String, sortOrder: Int) {
@@ -62,14 +40,6 @@ struct DayGoalPlan: Equatable, Sendable {
   var createdAt: Int
   var updatedAt: Int
 
-  var focusTargetDuration: TimeInterval {
-    TimeInterval(focusTargetMinutes * 60)
-  }
-
-  var distractionLimitDuration: TimeInterval {
-    TimeInterval(distractionLimitMinutes * 60)
-  }
-
   func forDay(_ day: String) -> DayGoalPlan {
     var copy = self
     if copy.day != day {
@@ -92,15 +62,6 @@ struct DayGoalPlan: Equatable, Sendable {
       categories: categories
     )
     return copy
-  }
-
-  func categorySnapshots(for kind: DayGoalCategoryKind) -> [DayGoalCategorySnapshot] {
-    switch kind {
-    case .focus:
-      return focusCategories
-    case .distraction:
-      return distractionCategories
-    }
   }
 
   static func defaultPlan(day: String, categories: [TimelineCategory]) -> DayGoalPlan {
@@ -155,37 +116,5 @@ struct DayGoalPlan: Equatable, Sendable {
 
   private static func normalizedCategoryName(_ name: String) -> String {
     name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-  }
-}
-
-struct DayGoalCategoryResult: Identifiable, Equatable, Sendable {
-  let id: String
-  var name: String
-  var colorHex: String
-  var duration: TimeInterval
-
-  var color: Color {
-    if let nsColor = NSColor(hex: colorHex) {
-      return Color(nsColor: nsColor)
-    }
-    return .gray
-  }
-}
-
-struct DayGoalReviewSnapshot: Equatable, Sendable {
-  let day: String
-  var plan: DayGoalPlan
-  var focusDuration: TimeInterval
-  var distractedDuration: TimeInterval
-  var focusCategories: [DayGoalCategoryResult]
-
-  static func empty(day: String, plan: DayGoalPlan) -> DayGoalReviewSnapshot {
-    DayGoalReviewSnapshot(
-      day: day,
-      plan: plan,
-      focusDuration: 0,
-      distractedDuration: 0,
-      focusCategories: []
-    )
   }
 }

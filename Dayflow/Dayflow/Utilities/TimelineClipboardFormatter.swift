@@ -1,6 +1,6 @@
 import Foundation
 
-/// Builds the plain-text and Markdown exports of the timeline. Labels, headings
+/// Builds the copied plain-text timeline. Labels, headings
 /// and dates are localized; card titles, summaries and the stored "h:mm a" card
 /// times are copied through exactly as stored.
 struct TimelineClipboardFormatter {
@@ -47,59 +47,6 @@ struct TimelineClipboardFormatter {
     }
 
     return ([header, ""] + sections).joined(separator: "\n\n")
-  }
-
-  static func makeMarkdown(for date: Date, cards: [TimelineCard], now: Date = Date()) -> String {
-    let timelineDate = timelineDisplayDate(from: date, now: now)
-    let header = "## " + exportHeader(formattedTimelineDay(timelineDate, now: now))
-
-    guard !cards.isEmpty else {
-      let emptyMessage = String(localized: "No timeline activities were recorded for this day.")
-      return [header, "_\(emptyMessage)_"].joined(separator: "\n\n")
-    }
-
-    let summaryLabel = String(localized: "Summary")
-    let detailsLabel = String(localized: "Details")
-
-    let entries = cards.enumerated().map { index, card -> String in
-      var lines: [String] = []
-
-      let timeRange = formattedRange(start: card.startTimestamp, end: card.endTimestamp)
-      let titleText = card.title.trimmingCharacters(in: .whitespacesAndNewlines)
-      let bulletTitle = timeRange.isEmpty ? titleText : "\(timeRange) — \(titleText)"
-      lines.append("\(index + 1). **\(bulletTitle)**")
-
-      let metaParts = metadataParts(for: card)
-      if !metaParts.isEmpty {
-        lines.append("   - _\(metaParts.joined(separator: " • "))_")
-      }
-
-      if let summary = cleanedParagraph(card.summary) {
-        let summaryLines = normalizedLines(summary)
-        if summaryLines.count == 1 {
-          lines.append("   - \(summaryLabel): \(summaryLines[0])")
-        } else {
-          lines.append("   - \(summaryLabel):")
-          summaryLines.forEach { lines.append("      \($0)") }
-        }
-      }
-
-      if let details = cleanedParagraph(card.detailedSummary),
-        details != cleanedParagraph(card.summary)
-      {
-        let detailLines = normalizedLines(details)
-        if detailLines.count == 1 {
-          lines.append("   - \(detailsLabel): \(detailLines[0])")
-        } else {
-          lines.append("   - \(detailsLabel):")
-          detailLines.forEach { lines.append("      \($0)") }
-        }
-      }
-
-      return lines.joined(separator: "\n")
-    }
-
-    return ([header, ""] + entries).joined(separator: "\n\n")
   }
 
   /// "Target Flow timeline · <day or week>" in the current language.

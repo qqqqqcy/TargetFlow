@@ -16,11 +16,10 @@ final class LocalProviderCredentialStore: @unchecked Sendable {
 
   init(directory: URL? = nil,
        legacyRead: @escaping (String) -> String? = {
-         KeychainManager.shared.retrieveWithoutInteraction(for: $0)
+         AppStoragePaths.isIsolated ? nil : KeychainManager.shared.retrieveWithoutInteraction(for: $0)
        }) {
-    self.directory = directory ?? FileManager.default.urls(
-      for: .applicationSupportDirectory, in: .userDomainMask)[0]
-      .appendingPathComponent("TargetFlow/ProviderCredentials", isDirectory: true)
+    self.directory = directory ?? AppStoragePaths.applicationSupport
+      .appendingPathComponent("ProviderCredentials", isDirectory: true)
     self.legacyRead = legacyRead
   }
 
@@ -96,6 +95,9 @@ final class KeychainManager {
   /// - Returns: true if successful, false otherwise
   @discardableResult
   func store(_ apiKey: String, for provider: String) -> Bool {
+    if AppStoragePaths.isIsolated {
+      return LocalProviderCredentialStore.shared.store(apiKey, for: provider)
+    }
     return queue.sync {
       guard let data = apiKey.data(using: .utf8) else { return false }
 
@@ -133,6 +135,9 @@ final class KeychainManager {
   /// - Parameter provider: The provider identifier
   /// - Returns: The API key if found, nil otherwise
   func retrieve(for provider: String) -> String? {
+    if AppStoragePaths.isIsolated {
+      return LocalProviderCredentialStore.shared.retrieve(for: provider)
+    }
     let timestamp = DateFormatter.localizedString(
       from: Date(), dateStyle: .none, timeStyle: .medium)
     print("\n🔐 [KeychainManager] Retrieving key for '\(provider)' at \(timestamp)")
@@ -199,7 +204,8 @@ final class KeychainManager {
 
   /// Reads a legacy credential only when macOS can return it without prompting.
   func retrieveWithoutInteraction(for provider: String) -> String? {
-    queue.sync {
+    guard !AppStoragePaths.isIsolated else { return nil }
+    return queue.sync {
       let context = LAContext()
       context.interactionNotAllowed = true
       let query: [String: Any] = [
@@ -222,6 +228,9 @@ final class KeychainManager {
   /// - Returns: true if successful, false otherwise
   @discardableResult
   func delete(for provider: String) -> Bool {
+    if AppStoragePaths.isIsolated {
+      return LocalProviderCredentialStore.shared.delete(for: provider)
+    }
     return queue.sync {
       let service = "\(servicePrefix).\(provider)"
 
@@ -236,10 +245,4 @@ final class KeychainManager {
     }
   }
 
-  /// Checks if an API key exists in the keychain
-  /// - Parameter provider: The provider identifier
-  /// - Returns: true if the key exists, false otherwise
-  func exists(for provider: String) -> Bool {
-    return retrieve(for: provider) != nil
-  }
 }

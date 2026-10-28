@@ -15,7 +15,7 @@ final class OllamaProvider {
     if let injectedRuntimeConfiguration {
       return injectedRuntimeConfiguration.modelID
     }
-    if let m = UserDefaults.standard.string(forKey: "llmLocalModelId"), !m.isEmpty {
+    if let m = AppStoragePaths.defaults.string(forKey: "llmLocalModelId"), !m.isEmpty {
       return m
     }
     // Fallback to a sensible default
@@ -24,16 +24,16 @@ final class OllamaProvider {
   }
   var isLMStudio: Bool {
     guard injectedRuntimeConfiguration == nil else { return false }
-    return (UserDefaults.standard.string(forKey: "llmLocalEngine") ?? "ollama") == "lmstudio"
+    return (AppStoragePaths.defaults.string(forKey: "llmLocalEngine") ?? "ollama") == "lmstudio"
   }
   var isCustomEngine: Bool {
     guard injectedRuntimeConfiguration == nil else { return false }
-    return (UserDefaults.standard.string(forKey: "llmLocalEngine") ?? "ollama") == "custom"
+    return (AppStoragePaths.defaults.string(forKey: "llmLocalEngine") ?? "ollama") == "custom"
   }
   var customAPIKey: String? {
     guard injectedRuntimeConfiguration == nil else { return nil }
     let trimmed =
-      UserDefaults.standard.string(forKey: "llmLocalAPIKey")?.trimmingCharacters(
+      AppStoragePaths.defaults.string(forKey: "llmLocalAPIKey")?.trimmingCharacters(
         in: .whitespacesAndNewlines) ?? ""
     return trimmed.isEmpty ? nil : trimmed
   }
@@ -43,7 +43,7 @@ final class OllamaProvider {
     if let injectedRuntimeConfiguration {
       return injectedRuntimeConfiguration.analyticsProvider
     }
-    return UserDefaults.standard.string(forKey: "llmLocalEngine") ?? "ollama"
+    return AppStoragePaths.defaults.string(forKey: "llmLocalEngine") ?? "ollama"
   }
 
   var providerID: LLMProviderID {
@@ -65,11 +65,6 @@ final class OllamaProvider {
 
   var promptOverrides: ActivityCardPromptOverrides {
     ActivityCardPromptPreferences.load()
-  }
-
-  init(endpoint: String = "http://localhost:1234") {
-    self.endpoint = endpoint
-    self.injectedRuntimeConfiguration = nil
   }
 
   init(openAICompatible configuration: OpenAICompatibleRuntimeConfiguration) {

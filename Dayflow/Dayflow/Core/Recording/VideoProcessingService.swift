@@ -3,111 +3,23 @@ import CoreGraphics
 import Foundation
 
 enum VideoProcessingError: Error {
-  case invalidInputURL
-  case assetLoadFailed(Error?)
-  case noVideoTracks
-  case trackInsertionFailed
-  case exportSessionCreationFailed
   case exportFailed(Error?)
-  case exportStatusNotCompleted(AVAssetExportSession.Status)
-  case assetReaderCreationFailed(Error?)
   case assetWriterCreationFailed(Error?)
   case assetWriterInputCreationFailed
   case assetWriterStartFailed(Error?)
-  case frameReadFailed
-  case frameAppendFailed
-  case directoryCreationFailed(Error?)
-  case fileSaveFailed(Error?)
   case noInputFiles
   case invalidImageData
-  case pixelBufferCreationFailed
 }
 
 actor VideoProcessingService {
-  enum VideoCodec: String, Sendable {
-    case h264
-    case hevc
-
-    var avCodecType: AVVideoCodecType {
-      switch self {
-      case .h264: return .h264
-      case .hevc: return .hevc
-      }
-    }
-  }
-
   struct VideoEncodingOptions: Sendable {
     var maxOutputHeight: Int?
-    var frameStride: Int
     var averageBitRate: Int
-    var codec: VideoCodec
     var keyframeIntervalSeconds: Int
-
-    static let `default` = VideoEncodingOptions(
-      maxOutputHeight: nil,
-      frameStride: 1,
-      averageBitRate: 2_000_000,
-      codec: .h264,
-      keyframeIntervalSeconds: 10
-    )
   }
 
   private let fileManager = FileManager.default
-  private let persistentTimelapsesRootURL: URL
   private let colorSpace = CGColorSpaceCreateDeviceRGB()
-
-  // Cached DateFormatters to avoid repeated allocation
-  private let dateFormatter_yyyyMMdd: DateFormatter = {
-    let f = DateFormatter()
-    f.dateFormat = "yyyy-MM-dd"
-    return f
-  }()
-  init() {
-    // Create a persistent directory for timelapses within Application Support
-    self.persistentTimelapsesRootURL = AppStoragePaths.timelapses
-    // Ensure the root timelapses directory exists
-    do {
-      try fileManager.createDirectory(
-        at: self.persistentTimelapsesRootURL,
-        withIntermediateDirectories: true,
-        attributes: nil)
-    } catch {
-      // Log this, but don't fail initialization.
-      print(
-        "Error creating persistent timelapses root directory: \(self.persistentTimelapsesRootURL.path). Error: \(error)"
-      )
-    }
-
-  }
-
-  func generatePersistentTimelapseURL(
-    for date: Date,
-    originalFileName: String
-  ) -> URL {
-    let dateString = dateFormatter_yyyyMMdd.string(from: date)
-
-    let dateSpecificDir =
-      persistentTimelapsesRootURL
-      .appendingPathComponent(dateString, isDirectory: true)
-
-    do {
-      try fileManager.createDirectory(
-        at: dateSpecificDir,
-        withIntermediateDirectories: true,
-        attributes: nil)
-    } catch {
-      print(
-        "Error creating date-specific timelapse directory: \(dateSpecificDir.path). Error: \(error)"
-      )
-      return
-        persistentTimelapsesRootURL
-        .appendingPathComponent(originalFileName + "_timelapse.mp4")
-    }
-
-    return
-      dateSpecificDir
-      .appendingPathComponent(originalFileName + "_timelapse.mp4")
-  }
 
   private func makeEven(_ value: Int) -> Int {
     let even = value - (value % 2)
@@ -117,19 +29,17 @@ actor VideoProcessingService {
   // MARK: - Screenshot to Video Compositing
 
   /// Composites a series of screenshot images into an MP4 video.
-  /// Used for timelapse generation and Gemini provider (which requires video format).
+  /// Used by the Gemini provider, with each screenshot placed on a compressed timeline.
   ///
   /// - Parameters:
   ///   - screenshots: Array of Screenshot objects, in chronological order
   ///   - outputURL: Where to write the output MP4
   ///   - fps: Output frames per second (default 1 = each screenshot is 1 second of video)
-  ///   - useCompressedTimeline: If true, places frames at 1fps (compressed). If false, uses real timestamps.
   func generateVideoFromScreenshots(
     screenshots: [Screenshot],
     outputURL: URL,
     fps: Int = 1,
-    useCompressedTimeline: Bool = true,
-    options: VideoEncodingOptions = .default
+    options: VideoEncodingOptions
   ) async throws {
     guard !screenshots.isEmpty else {
       throw VideoProcessingError.noInputFiles
@@ -137,13 +47,7 @@ actor VideoProcessingService {
 
     let overallStart = Date()
     let scanStart = Date()
-    let frameStride = max(1, options.frameStride)
-    let selectedScreenshots = sampleScreenshots(screenshots, stride: frameStride)
-    guard !selectedScreenshots.isEmpty else {
-      throw VideoProcessingError.noInputFiles
-    }
-
-    guard let firstFrameSize = firstValidImageSize(in: selectedScreenshots) else {
+    guard let firstFrameSize = firstValidImageSize(in: screenshots) else {
       throw VideoProcessingError.invalidImageData
     }
     let (width, height) = resolvedCanvasSize(
@@ -166,16 +70,14 @@ actor VideoProcessingService {
     }
 
     let safeFPS = max(1, fps)
-    var compressionProperties: [String: Any] = [
+    let compressionProperties: [String: Any] = [
       AVVideoAverageBitRateKey: max(100_000, options.averageBitRate),
       AVVideoMaxKeyFrameIntervalKey: safeFPS * max(1, options.keyframeIntervalSeconds),
+      AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
     ]
-    if options.codec == .h264 {
-      compressionProperties[AVVideoProfileLevelKey] = AVVideoProfileLevelH264HighAutoLevel
-    }
 
     let videoSettings: [String: Any] = [
-      AVVideoCodecKey: options.codec.avCodecType,
+      AVVideoCodecKey: AVVideoCodecType.h264,
       AVVideoWidthKey: width,
       AVVideoHeightKey: height,
       AVVideoCompressionPropertiesKey: compressionProperties,
@@ -207,10 +109,9 @@ actor VideoProcessingService {
     let encodeStart = Date()
     var frameIndex = 0
     var skippedFrames = 0
-    let baseTimestamp = selectedScreenshots.first!.capturedAt
     let pixelBufferPool = adaptor.pixelBufferPool
 
-    for screenshot in selectedScreenshots {
+    for screenshot in screenshots {
       guard let cgImage = screenshot.loadCGImage() else {
         print("⚠️ Skipping undecodable screenshot \(screenshot.id)")
         skippedFrames += 1
@@ -228,17 +129,8 @@ actor VideoProcessingService {
       }
 
       // Calculate presentation time
-      let presentationTime: CMTime
-      if useCompressedTimeline {
-        // Compressed: each frame is 1/fps seconds apart
-        // e.g., fps=2 means each frame is 0.5s apart (2 frames per second)
-        let frameTime = Double(frameIndex) / Double(safeFPS)
-        presentationTime = CMTime(seconds: frameTime, preferredTimescale: 600)
-      } else {
-        // Real timeline: use actual capture timestamps
-        let elapsedSeconds = Double(screenshot.capturedAt - baseTimestamp)
-        presentationTime = CMTime(seconds: elapsedSeconds, preferredTimescale: 600)
-      }
+      let frameTime = Double(frameIndex) / Double(safeFPS)
+      let presentationTime = CMTime(seconds: frameTime, preferredTimescale: 600)
 
       // Wait for writer to be ready
       while !writerInput.isReadyForMoreMediaData {
@@ -271,28 +163,23 @@ actor VideoProcessingService {
       throw VideoProcessingError.exportFailed(writer.error)
     }
 
-    let videoDuration =
-      useCompressedTimeline
-      ? Double(frameIndex) / Double(safeFPS)
-      : Double(selectedScreenshots.last!.capturedAt - baseTimestamp)
+    let videoDuration = Double(frameIndex) / Double(safeFPS)
     print(
-      "✅ Generated \(useCompressedTimeline ? "compressed" : "realtime") video from \(frameIndex) screenshots (\(videoDuration)s): \(outputURL.lastPathComponent)"
+      "✅ Generated compressed video from \(frameIndex) screenshots (\(videoDuration)s): \(outputURL.lastPathComponent)"
     )
 
     let totalDuration = Date().timeIntervalSince(overallStart)
     let timingSummary = String(
       format:
-        "TIMING timelapse frames=%d/%d sampled=%d stride=%d skipped=%d size=%dx%d fps=%d bitrate=%d codec=%@ scan=%.2fs encode=%.2fs finalize=%.2fs total=%.2fs output=%@",
+        "TIMING timelapse frames=%d/%d skipped=%d size=%dx%d fps=%d bitrate=%d codec=%@ scan=%.2fs encode=%.2fs finalize=%.2fs total=%.2fs output=%@",
       frameIndex,
       screenshots.count,
-      selectedScreenshots.count,
-      frameStride,
       skippedFrames,
       width,
       height,
       safeFPS,
       max(100_000, options.averageBitRate),
-      options.codec.rawValue,
+      "h264",
       scanDuration,
       encodeDuration,
       finalizeDuration,
@@ -300,20 +187,6 @@ actor VideoProcessingService {
       outputURL.lastPathComponent
     )
     print(timingSummary)
-  }
-
-  private func sampleScreenshots(_ screenshots: [Screenshot], stride: Int) -> [Screenshot] {
-    let safeStride = max(1, stride)
-    guard safeStride > 1 else { return screenshots }
-
-    var sampled: [Screenshot] = []
-    sampled.reserveCapacity(max(1, screenshots.count / safeStride))
-    var index = 0
-    while index < screenshots.count {
-      sampled.append(screenshots[index])
-      index += safeStride
-    }
-    return sampled
   }
 
   private func firstValidImageSize(in screenshots: [Screenshot]) -> (width: Int, height: Int)? {

@@ -6,10 +6,10 @@
 
 <p>
   <img src="https://img.shields.io/badge/macOS-14%2B-007AFF?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS 14+">
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/v/release/qqqqqcy/TargetFlow?include_prereleases&amp;sort=date&amp;style=flat-square&amp;label=release&amp;color=F59E0B" alt="最新版本（含测试版）"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/v/release/qqqqqcy/TargetFlow?include_prereleases&amp;sort=date&amp;style=flat-square&amp;label=release&amp;color=F59E0B" alt="最新版本（含预发布版）"></a>
   <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/downloads/qqqqqcy/TargetFlow/total?style=flat-square" alt="Release 附件累计下载量"></a>
-  <a href="https://github.com/qqqqqcy/TargetFlow/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/qqqqqcy/TargetFlow/release.yml?branch=main&amp;style=flat-square&amp;label=build" alt="测试版构建状态"></a>
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/release-date-pre/qqqqqcy/TargetFlow?style=flat-square&amp;label=released" alt="最新发布时间（含测试版）"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/qqqqqcy/TargetFlow/release.yml?branch=main&amp;style=flat-square&amp;label=build" alt="构建状态"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/release-date-pre/qqqqqcy/TargetFlow?style=flat-square&amp;label=released" alt="最新发布时间（含预发布版）"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-34A853?style=flat-square" alt="MIT 开源协议"></a>
 </p>
 
@@ -17,12 +17,14 @@
 
 <p>一款 macOS 目标提醒应用：自动整理屏幕活动，识别与当前目标的偏离，<br>给你一个具体的小步骤，重新开始。</p>
 
+<p>项目最初参考了 <a href="https://github.com/JerryZLiu/Dayflow">Dayflow</a> 的代码。</p>
+
 <p><a href="README.md">English</a> · <strong>简体中文</strong></p>
 
-<h3>下载 macOS 测试版</h3>
+<h3>下载 macOS 应用</h3>
 
 <p>
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><strong>↓ 下载最新测试版</strong></a><br>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><strong>↓ 下载最新版本</strong></a><br>
   <sub>Apple 芯片（M 系列）：arm64 · Intel Mac：x86_64</sub>
 </p>
 
@@ -127,13 +129,13 @@
 
 ## 安装与本地构建
 
-### 下载测试版
+### 下载最新版本
 
 在 [GitHub Releases](https://github.com/qqqqqcy/TargetFlow/releases) 下载 DMG：Apple 芯片（M 系列）选择 `arm64`，Intel Mac 选择 `x86_64`。要求 macOS 14 或更高版本。打开 DMG，将 `TargetFlow.app` 拖入「应用程序」。
 
-测试包使用临时签名，未经 Apple 公证。如果 macOS 阻止首次启动，请先尝试打开应用，再前往 **「系统设置 → 隐私与安全性 → 仍要打开」** 并确认。仅对你信任的下载执行此操作。更新测试版后，可能需要重新授予屏幕录制权限。详见[安装说明](docs/test-release-install.txt)。
+安装包使用固定自签名证书，未经 Apple 公证。如果 macOS 阻止首次启动，请先尝试打开应用，再前往 **「系统设置 → 隐私与安全性 → 仍要打开」** 并确认。仅对你信任的下载执行此操作。详见[安装说明](docs/release-install.txt)。
 
-### 自行打包测试 DMG
+### 自行打包 DMG
 
 ```bash
 bash scripts/package-test.sh
@@ -141,7 +143,7 @@ bash scripts/package-test.sh
 TARGETFLOW_TEST_ARCH=x86_64 bash scripts/package-test.sh
 ```
 
-脚本要求通过 `TARGETFLOW_SIGNING_IDENTITY` 或 `scripts/local-signing-identity` 配置固定签名证书，在 `dist/` 中生成签名 DMG 和 SHA-256 校验文件。可以使用自签名代码签名证书，无需 Developer ID。后续版本必须沿用同一证书及私钥；脚本拒绝临时签名，并验证签名要求绑定固定证书。从最初的 Test 1 包迁移时，可能需要最后一次重新授权录屏。脚本不会发布 Release 或安装应用。重新打包相同版本和架构前，请先移走已有安装包。
+脚本要求通过 `TARGETFLOW_SIGNING_IDENTITY` 或 `scripts/local-signing-identity` 配置固定签名证书，在 `dist/` 中生成签名 DMG 和 SHA-256 校验文件。可以使用自签名代码签名证书，无需 Developer ID。后续版本必须沿用同一证书及私钥；脚本拒绝临时签名，并验证签名要求绑定固定证书。脚本不会发布 Release 或安装应用。重新打包相同版本和架构前，请先移走已有安装包。
 
 源码构建需要完整 Xcode，仅安装 Command Line Tools 无法构建此 macOS 应用。应用部署目标为 macOS 14，测试目标为 macOS 15.1。
 
@@ -151,7 +153,7 @@ TARGETFLOW_TEST_ARCH=x86_64 bash scripts/package-test.sh
 open Dayflow/Dayflow.xcodeproj
 ```
 
-选择 `Dayflow` scheme，在 Signing & Capabilities 中设置自己的签名团队，然后运行。项目和 Swift 模块仍名为 `Dayflow`，构建产物为 `TargetFlow.app`。
+选择 `Dayflow` scheme，在 Signing & Capabilities 中设置自己的签名团队，然后运行。构建产物为 `TargetFlow.app`。
 
 ### 构建并安装到「应用程序」
 
@@ -207,13 +209,9 @@ xcodebuild -project Dayflow/Dayflow.xcodeproj \
   -only-testing:DayflowTests CODE_SIGNING_ALLOWED=NO test
 ```
 
-## 项目来源与边界
+## 应用标识与数据
 
-Target Flow 基于 [Dayflow](https://github.com/JerryZLiu/dayflow) 的上游提交 `730d6f84`（v2.7.5），保留其 Git 历史和 MIT 许可证，功能聚焦于**当前目标、自动时间线和偏离提醒**。
-
-卡片审阅与手动评分、日报、独立周报、聊天、Flow、Agents、账户／订阅、推荐计划、MCP／CLI 接入设置、导出设置及其他设置不作为应用功能提供。原版更新检查、功能推广和遥测不启动，构建时不捆绑 Dayflow CLI。部分上游源码与数据库表仍保留以维护共享依赖，没有对应的应用入口或启动任务。
-
-Target Flow 可与 Dayflow 并存，使用独立的应用身份和数据位置：
+Target Flow 使用独立的应用身份和数据位置：
 
 | 项目 | 值 |
 | --- | --- |
@@ -222,10 +220,8 @@ Target Flow 可与 Dayflow 并存，使用独立的应用身份和数据位置�
 | API 密钥服务前缀 | `local.targetflow.apikeys` |
 | URL scheme | `targetflow://`（录制开始／停止） |
 
-不会自动导入已安装 Dayflow 的录屏、数据库、偏好或密钥，需要单独配置提供商并授权屏幕录制。
-
 品牌素材与重新生成方式见[应用图标与品牌素材](docs/images/README.md)。
 
 ## 许可证
 
-继承上游 [MIT License](LICENSE)，保留原作者版权声明。
+基于 [MIT License](LICENSE) 发布。

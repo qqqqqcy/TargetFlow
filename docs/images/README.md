@@ -13,6 +13,8 @@
 
 英文 README 使用以上英文版素材，应用界面、目标、事件、评估示例与画面标题均为英文。中文版 README 使用对应的 `-zh-CN` 素材：`target-flow-timeline-zh-CN.png`、`target-flow-current-goals-zh-CN.gif`、`target-flow-assessment-zh-CN.png` 和 `target-flow-distraction-reminder-zh-CN.png`，界面及示例文案为中文。两套素材由应用的真实窗口截图排版制作。使用独立标识 `local.targetflow.preview.readme` 和隔离数据库中的虚构演示内容；不含真实用户的活动记录、录屏、密钥或接口日志。评估文字为预置示例，并非现场调用模型的结果。GIF 是实际操作截图序列，不是连续录屏。
 
+测试与截图验证必须隔离用户数据。普通 XCTest 宿主会自动使用每个进程独立的临时数据目录和偏好域，并跳过录屏、启动恢复、清理与后台分析；UI 测试启动应用时必须设置 `TARGETFLOW_TEST_MODE=1`。手动截图继续使用 `local.targetflow.preview.*` 独立应用标识和 `TARGETFLOW_UI_PREVIEW_DATA_DIR`，缺少目录或指向正式数据目录时会拒绝启动。隔离运行不会读取或修改正式提供商凭据，也不会从正式 Keychain 迁移密钥。不要通过启动普通开发版应用来替代隔离截图入口。
+
 截图加上标题、蓝白背景和示例数据说明；应用界面本身没有重绘。截图在界面动画结束后采集。演示数据库与构建中间文件保存在被 Git 忽略的 `build/readme-media/`，不作为产品数据发布。
 
 应用图标、菜单栏图标、启动图、引导示意图及引导视频均由本项目原创生成。
@@ -23,4 +25,4 @@
 swift scripts/generate-brand-assets.swift
 ```
 
-应用品牌名为 **Target Flow**，当前版本为 **0.0.1**。上游来源和许可证见项目根目录 README 与 LICENSE。
+应用品牌名为 **Target Flow**。项目来源和许可证见项目根目录 README 与 LICENSE。

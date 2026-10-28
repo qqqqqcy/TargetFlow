@@ -66,7 +66,7 @@ struct DayCategorySelectionEditor: View {
             theme.chipFill, in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
       }
       .buttonStyle(.plain)
-      .pointingHandCursorOnHover(reassertOnPressEnd: true)
+      .pointingHandCursor()
       .accessibilityLabel(String(localized: "Done"))
     }
     .shadow(color: Color.black.opacity(0.08), radius: 18, x: 0, y: 10)
@@ -93,12 +93,6 @@ struct DayCategorySelectionEditor: View {
 private struct DayCategoryFlowLayout: Layout {
   var spacing: CGFloat = 4
   var rowSpacing: CGFloat = 4
-
-  func makeCache(subviews: Subviews) {
-    ()
-  }
-
-  func updateCache(_ cache: inout (), subviews: Subviews) {}
 
   func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
     let maxWidth = proposal.width ?? .infinity

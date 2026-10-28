@@ -1,0 +1,338 @@
+//
+//  ProviderSelectionView.swift
+//  Dayflow
+//
+
+import SwiftUI
+
+// MARK: - Provider Comparison Data
+
+private enum ComparisonRating {
+  case best, medium, basic
+
+  var dotGradient: LinearGradient {
+    switch self {
+    case .best:
+      return LinearGradient(
+        colors: [Color(hex: "10F06D"), Color(hex: "08E8E4")],
+        startPoint: .top, endPoint: .bottom
+      )
+    case .medium:
+      return LinearGradient(
+        colors: [Color(hex: "FFD560"), Color(hex: "FCAE6A")],
+        startPoint: .top, endPoint: .bottom
+      )
+    case .basic:
+      return LinearGradient(
+        colors: [Color(hex: "EDD9CF"), Color(hex: "B6AAA4")],
+        startPoint: .top, endPoint: .bottom
+      )
+    }
+  }
+}
+
+private struct RatedValue {
+  let text: String
+  let rating: ComparisonRating
+}
+
+private struct ComparisonProvider: Identifiable {
+  let providerID: LLMProviderID
+  let title: String
+  let accuracy: RatedValue
+  let subscription: String
+  let ease: RatedValue
+  let notes: String
+
+  var id: String { providerID.rawValue }
+}
+
+// MARK: - Choose Provider Step
+
+struct ProviderSelectionView: View {
+  let onSelect: (LLMProviderID) -> Void
+
+  @State private var isCodexCLIInstalled = false
+  @State private var isClaudeCLIInstalled = false
+
+  private static let providers: [ComparisonProvider] = [
+    ComparisonProvider(
+      providerID: .chatGPT,
+      title: String(localized: "ChatGPT"),
+      accuracy: RatedValue(text: String(localized: "Best"), rating: .best),
+      subscription: String(localized: "ChatGPT paid subscription"),
+      ease: RatedValue(text: String(localized: "Install Codex CLI"), rating: .medium),
+      notes: String(
+        localized: "Uses your ChatGPT subscription and less than 1% of your daily limit.")
+    ),
+    ComparisonProvider(
+      providerID: .claude,
+      title: String(localized: "Claude"),
+      accuracy: RatedValue(text: String(localized: "Best"), rating: .best),
+      subscription: String(localized: "Claude paid subscription"),
+      ease: RatedValue(text: String(localized: "Install Claude CLI"), rating: .medium),
+      notes: String(
+        localized: "Uses your Claude subscription and less than 1% of your daily limit.")
+    ),
+    ComparisonProvider(
+      providerID: .gemini,
+      title: String(localized: "Gemini"),
+      accuracy: RatedValue(text: String(localized: "Medium"), rating: .medium),
+      subscription: String(localized: "Free"),
+      ease: RatedValue(text: String(localized: "API key"), rating: .medium),
+      notes: String(localized: "Uses Gemini free tier.")
+    ),
+    ComparisonProvider(
+      providerID: .openAICompatible,
+      title: String(localized: "OpenRouter / Custom"),
+      accuracy: RatedValue(text: String(localized: "Varies"), rating: .medium),
+      subscription: String(localized: "API credits"),
+      ease: RatedValue(text: String(localized: "API key and model"), rating: .medium),
+      notes: String(localized: "Uses OpenRouter or any OpenAI-compatible endpoint.")
+    ),
+    ComparisonProvider(
+      providerID: .local,
+      title: String(localized: "Local AI"),
+      accuracy: RatedValue(text: String(localized: "Decent"), rating: .basic),
+      subscription: String(localized: "Free"),
+      ease: RatedValue(text: String(localized: "Extensive setup"), rating: .basic),
+      notes: String(
+        localized: "Requires 16GB+ RAM, 4GB free disk space, M1 or later chip preferred")
+    ),
+  ]
+
+  var body: some View {
+    VStack(spacing: 0) {
+      Text("Choose a way to run Target Flow")
+        .font(.custom("InstrumentSerif-Regular", size: 40))
+        .tracking(-1.2)
+        .multilineTextAlignment(.center)
+        .foregroundColor(Color(hex: "492304"))
+        .frame(maxWidth: .infinity)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
+
+      // 3 equal spacers above + 4 below keep the gap ratio at 3:4 as the window resizes.
+      ForEach(0..<3) { _ in Spacer(minLength: 0) }
+
+      comparisonTable
+        .padding(.horizontal, 40)
+        .transition(.opacity)
+
+      ForEach(0..<4) { _ in Spacer(minLength: 0) }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    .task {
+      let installed = await Task.detached(priority: .utility) {
+        (
+          codex: CLIDetector.isInstalled(.codex),
+          claude: CLIDetector.isInstalled(.claude)
+        )
+      }.value
+      guard !Task.isCancelled else { return }
+      isCodexCLIInstalled = installed.codex
+      isClaudeCLIInstalled = installed.claude
+    }
+  }
+
+  // MARK: - Comparison Table
+
+  private var comparisonTable: some View {
+    Grid(horizontalSpacing: 8, verticalSpacing: 16) {
+      GridRow(alignment: .top) {
+        emptyLabelCell
+        ForEach(Self.providers) { provider in
+          providerHeader(provider)
+        }
+      }
+
+      GridRow {
+        rowLabel(String(localized: "Model accuracy"))
+        ForEach(Self.providers) { provider in
+          ratedCell(provider.accuracy)
+        }
+      }
+
+      rowSeparator
+
+      GridRow {
+        rowLabel(String(localized: "Subscription requirements"))
+        ForEach(Self.providers) { provider in
+          subscriptionCell(provider.subscription)
+        }
+      }
+
+      rowSeparator
+
+      GridRow {
+        rowLabel(String(localized: "Ease of set up"))
+        ForEach(Self.providers) { provider in
+          ratedCell(easeValue(for: provider))
+        }
+      }
+
+      rowSeparator
+
+      GridRow(alignment: .top) {
+        rowLabel(String(localized: "Additional notes"))
+        ForEach(Self.providers) { provider in
+          notesCell(provider.notes)
+        }
+      }
+
+      GridRow {
+        emptyLabelCell
+        ForEach(Self.providers) { provider in
+          selectButton(for: provider)
+            .padding(.top, 8)
+        }
+      }
+    }
+    .frame(maxWidth: 1120)
+  }
+
+  private var emptyLabelCell: some View {
+    Color.clear
+      .gridCellUnsizedAxes([.horizontal, .vertical])
+  }
+
+  private var rowSeparator: some View {
+    Rectangle()
+      .fill(Color.black.opacity(0.15))
+      .frame(height: 0.75)
+  }
+
+  private func rowLabel(_ text: String) -> some View {
+    Text(text)
+      .font(.custom("Figtree", size: 14))
+      .fontWeight(.semibold)
+      .foregroundColor(.black)
+      .fixedSize(horizontal: false, vertical: true)
+      .gridColumnAlignment(.leading)
+  }
+
+  private func providerHeader(_ provider: ComparisonProvider) -> some View {
+    VStack(spacing: 7) {
+      headerIcon(for: provider.providerID)
+      Text(provider.title)
+        .font(.custom("Figtree", size: 16))
+        .fontWeight(.semibold)
+        .foregroundColor(.black)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.bottom, 8)
+  }
+
+  @ViewBuilder
+  private func headerIcon(for providerID: LLMProviderID) -> some View {
+    switch providerID {
+    case .dayflow:
+      Image("TargetFlowLogo")
+        .resizable()
+        .renderingMode(.original)
+        .interpolation(.high)
+        .antialiased(true)
+        .scaledToFit()
+        .frame(width: 36, height: 36)
+    case .chatGPT:
+      iconCircle(imageName: "ChatGPTLogo")
+    case .claude:
+      iconCircle(imageName: "ClaudeLogo")
+    case .gemini:
+      iconCircle(imageName: "GeminiLogo")
+    case .openAICompatible:
+      iconCircle(systemName: "network")
+    case .local:
+      iconCircle(systemName: "laptopcomputer")
+    }
+  }
+
+  private func iconCircle(imageName: String) -> some View {
+    Image(imageName)
+      .resizable()
+      .renderingMode(.original)
+      .interpolation(.high)
+      .antialiased(true)
+      .scaledToFit()
+      .frame(width: 20, height: 20)
+      .frame(width: 36, height: 36)
+      .background(Color.white.opacity(0.3))
+      .clipShape(Circle())
+      .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+  }
+
+  private func iconCircle(systemName: String) -> some View {
+    Image(systemName: systemName)
+      .font(.system(size: 14, weight: .medium))
+      .foregroundColor(.black.opacity(0.8))
+      .frame(width: 36, height: 36)
+      .background(Color.white.opacity(0.3))
+      .clipShape(Circle())
+      .overlay(Circle().stroke(Color.black.opacity(0.06), lineWidth: 1))
+  }
+
+  private func easeValue(for provider: ComparisonProvider) -> RatedValue {
+    if provider.providerID == .chatGPT, isCodexCLIInstalled {
+      return RatedValue(text: String(localized: "CLI installed"), rating: .best)
+    }
+    if provider.providerID == .claude, isClaudeCLIInstalled {
+      return RatedValue(text: String(localized: "CLI installed"), rating: .best)
+    }
+    return provider.ease
+  }
+
+  private func ratedCell(_ value: RatedValue) -> some View {
+    HStack(spacing: 6) {
+      Circle()
+        .fill(value.rating.dotGradient)
+        .frame(width: 10, height: 10)
+      Text(value.text)
+        .font(.custom("Figtree", size: 14))
+        .foregroundColor(.black)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private func subscriptionCell(_ text: String) -> some View {
+    Text(text)
+      .font(.custom("Figtree", size: 14))
+      .foregroundColor(.black)
+      .multilineTextAlignment(.center)
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(maxWidth: 170)
+  }
+
+  private func notesCell(_ text: String) -> some View {
+    Text(text)
+      .font(.custom("Figtree", size: 12))
+      .foregroundColor(.black)
+      .multilineTextAlignment(.leading)
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(maxWidth: 180)
+  }
+
+  private func selectButton(for provider: ComparisonProvider) -> some View {
+    DayflowSurfaceButton(
+      action: {
+        guard provider.providerID != .dayflow else { return }
+        onSelect(provider.providerID)
+      },
+      content: {
+        Text("Select")
+          .font(.custom("Figtree", size: 14))
+          .fontWeight(.semibold)
+          .tracking(-0.14)
+      },
+      background: Color(hex: "FF9F6F"),
+      foreground: .white,
+      borderColor: Color(hex: "F4C8B1"),
+      cornerRadius: 200,
+      horizontalPadding: 40,
+      verticalPadding: 8,
+      showOverlayStroke: false,
+      innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
+    )
+  }
+}

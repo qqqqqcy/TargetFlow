@@ -28,7 +28,7 @@ extension GeminiDirectProvider {
     try videoData.write(to: tempURL)
     defer { try? FileManager.default.removeItem(at: tempURL) }
 
-    let fileURI = try await uploadAndAwait(tempURL, mimeType: mimeType, key: apiKey).1
+    let fileURI = try await uploadAndAwait(tempURL, mimeType: mimeType).1
 
     // Format compressed video duration for the prompt
     let durationMinutes = Int(videoDuration / 60)
@@ -141,16 +141,6 @@ extension GeminiDirectProvider {
 
         // If we had validation errors, throw to trigger retry
         if hasValidationErrors {
-          AnalyticsService.shared.captureValidationFailure(
-            provider: "gemini",
-            providerID: .gemini,
-            operation: "transcribe",
-            validationType: "timestamp_exceeds_duration",
-            attempt: attempt + 1,
-            model: activeModel,
-            batchId: batchId,
-            errorDetail: "Observations exceeded video duration \(durationString)"
-          )
           throw NSError(
             domain: "GeminiProvider", code: 100,
             userInfo: [
@@ -161,16 +151,6 @@ extension GeminiDirectProvider {
 
         // Ensure we have at least one observation
         if observations.isEmpty {
-          AnalyticsService.shared.captureValidationFailure(
-            provider: "gemini",
-            providerID: .gemini,
-            operation: "transcribe",
-            validationType: "empty_observations",
-            attempt: attempt + 1,
-            model: activeModel,
-            batchId: batchId,
-            errorDetail: "No valid observations after filtering"
-          )
           throw NSError(
             domain: "GeminiProvider", code: 101,
             userInfo: [
@@ -195,21 +175,7 @@ extension GeminiDirectProvider {
           let transition = modelState.advance()
         {
 
-          let reason = fallbackReason(for: nsError.code)
           print("↔️ Switching to \(transition.to) after \(nsError.code)")
-
-          Task { @MainActor in
-            AnalyticsService.shared.capture(
-              "llm_model_fallback",
-              [
-                "provider": "gemini",
-                "operation": "transcribe",
-                "from_model": transition.from,
-                "to_model": transition.to,
-                "reason": reason,
-                "batch_id": batchId as Any,
-              ])
-          }
 
           // Moving to the next model doesn't use up a retry, so every model in the chain gets tried.
           continue
@@ -681,12 +647,9 @@ extension GeminiDirectProvider {
         screenshots: sortedScreenshots,
         outputURL: tempVideoURL,
         fps: 1,
-        useCompressedTimeline: true,  // Each frame = 1 second
         options: .init(
           maxOutputHeight: 720,
-          frameStride: 1,
           averageBitRate: 1_200_000,
-          codec: .h264,
           keyframeIntervalSeconds: 10
         )
       )

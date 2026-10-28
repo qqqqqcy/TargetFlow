@@ -72,7 +72,6 @@ struct ProgressRingView: View {
   @State private var displayPercent: Int = 0
   @State private var percentScale: CGFloat = 1
 
-  @State private var animating = false
   @State private var initialized = false
 
   @State private var particles: [ParticleData] = []
@@ -173,8 +172,6 @@ struct ProgressRingView: View {
     let prevPct = percent(for: prev)
     let newPct = percent(for: next)
 
-    animating = true
-
     // ① SQUISH
     withAnimation(.timingCurve(0.4, 0, 1, 1, duration: 0.12)) {
       ringScale = K.squishScale
@@ -219,7 +216,6 @@ struct ProgressRingView: View {
       }
 
       try? await Task.sleep(nanoseconds: nsec(0.2))
-      animating = false
 
       if hit100 {
         celebrate()

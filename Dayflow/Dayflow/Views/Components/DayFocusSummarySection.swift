@@ -9,7 +9,6 @@ import SwiftUI
 
 struct DayFocusSummarySection: View {
   @Environment(\.dayflowTheme) private var theme
-  @Environment(\.stylePreviewAfter) private var stylePreviewAfter
 
   let totalFocusText: String
   let focusBlocks: [FocusBlock]
@@ -67,12 +66,6 @@ struct DayFocusSummarySection: View {
         .font(.system(size: 22, weight: .semibold))
         .foregroundColor(theme.textPrimary)
 
-      if !stylePreviewAfter {
-        Image(systemName: "info.circle")
-          .font(.system(size: 12))
-          .foregroundColor(theme.textMuted)
-      }
-
       Spacer()
 
       CategoryEditCircleButton(
@@ -86,7 +79,6 @@ struct DayFocusSummarySection: View {
 
 private struct TotalFocusCard: View {
   @Environment(\.dayflowTheme) private var theme
-  @Environment(\.stylePreviewAfter) private var stylePreviewAfter
 
   let value: String
 
@@ -96,12 +88,6 @@ private struct TotalFocusCard: View {
         Text("Total focus time")
           .font(.system(size: 16, weight: .semibold))
           .foregroundColor(theme.textPrimary)
-
-        if !stylePreviewAfter {
-          Image(systemName: "info.circle")
-            .font(.system(size: 12))
-            .foregroundColor(theme.textMuted)
-        }
 
         Spacer()
       }

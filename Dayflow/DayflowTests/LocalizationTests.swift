@@ -84,16 +84,16 @@ final class LocalizationTests: XCTestCase {
 
   func testStorageNumbersDoNotParseTranslatedUnitLabels() {
     XCTAssertEqual(
-      StorageLimitOption(id: 0, label: "1 ГБ", bytes: 1_000_000_000).shortLabel, 1.formatted())
+      StorageLimitOption(id: 0, label: "1 ГБ", bytes: 1_000_000_000).resolvedBytes, 1_000_000_000)
     XCTAssertEqual(
-      StorageLimitOption(id: 1, label: "2 Go", bytes: 2_000_000_000).shortLabel, 2.formatted())
+      StorageLimitOption(id: 1, label: "2 Go", bytes: 2_000_000_000).resolvedBytes, 2_000_000_000)
+    XCTAssertEqual(
+      StorageLimitOption(id: 2, label: "不限", bytes: nil).resolvedBytes, Int64.max)
   }
 
   func testInternalLabelsRemainStableAcrossInterfaceLanguages() {
-    XCTAssertEqual(LLMProviderID.local.providerLabel, "local")
-    XCTAssertEqual(DashboardChatProvider.gemini.runtimeLabel, "gemini_function_calling")
-    XCTAssertEqual(DashboardChatTurnRole.user.promptLabel, "User")
-    XCTAssertEqual(DashboardChatTurnRole.assistant.promptLabel, "Assistant")
+    XCTAssertEqual(LLMProviderID.local.rawValue, "local")
+    XCTAssertEqual(LLMProviderID.local.analyticsName, "ollama")
   }
 
   func testLocalizedInterfaceDoesNotChangeWireTimeParsing() {

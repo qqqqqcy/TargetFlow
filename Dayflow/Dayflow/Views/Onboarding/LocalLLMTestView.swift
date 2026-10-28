@@ -100,8 +100,6 @@ struct LocalLLMTestView: View {
     self.onTestComplete = onTestComplete
   }
 
-  let accentColor = SettingsStyle.ink
-  let successAccentColor = SettingsStyle.statusGood
   var trimmedAPIKey: String {
     apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
   }

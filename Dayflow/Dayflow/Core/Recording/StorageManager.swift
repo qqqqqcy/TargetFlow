@@ -5,7 +5,6 @@
 
 import Foundation
 import GRDB
-import Sentry
 
 final class StorageManager: StorageManaging, @unchecked Sendable {
   static let shared = StorageManager()
@@ -253,7 +252,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
     migrate()
     // Snapshot records may contain absolute paths to production media. Preview
     // can read that media for playback, but must never migrate or purge it.
-    guard !AppStoragePaths.isUIPreview else { return }
+    guard !AppStoragePaths.isIsolated else { return }
     migrateLegacyChunkPathsIfNeeded()
     truncateOversizedLLMCallBodiesIfNeeded()
 
@@ -276,11 +275,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
     var execEnd: CFAbsoluteTime = 0
     let operationID = dbContentionTracker.begin(kind: .write, label: label)
 
-    let writeBreadcrumb = Breadcrumb(level: .debug, category: "database")
-    writeBreadcrumb.message = "DB write: \(label)"
-    writeBreadcrumb.type = "debug"
-    SentryHelper.addBreadcrumb(writeBreadcrumb)
-
     do {
       let result = try db.write { db in
         dbContentionTracker.markExecutionStarted(id: operationID)
@@ -291,7 +285,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
 
       let waitMs = max(0, (execStart - callStart) * 1000)
       let execMs = max(0, (execEnd - execStart) * 1000)
-      let contentionSnapshot = dbContentionTracker.complete(
+      _ = dbContentionTracker.complete(
         id: operationID,
         waitMs: waitMs,
         execMs: execMs,
@@ -302,24 +296,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
       if debugSlowQueries && (execMs > slowThresholdMs || waitMs > slowThresholdMs) {
         print("⚠️ SLOW WRITE [\(label)]: wait=\(Int(waitMs))ms exec=\(Int(execMs))ms")
 
-        let slowWriteBreadcrumb = Breadcrumb(level: .warning, category: "database")
-        slowWriteBreadcrumb.message = "SLOW DB write: \(label)"
-        slowWriteBreadcrumb.data = [
-          "duration_ms": Int((waitMs + execMs).rounded()),
-          "wait_ms": Int(waitMs.rounded()),
-          "exec_ms": Int(execMs.rounded()),
-          "caller_thread": Thread.isMainThread ? "main" : "background",
-          "caller_qos": DatabaseContentionTracker.qosLabel(Thread.current.qualityOfService),
-          "pool_max_readers": dbMaxReaderCount,
-          "active_reads": contentionSnapshot?.activeReadCount ?? 0,
-          "active_writes": contentionSnapshot?.activeWriteCount ?? 0,
-          "active_read_labels": contentionSnapshot?.activeReadLabels ?? "none",
-          "active_write_labels": contentionSnapshot?.activeWriteLabels ?? "none",
-          "recent_read_labels": contentionSnapshot?.recentReadLabels ?? "none",
-          "recent_write_labels": contentionSnapshot?.recentWriteLabels ?? "none",
-        ]
-        slowWriteBreadcrumb.type = "error"
-        SentryHelper.addBreadcrumb(slowWriteBreadcrumb)
       }
 
       return result
@@ -332,7 +308,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
       }
       let waitMs = max(0, (execStart - callStart) * 1000)
       let execMs = max(0, (execEnd - execStart) * 1000)
-      let contentionSnapshot = dbContentionTracker.complete(
+      _ = dbContentionTracker.complete(
         id: operationID,
         waitMs: waitMs,
         execMs: execMs,
@@ -340,24 +316,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
         slowThresholdMs: slowThresholdMs
       )
 
-      let slowWriteBreadcrumb = Breadcrumb(level: .error, category: "database")
-      slowWriteBreadcrumb.message = "FAILED DB write: \(label)"
-      slowWriteBreadcrumb.data = [
-        "wait_ms": Int(waitMs.rounded()),
-        "exec_ms": Int(execMs.rounded()),
-        "error": "\(error)",
-        "caller_thread": Thread.isMainThread ? "main" : "background",
-        "caller_qos": DatabaseContentionTracker.qosLabel(Thread.current.qualityOfService),
-        "pool_max_readers": dbMaxReaderCount,
-        "active_reads": contentionSnapshot?.activeReadCount ?? 0,
-        "active_writes": contentionSnapshot?.activeWriteCount ?? 0,
-        "active_read_labels": contentionSnapshot?.activeReadLabels ?? "none",
-        "active_write_labels": contentionSnapshot?.activeWriteLabels ?? "none",
-        "recent_read_labels": contentionSnapshot?.recentReadLabels ?? "none",
-        "recent_write_labels": contentionSnapshot?.recentWriteLabels ?? "none",
-      ]
-      slowWriteBreadcrumb.type = "error"
-      SentryHelper.addBreadcrumb(slowWriteBreadcrumb)
       throw error
     }
   }
@@ -367,11 +325,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
     var execStart: CFAbsoluteTime = 0
     var execEnd: CFAbsoluteTime = 0
     let operationID = dbContentionTracker.begin(kind: .read, label: label)
-
-    let readBreadcrumb = Breadcrumb(level: .debug, category: "database")
-    readBreadcrumb.message = "DB read: \(label)"
-    readBreadcrumb.type = "debug"
-    SentryHelper.addBreadcrumb(readBreadcrumb)
 
     do {
       let result = try db.read { db in
@@ -383,7 +336,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
 
       let waitMs = max(0, (execStart - callStart) * 1000)
       let execMs = max(0, (execEnd - execStart) * 1000)
-      let contentionSnapshot = dbContentionTracker.complete(
+      _ = dbContentionTracker.complete(
         id: operationID,
         waitMs: waitMs,
         execMs: execMs,
@@ -394,24 +347,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
       if debugSlowQueries && (execMs > slowThresholdMs || waitMs > slowThresholdMs) {
         print("⚠️ SLOW READ [\(label)]: wait=\(Int(waitMs))ms exec=\(Int(execMs))ms")
 
-        let slowReadBreadcrumb = Breadcrumb(level: .warning, category: "database")
-        slowReadBreadcrumb.message = "SLOW DB read: \(label)"
-        slowReadBreadcrumb.data = [
-          "duration_ms": Int((waitMs + execMs).rounded()),
-          "wait_ms": Int(waitMs.rounded()),
-          "exec_ms": Int(execMs.rounded()),
-          "caller_thread": Thread.isMainThread ? "main" : "background",
-          "caller_qos": DatabaseContentionTracker.qosLabel(Thread.current.qualityOfService),
-          "pool_max_readers": dbMaxReaderCount,
-          "active_reads": contentionSnapshot?.activeReadCount ?? 0,
-          "active_writes": contentionSnapshot?.activeWriteCount ?? 0,
-          "active_read_labels": contentionSnapshot?.activeReadLabels ?? "none",
-          "active_write_labels": contentionSnapshot?.activeWriteLabels ?? "none",
-          "recent_read_labels": contentionSnapshot?.recentReadLabels ?? "none",
-          "recent_write_labels": contentionSnapshot?.recentWriteLabels ?? "none",
-        ]
-        slowReadBreadcrumb.type = "error"
-        SentryHelper.addBreadcrumb(slowReadBreadcrumb)
       }
 
       return result
@@ -424,7 +359,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
       }
       let waitMs = max(0, (execStart - callStart) * 1000)
       let execMs = max(0, (execEnd - execStart) * 1000)
-      let contentionSnapshot = dbContentionTracker.complete(
+      _ = dbContentionTracker.complete(
         id: operationID,
         waitMs: waitMs,
         execMs: execMs,
@@ -432,24 +367,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
         slowThresholdMs: slowThresholdMs
       )
 
-      let slowReadBreadcrumb = Breadcrumb(level: .error, category: "database")
-      slowReadBreadcrumb.message = "FAILED DB read: \(label)"
-      slowReadBreadcrumb.data = [
-        "wait_ms": Int(waitMs.rounded()),
-        "exec_ms": Int(execMs.rounded()),
-        "error": "\(error)",
-        "caller_thread": Thread.isMainThread ? "main" : "background",
-        "caller_qos": DatabaseContentionTracker.qosLabel(Thread.current.qualityOfService),
-        "pool_max_readers": dbMaxReaderCount,
-        "active_reads": contentionSnapshot?.activeReadCount ?? 0,
-        "active_writes": contentionSnapshot?.activeWriteCount ?? 0,
-        "active_read_labels": contentionSnapshot?.activeReadLabels ?? "none",
-        "active_write_labels": contentionSnapshot?.activeWriteLabels ?? "none",
-        "recent_read_labels": contentionSnapshot?.recentReadLabels ?? "none",
-        "recent_write_labels": contentionSnapshot?.recentWriteLabels ?? "none",
-      ]
-      slowReadBreadcrumb.type = "error"
-      SentryHelper.addBreadcrumb(slowReadBreadcrumb)
       throw error
     }
   }
@@ -471,7 +388,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
               CREATE INDEX IF NOT EXISTS idx_chunks_status ON chunks(status);
               CREATE INDEX IF NOT EXISTS idx_chunks_start_ts ON chunks(start_ts);
               CREATE INDEX IF NOT EXISTS idx_chunks_status_start_ts ON chunks(status, start_ts);
-              
+
               -- Analysis batches: groups chunks for LLM processing
               CREATE TABLE IF NOT EXISTS analysis_batches (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -484,7 +401,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
                   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
               );
               CREATE INDEX IF NOT EXISTS idx_analysis_batches_status ON analysis_batches(status);
-              
+
               -- Junction table linking batches to chunks
               CREATE TABLE IF NOT EXISTS batch_chunks (
                   batch_id INTEGER NOT NULL REFERENCES analysis_batches(id) ON DELETE CASCADE,
@@ -492,7 +409,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
                   PRIMARY KEY (batch_id, chunk_id)
               );
               CREATE INDEX IF NOT EXISTS idx_batch_chunks_chunk ON batch_chunks(chunk_id);
-              
+
               -- Timeline cards: stores activity summaries
               CREATE TABLE IF NOT EXISTS timeline_cards (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -555,37 +472,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
                   PRIMARY KEY (batch_id, screenshot_id)
               );
               CREATE INDEX IF NOT EXISTS idx_batch_screenshots_screenshot ON batch_screenshots(screenshot_id);
-          """)
-
-      // Legacy Journal table retained for existing user data; the feature is retired.
-      try db.execute(
-        sql: """
-              CREATE TABLE IF NOT EXISTS journal_entries (
-                  id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  day TEXT NOT NULL UNIQUE,
-                  intentions TEXT,
-                  notes TEXT,
-                  goals TEXT,
-                  reflections TEXT,
-                  summary TEXT,
-                  status TEXT NOT NULL DEFAULT 'draft',
-                  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-              );
-              CREATE INDEX IF NOT EXISTS idx_journal_entries_day ON journal_entries(day);
-              CREATE INDEX IF NOT EXISTS idx_journal_entries_status ON journal_entries(status);
-          """)
-
-      // Daily standup table: one JSON blob per standup day
-      try db.execute(
-        sql: """
-              CREATE TABLE IF NOT EXISTS daily_standup_entries (
-                  standup_day TEXT NOT NULL PRIMARY KEY,
-                  payload_json TEXT NOT NULL,
-                  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-              );
-              CREATE INDEX IF NOT EXISTS idx_daily_standup_entries_created_at ON daily_standup_entries(created_at DESC);
           """)
 
       // Day goals: user-defined focus/distraction targets and category assignments per timeline day
@@ -667,32 +553,6 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
         try db.execute(
           sql: "UPDATE llm_calls SET usage_receipt = ? WHERE id = ?", arguments: [json, id])
       }
-
-      // Dashboard chat history: conversations and their messages
-      try db.execute(
-        sql: """
-              CREATE TABLE IF NOT EXISTS chat_conversations (
-                  id TEXT NOT NULL PRIMARY KEY,
-                  title TEXT NOT NULL,
-                  provider TEXT NOT NULL,
-                  cli_session_id TEXT,
-                  created_at INTEGER NOT NULL,
-                  updated_at INTEGER NOT NULL
-              );
-              CREATE INDEX IF NOT EXISTS idx_chat_conversations_updated
-              ON chat_conversations(updated_at DESC);
-
-              CREATE TABLE IF NOT EXISTS chat_messages (
-                  id TEXT NOT NULL PRIMARY KEY,
-                  conversation_id TEXT NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
-                  role TEXT NOT NULL,
-                  content TEXT NOT NULL,
-                  created_at INTEGER NOT NULL,
-                  sort_order INTEGER NOT NULL
-              );
-              CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation
-              ON chat_messages(conversation_id, sort_order);
-          """)
 
       // Migration: Add soft delete column to timeline_cards if it doesn't exist
       let timelineCardsColumns = try db.columns(in: "timeline_cards").map { $0.name }

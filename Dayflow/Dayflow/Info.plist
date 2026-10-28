@@ -19,8 +19,6 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<key>DayflowBackendURL</key>
-	<string>$(DAYFLOW_BACKEND_URL)</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>Target Flow uses screen access to create your timeline. Recordings stay on your Mac and you can pause or delete them anytime.</string>
 	<key>UIAppFonts</key>

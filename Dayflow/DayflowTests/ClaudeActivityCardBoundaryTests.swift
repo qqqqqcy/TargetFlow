@@ -575,7 +575,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("cover all supplied observations") ?? false)
+    XCTAssertEqual(result.error, ClaudeOutputValidationError.missingEvidenceCoverage.localizedDescription)
   }
 
   func testClaudeCoverageAcceptsCrossMidnightMerge() {
@@ -631,7 +631,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("Invalid timestamp: garbage") ?? false)
+    XCTAssertEqual(result.error, ClaudeOutputValidationError.invalidTimestamp("garbage").localizedDescription)
   }
 
   func testClaudeCoverageRejectsTimestampWithSecondsThatPersistenceCannotStore() {
@@ -670,7 +670,8 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("overlap") ?? false)
+    XCTAssertEqual(result.error, ClaudeOutputValidationError.overlappingCards(
+      previous: "After midnight", current: "Before midnight").localizedDescription)
   }
 
   func testClaudeCoverageRejectsCardBridgingMaterialEvidenceGap() {
@@ -696,7 +697,8 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("genuine gap") ?? false)
+    XCTAssertEqual(result.error, ClaudeOutputValidationError.cardCoversEvidenceGap(
+      title: "Bridged gap").localizedDescription)
   }
 
   func testClaudeCoverageAllowsSubminuteEvidenceSeam() {
@@ -742,7 +744,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("cover all supplied observations") ?? false)
+    XCTAssertEqual(result.error, ClaudeOutputValidationError.missingEvidenceCoverage.localizedDescription)
   }
 
   func testOngoingPolicyRejectsMissingExactOneMinuteTail() {
@@ -773,7 +775,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("outside the supplied source timeline") ?? false)
+    XCTAssertEqual(result.error, ClaudeOutputValidationError.outputOutsideEvidence.localizedDescription)
   }
 
   func testClaudeCoverageIncludesOlderPromptWindowObservations() {

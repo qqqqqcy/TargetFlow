@@ -8,15 +8,6 @@
 import AppKit
 import Foundation
 
-struct AgentCLIObservationsEnvelope: Codable {
-  struct Item: Codable {
-    let start: String
-    let end: String
-    let text: String
-  }
-  let observations: [Item]
-}
-
 struct AgentCLICardsEnvelope: Codable {
   struct Item: Codable {
     let start: String?

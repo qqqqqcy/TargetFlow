@@ -13,81 +13,6 @@ struct ActivityGenerationContext {
   let hasPreviousCardWithinFiveMinutes: Bool
 }
 
-enum DashboardChatProvider: String, Codable, CaseIterable {
-  case gemini
-  case codex
-  case claude
-
-  static func fromStoredValue(_ value: String?) -> DashboardChatProvider {
-    guard let value else { return .gemini }
-    return DashboardChatProvider(rawValue: value) ?? .gemini
-  }
-
-  var analyticsProvider: String {
-    rawValue
-  }
-
-  var runtimeLabel: String {
-    switch self {
-    case .gemini:
-      return "gemini_function_calling"
-    case .codex, .claude:
-      return "chat_cli"
-    }
-  }
-}
-
-enum DashboardChatTurnRole: String, Codable, Sendable {
-  case user
-  case assistant
-
-  var promptLabel: String {
-    switch self {
-    case .user:
-      return "User"
-    case .assistant:
-      return "Assistant"
-    }
-  }
-
-  var geminiRole: String {
-    switch self {
-    case .user:
-      return "user"
-    case .assistant:
-      return "model"
-    }
-  }
-}
-
-struct DashboardChatTurn: Codable, Sendable, Equatable {
-  let role: DashboardChatTurnRole
-  let content: String
-
-  static func user(_ content: String) -> DashboardChatTurn {
-    DashboardChatTurn(role: .user, content: content)
-  }
-
-  static func assistant(_ content: String) -> DashboardChatTurn {
-    DashboardChatTurn(role: .assistant, content: content)
-  }
-}
-
-struct DashboardChatRequest: Sendable {
-  let provider: DashboardChatProvider
-  let prompt: String
-  let sessionId: String?
-  let systemInstruction: String?
-  let history: [DashboardChatTurn]
-  var configuredPrompts: DashboardChatConfiguredPrompts? = nil
-}
-
-struct DashboardChatConfiguredPrompts: Sendable {
-  let codex: String
-  let claude: String
-  let text: String
-}
-
 enum LLMProviderID: String, Codable, CaseIterable {
   case dayflow
   case gemini
@@ -110,18 +35,6 @@ enum LLMProviderID: String, Codable, CaseIterable {
       return "ollama"
     }
   }
-
-  var providerLabel: String {
-    switch self {
-    case .dayflow: return "dayflow"
-    case .gemini: return "gemini"
-    case .chatGPT: return "chatgpt"
-    case .claude: return "claude"
-    case .openAICompatible: return "openai_compatible"
-    case .local:
-      return "local"
-    }
-  }
 }
 
 enum LLMProviderSetupPreferencesError: Error {
@@ -131,14 +44,14 @@ enum LLMProviderSetupPreferencesError: Error {
 enum LLMProviderSetupPreferences {
   static func isComplete(
     _ providerID: LLMProviderID,
-    in defaults: UserDefaults = .standard
+    in defaults: UserDefaults = AppStoragePaths.defaults
   ) -> Bool {
     defaults.bool(forKey: completionKey(for: providerID))
   }
 
   static func markComplete(
     _ providerID: LLMProviderID,
-    in defaults: UserDefaults = .standard
+    in defaults: UserDefaults = AppStoragePaths.defaults
   ) throws {
     let key = completionKey(for: providerID)
     let previousValue = defaults.object(forKey: key)

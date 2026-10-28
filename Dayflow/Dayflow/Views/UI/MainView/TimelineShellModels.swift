@@ -91,12 +91,6 @@ struct TimelineWeekRange: Equatable, Sendable {
     return TimelineWeekRange(weekStart: weekStart, weekEnd: weekEnd)
   }
 
-  func shifted(byWeeks weeks: Int, calendar: Calendar = Self.calendar) -> TimelineWeekRange {
-    let shiftedStart = calendar.date(byAdding: .day, value: weeks * 7, to: weekStart) ?? weekStart
-    let shiftedEnd = calendar.date(byAdding: .day, value: 7, to: shiftedStart) ?? shiftedStart
-    return TimelineWeekRange(weekStart: shiftedStart, weekEnd: shiftedEnd)
-  }
-
   var title: String {
     let displayedWeekEnd = Self.calendar.date(byAdding: .day, value: -1, to: weekEnd) ?? weekEnd
     return

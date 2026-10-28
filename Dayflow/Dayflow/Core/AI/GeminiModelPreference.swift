@@ -12,16 +12,6 @@ enum GeminiModel: String, Codable, CaseIterable {
   case flash35 = "gemini-3.5-flash"
   case flashLite35 = "gemini-3.5-flash-lite"
 
-  var displayName: String {
-    switch self {
-    case .flash38: return String(localized: "Gemini 3.8 Flash")
-    case .flash37: return String(localized: "Gemini 3.7 Flash")
-    case .flash36: return String(localized: "Gemini 3.6 Flash")
-    case .flash35: return String(localized: "Gemini 3.5 Flash")
-    case .flashLite35: return String(localized: "Gemini 3.5 Flash-Lite")
-    }
-  }
-
   var shortLabel: String {
     switch self {
     case .flash38: return String(localized: "3.8 Flash")
@@ -69,7 +59,7 @@ struct GeminiModelPreference: Codable {
     }
   }
 
-  static func load(from defaults: UserDefaults = .standard) -> GeminiModelPreference {
+  static func load(from defaults: UserDefaults = AppStoragePaths.defaults) -> GeminiModelPreference {
     if let data = defaults.data(forKey: storageKey),
       let preference = try? JSONDecoder().decode(GeminiModelPreference.self, from: data)
     {
@@ -82,7 +72,7 @@ struct GeminiModelPreference: Codable {
     return preference
   }
 
-  func save(to defaults: UserDefaults = .standard) {
+  func save(to defaults: UserDefaults = AppStoragePaths.defaults) {
     if let data = try? JSONEncoder().encode(self) {
       defaults.set(data, forKey: Self.storageKey)
     }

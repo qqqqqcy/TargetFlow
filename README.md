@@ -6,10 +6,10 @@
 
 <p>
   <img src="https://img.shields.io/badge/macOS-14%2B-007AFF?style=flat-square&amp;logo=apple&amp;logoColor=white" alt="macOS 14+">
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/v/release/qqqqqcy/TargetFlow?include_prereleases&amp;sort=date&amp;style=flat-square&amp;label=release&amp;color=F59E0B" alt="Latest release (including test builds)"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/v/release/qqqqqcy/TargetFlow?include_prereleases&amp;sort=date&amp;style=flat-square&amp;label=release&amp;color=F59E0B" alt="Latest release"></a>
   <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/downloads/qqqqqcy/TargetFlow/total?style=flat-square" alt="Total release downloads"></a>
-  <a href="https://github.com/qqqqqcy/TargetFlow/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/qqqqqcy/TargetFlow/release.yml?branch=main&amp;style=flat-square&amp;label=build" alt="Test release build status"></a>
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/release-date-pre/qqqqqcy/TargetFlow?style=flat-square&amp;label=released" alt="Latest release date (including test builds)"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/qqqqqcy/TargetFlow/release.yml?branch=main&amp;style=flat-square&amp;label=build" alt="Release build status"></a>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><img src="https://img.shields.io/github/release-date-pre/qqqqqcy/TargetFlow?style=flat-square&amp;label=released" alt="Latest release date"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-34A853?style=flat-square" alt="MIT License"></a>
 </p>
 
@@ -17,12 +17,14 @@
 
 <p>A macOS app that turns screen activity into an automatic timeline,<br>spots detours from your current goals, and suggests one concrete step back.</p>
 
+<p>Started from an early version of <a href="https://github.com/JerryZLiu/Dayflow">Dayflow</a>.</p>
+
 <p><strong>English</strong> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <h3>Download for macOS</h3>
 
 <p>
-  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><strong>↓ Download the latest test build</strong></a><br>
+  <a href="https://github.com/qqqqqcy/TargetFlow/releases"><strong>↓ Download the latest release</strong></a><br>
   <sub>Apple silicon (M-series): arm64 · Intel Mac: x86_64</sub>
 </p>
 
@@ -127,13 +129,13 @@ Screen recordings and the database are stored locally. **When you use a cloud pr
 
 ## Installation and local builds
 
-### Download a test build
+### Download a release
 
 Download a DMG from [GitHub Releases](https://github.com/qqqqqcy/TargetFlow/releases). Choose `arm64` for Apple silicon (M-series) or `x86_64` for Intel Macs. Requires macOS 14 or later. Open the DMG and drag `TargetFlow.app` into Applications.
 
-Test builds are ad-hoc signed and have not been notarized by Apple. If macOS blocks the first launch, attempt to open the app, then go to **System Settings → Privacy & Security → Open Anyway** and confirm. Only approve a download you trust. Updating a test build may require granting Screen Recording permission again. See the [installation instructions](docs/test-release-install.txt).
+These builds are signed with a persistent self-signed certificate and have not been notarized by Apple. If macOS blocks the first launch, attempt to open the app, then go to **System Settings → Privacy & Security → Open Anyway** and confirm. Only approve a download you trust. See the [installation instructions](docs/release-install.txt).
 
-### Build your own test DMG
+### Build your own DMG
 
 ```bash
 bash scripts/package-test.sh
@@ -141,7 +143,7 @@ bash scripts/package-test.sh
 TARGETFLOW_TEST_ARCH=x86_64 bash scripts/package-test.sh
 ```
 
-The script requires a persistent signing certificate via `TARGETFLOW_SIGNING_IDENTITY` or `scripts/local-signing-identity` and creates a signed DMG and SHA-256 checksum in `dist/`. A self-signed code-signing certificate works without Developer ID. Keep using the same certificate and private key for future versions; the script rejects ad-hoc signatures and checks for a stable certificate-based signing requirement. Migration from the original Test 1 package may require one more Screen Recording authorization. The script does not publish a release or install the app. Move an existing package aside before rebuilding the same version and architecture.
+The script requires a persistent signing certificate via `TARGETFLOW_SIGNING_IDENTITY` or `scripts/local-signing-identity` and creates a signed DMG and SHA-256 checksum in `dist/`. A self-signed code-signing certificate works without Developer ID. Keep using the same certificate and private key for future versions; the script rejects ad-hoc signatures and checks for a stable certificate-based signing requirement. The script does not publish a release or install the app. Move an existing package aside before rebuilding the same version and architecture.
 
 Source builds require full Xcode: Command Line Tools alone cannot build this macOS app. The app deployment target is macOS 14, and the test target requires macOS 15.1.
 
@@ -151,7 +153,7 @@ Source builds require full Xcode: Command Line Tools alone cannot build this mac
 open Dayflow/Dayflow.xcodeproj
 ```
 
-Select the `Dayflow` scheme, set your own signing team in Signing & Capabilities, and run. The project and Swift module are still named `Dayflow`; the built app is `TargetFlow.app`.
+Select the `Dayflow` scheme, set your own signing team in Signing & Capabilities, and run. The built app is `TargetFlow.app`.
 
 ### Build and install in Applications
 
@@ -207,13 +209,9 @@ xcodebuild -project Dayflow/Dayflow.xcodeproj \
   -only-testing:DayflowTests CODE_SIGNING_ALLOWED=NO test
 ```
 
-## Project origins and scope
+## App identity and data
 
-Target Flow is based on upstream [Dayflow](https://github.com/JerryZLiu/dayflow) commit `730d6f84` (v2.7.5), retaining its Git history and MIT license, with a focus on **current goals, an automatic timeline, and reminders when you drift away**.
-
-Card review and manual ratings, daily reports, standalone weekly reports, chat, Flow, Agents, accounts/subscriptions, referrals, MCP/CLI integration settings, export settings, and other settings are not offered as app features. The original update checks, feature promotions, and telemetry do not start, and the Dayflow CLI is not bundled during builds. Some upstream source code and database tables remain to maintain shared dependencies, without corresponding app entry points or startup tasks.
-
-Target Flow can coexist with Dayflow, using its own app identity and data locations:
+Target Flow uses its own app identity and data locations:
 
 | Item | Value |
 | --- | --- |
@@ -222,10 +220,8 @@ Target Flow can coexist with Dayflow, using its own app identity and data locati
 | API key service prefix | `local.targetflow.apikeys` |
 | URL scheme | `targetflow://` (start/stop recording) |
 
-Recordings, databases, preferences, and keys from an installed copy of Dayflow are not imported automatically. Providers and screen recording permission must be configured separately.
-
 For brand assets and regeneration instructions, see [App icons and brand assets](docs/images/README.md).
 
 ## License
 
-Inherits the upstream [MIT License](LICENSE), retaining the original author's copyright notice.
+Released under the [MIT License](LICENSE).

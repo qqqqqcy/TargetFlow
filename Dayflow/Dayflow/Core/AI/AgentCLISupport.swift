@@ -49,7 +49,6 @@ extension AgentCLISupporting {
   func runStreamingAndCollect(
     prompt: String, model: String?, reasoningEffort: String?, sessionId: String?
   ) async throws -> (run: ChatCLIRunResult, sessionId: String?) {
-    let started = Date()
     var collectedText = ""
     var sawTextDelta = false
     var capturedSessionId = sessionId
@@ -114,7 +113,6 @@ extension AgentCLISupporting {
       stderr: "",
       shellCommand: debug.shellCommand,
       environmentOverrides: debug.environmentOverrides,
-      startedAt: started,
       finishedAt: finished,
       usage: nil
     )

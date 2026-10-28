@@ -17,9 +17,6 @@ struct ActivityCard: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var categoryStore: CategoryStore
   @EnvironmentObject private var retryCoordinator: RetryCoordinator
-  @AppStorage(TimelapsePreferences.saveAllTimelapsesToDiskKey) private var saveAllTimelapsesToDisk =
-    false
-
   @ObservedObject private var targetStore = TargetStore.shared
 
   @State private var showCategoryPicker = false
@@ -175,10 +172,6 @@ struct ActivityCard: View {
         activityDetails(for: activity)
           .padding(16)
           .frame(maxWidth: .infinity, alignment: .topLeading)
-          .onScrollStart(panelName: "activity_card") { direction in
-            AnalyticsService.shared.capture(
-              "right_panel_scrolled", ["panel": "activity_card", "direction": direction])
-          }
       }
       .id(activity.id)
     } else {
@@ -239,19 +232,7 @@ struct ActivityCard: View {
       }
 
       if !isFailedCard(activity) {
-        if saveAllTimelapsesToDisk, let videoURL = activity.videoSummaryURL {
-          VideoThumbnailView(
-            videoURL: videoURL,
-            title: activity.title,
-            startTime: activity.startTime,
-            endTime: activity.endTime
-          )
-          .id(videoURL)
-          .frame(height: 160)
-        } else {
-          // Timelapse thumbnail (slideshow pipeline)
-          timelapsePreviewView(for: activity)
-        }
+        timelapsePreviewView(for: activity)
       }
 
       if let cardID = activity.recordId, let assessment = targetStore.assessments[cardID] {
@@ -490,7 +471,7 @@ struct ActivityCard: View {
       .disabled(isDisabled)
       .opacity(isDisabled ? 0.6 : 1)
       .hoverScaleEffect(enabled: !isDisabled, scale: 1.02)
-      .pointingHandCursorOnHover(enabled: !isDisabled, reassertOnPressEnd: true)
+      .pointingHandCursor(enabled: !isDisabled)
     }
   }
 
@@ -572,7 +553,7 @@ struct ActivityCard: View {
           openSlideshow(for: activity, cardId: cardId)
         }
         .hoverScaleEffect(scale: 1.02)
-        .pointingHandCursorOnHover(reassertOnPressEnd: true)
+        .pointingHandCursor()
         .id(activity.id)
         .onAppear {
           loadTimelapsePreviewThumbnail(for: activity, size: geometry.size)
@@ -599,12 +580,6 @@ struct ActivityCard: View {
     slideshowRequestID &+= 1
     let requestID = slideshowRequestID
 
-    AnalyticsService.shared.capture(
-      "timelapse_slideshow_started",
-      [
-        "card_id": cardId
-      ])
-
     Task {
       do {
         let screenshots = try await ActivityCardTimelapseGenerator.shared.screenshots(
@@ -619,25 +594,12 @@ struct ActivityCard: View {
           slideshowEndTime = activity.endTime
           showSlideshowPlayer = true
         }
-
-        AnalyticsService.shared.capture(
-          "timelapse_slideshow_completed",
-          [
-            "card_id": cardId,
-            "frame_count": screenshots.count,
-          ])
       } catch {
         await MainActor.run {
           guard requestID == slideshowRequestID else { return }
           isPreparingSlideshow = false
           slideshowError = error.localizedDescription
         }
-        AnalyticsService.shared.capture(
-          "timelapse_slideshow_failed",
-          [
-            "card_id": cardId,
-            "error": error.localizedDescription,
-          ])
       }
     }
   }

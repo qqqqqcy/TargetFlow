@@ -31,7 +31,6 @@ enum SettingsStyle {
   static let primaryButtonFill = adaptive(0x2869EF, 0x2869EF)
   static let destructive = adaptive(0xB85050, 0xED9999)
   static let statusGood = adaptive(0x428471, 0x87C3AD)
-  static let statusIdle = secondary
   static let statusWarn = adaptive(0x9A732D, 0xDBBB7B)
   static let statusBad = destructive
 }
@@ -151,13 +150,6 @@ struct SettingsRow<Trailing: View>: View {
           .frame(height: 1)
       }
     }
-  }
-}
-
-extension SettingsRow where Trailing == EmptyView {
-  init(label: String, subtitle: String? = nil, showsDivider: Bool = true) {
-    self.init(
-      label: label, subtitle: subtitle, showsDivider: showsDivider, trailing: { EmptyView() })
   }
 }
 
@@ -323,29 +315,6 @@ struct SettingsToggle: View {
       .labelsHidden()
       .scaleEffect(0.72, anchor: .trailing)
       .pointingHandCursor()
-  }
-}
-
-// MARK: - SettingsBadge
-//
-// Compact accent and neutral badges for provider roles and connection state.
-
-struct SettingsBadge: View {
-  let text: String
-  var isAccent: Bool = false
-
-  var body: some View {
-    Text(text)
-      .font(.system(size: 10))
-      .fontWeight(.bold)
-      .kerning(0.6)
-      .foregroundColor(isAccent ? SettingsStyle.ink : SettingsStyle.secondary)
-      .padding(.horizontal, 7)
-      .padding(.vertical, 3)
-      .background(
-        RoundedRectangle(cornerRadius: 4, style: .continuous)
-          .fill(isAccent ? SettingsStyle.ink.opacity(0.1) : SettingsStyle.subtleFill)
-      )
   }
 }
 

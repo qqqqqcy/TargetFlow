@@ -9,7 +9,7 @@ struct CanvasActivityCardStyle {
 
 struct CanvasActivityCard: View {
   @Environment(\.dayflowTheme) private var theme
-  @AppStorage("showTimelineAppIcons") private var showTimelineAppIcons: Bool = true
+  @AppStorage("showTimelineAppIcons", store: AppStoragePaths.defaults) private var showTimelineAppIcons: Bool = true
   @State private var isHovering = false
 
   let title: String
@@ -30,7 +30,7 @@ struct CanvasActivityCard: View {
   let statusLine: String?
   let failureCount: Int
   let fontSize: CGFloat
-  let fontWeight: TimelineCardTextWeight
+  let fontWeight: Font.Weight
   let iconLeadingInset: CGFloat
   let iconTextSpacing: CGFloat
   let faviconSize: CGFloat
@@ -104,7 +104,7 @@ struct CanvasActivityCard: View {
                 Text(displayTitle)
                   .font(
                     Font.system(size: fontSize)
-                      .weight(fontWeight.fontWeight)
+                      .weight(fontWeight)
                   )
                   .foregroundColor(style.text)
 
@@ -144,7 +144,7 @@ struct CanvasActivityCard: View {
             Text(title)
               .font(
                 Font.system(size: fontSize)
-                  .weight(fontWeight.fontWeight)
+                  .weight(fontWeight)
               )
               .foregroundColor(style.text)
 

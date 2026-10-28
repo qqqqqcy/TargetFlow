@@ -71,29 +71,9 @@ extension CodexProvider {
         // Validation failed - prepare retry with error feedback
         var errorMessages: [String] = []
         if !coverageValid, let coverageError {
-          AnalyticsService.shared.captureValidationFailure(
-            provider: "chat_cli",
-            providerID: providerID,
-            operation: "generate_activity_cards",
-            validationType: "time_coverage",
-            attempt: attempt,
-            model: model,
-            batchId: batchId,
-            errorDetail: coverageError
-          )
           errorMessages.append(coverageError)
         }
         if !durationValid, let durationError {
-          AnalyticsService.shared.captureValidationFailure(
-            provider: "chat_cli",
-            providerID: providerID,
-            operation: "generate_activity_cards",
-            validationType: "duration",
-            attempt: attempt,
-            model: model,
-            batchId: batchId,
-            errorDetail: durationError
-          )
           errorMessages.append(durationError)
         }
         let combinedError = errorMessages.joined(separator: "\n\n")
@@ -115,7 +95,7 @@ extension CodexProvider {
           let fallback = Self.availabilityFallback(
             for: model, error: error, stderr: lastRun?.stderr)
         {
-          Self.recordModelFallback(from: model, to: fallback, operation: "generate_cards")
+
           model = fallback
         }
         lastError = error
@@ -144,7 +124,6 @@ extension CodexProvider {
         finalError,
         stdout: lastRawOutput,
         stderr: finalStderr ?? "",
-        startedAt: callStart,
         finishedAt: finishedAt)
     logFailure(
       ctx: makeCtx(
@@ -155,7 +134,7 @@ extension CodexProvider {
     throw finalError
   }
 
-  static func activityCardModelConfiguration(defaults: UserDefaults = .standard) -> (
+  static func activityCardModelConfiguration(defaults: UserDefaults = AppStoragePaths.defaults) -> (
     model: String, reasoningEffort: String?
   ) {
     return ModelPreferences.resolve(
@@ -168,7 +147,6 @@ extension CodexProvider {
     _ error: Error,
     stdout: String,
     stderr: String,
-    startedAt: Date,
     finishedAt: Date
   ) -> ChatCLIRunResult? {
     let userInfo = (error as NSError).userInfo
@@ -188,7 +166,6 @@ extension CodexProvider {
       stderr: stderr,
       shellCommand: shellCommand,
       environmentOverrides: environmentOverrides,
-      startedAt: startedAt,
       finishedAt: finishedAt,
       usage: nil
     )

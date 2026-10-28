@@ -6,47 +6,6 @@
 import AppKit
 import Foundation
 
-struct DayflowDailyGenerationRequest: Codable, Sendable {
-  let day: String
-  let cardsText: String
-  let observationsText: String
-  let priorDailyText: String
-  let preferencesText: String
-  let preferredOutputLanguage: String?
-
-  init(
-    day: String,
-    cardsText: String,
-    observationsText: String = "",
-    priorDailyText: String = "",
-    preferencesText: String = "",
-    preferredOutputLanguage: String? = nil
-  ) {
-    self.day = day
-    self.cardsText = cardsText
-    self.observationsText = observationsText
-    self.priorDailyText = priorDailyText
-    self.preferencesText = preferencesText
-    self.preferredOutputLanguage = preferredOutputLanguage
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case day
-    case cardsText = "cards_text"
-    case observationsText = "observations_text"
-    case priorDailyText = "prior_daily_text"
-    case preferencesText = "preferences_text"
-    case preferredOutputLanguage = "preferred_output_language"
-  }
-}
-
-struct DayflowDailyGenerationResponse: Codable, Sendable {
-  let day: String
-  let highlights: [String]
-  let unfinished: [String]
-  let blockers: [String]
-}
-
 private struct DayflowObservationPayload: Codable, Sendable {
   let startTs: Int
   let endTs: Int
@@ -225,142 +184,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
     return formatter.string(from: date)
   }
 
-  func generateDaily(_ request: DayflowDailyGenerationRequest) async throws
-    -> DayflowDailyGenerationResponse
-  {
-    let requestId = UUID().uuidString
-    let startedAt = Date()
-    let normalizedEndpoint = resolvedEndpointString()
-
-    let endpointHost: String = {
-      guard let parsed = URL(string: normalizedEndpoint), let host = parsed.host, !host.isEmpty
-      else {
-        return "invalid_host"
-      }
-      return host
-    }()
-
-    let baseProps: [String: Any] = [
-      "daily_request_id": requestId,
-      "day": request.day,
-      "endpoint_host": endpointHost,
-      "cards_text_chars": request.cardsText.count,
-      "observations_text_chars": request.observationsText.count,
-      "prior_daily_text_chars": request.priorDailyText.count,
-      "preferences_text_chars": request.preferencesText.count,
-    ]
-
-    AnalyticsService.shared.capture("daily_generation_request_started", baseProps)
-
-    var httpStatusCode: Int? = nil
-    var responseByteCount = 0
-
-    do {
-      guard let url = URL(string: "\(normalizedEndpoint)/v1/daily") else {
-        throw NSError(
-          domain: "DayflowBackend",
-          code: -10,
-          userInfo: [NSLocalizedDescriptionKey: "Invalid Target Flow backend endpoint: \(endpoint)"]
-        )
-      }
-
-      var urlRequest = URLRequest(url: url)
-      urlRequest.httpMethod = "POST"
-      urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-      urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-      urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-      urlRequest.httpBody = try JSONEncoder().encode(request)
-      print(
-        "[DayflowBackendProvider] daily request_id=\(requestId) day=\(request.day) "
-          + "url=\(url.absoluteString) endpoint_host=\(endpointHost) auth_id_length=\(token.count)"
-      )
-
-      let requestByteCount = urlRequest.httpBody?.count ?? 0
-      let (data, response) = try await URLSession.shared.data(for: urlRequest)
-      responseByteCount = data.count
-
-      guard let httpResponse = response as? HTTPURLResponse else {
-        throw NSError(
-          domain: "DayflowBackend",
-          code: -11,
-          userInfo: [
-            NSLocalizedDescriptionKey: "Daily generation request returned a non-HTTP response."
-          ]
-        )
-      }
-
-      httpStatusCode = httpResponse.statusCode
-      print(
-        "[DayflowBackendProvider] daily response request_id=\(requestId) "
-          + "status=\(httpResponse.statusCode) bytes=\(data.count)"
-      )
-
-      guard (200...299).contains(httpResponse.statusCode) else {
-        let responseBody = String(data: data, encoding: .utf8) ?? ""
-        print(
-          "[DayflowBackendProvider] daily http error request_id=\(requestId) "
-            + "status=\(httpResponse.statusCode) body=\(responseBody)"
-        )
-        throw NSError(
-          domain: "DayflowBackend",
-          code: httpResponse.statusCode,
-          userInfo: [
-            NSLocalizedDescriptionKey:
-              "Daily generation failed (\(httpResponse.statusCode)): \(responseBody)"
-          ]
-        )
-      }
-
-      let decoded: DayflowDailyGenerationResponse
-      do {
-        decoded = try JSONDecoder().decode(DayflowDailyGenerationResponse.self, from: data)
-      } catch {
-        let responseBody = String(data: data, encoding: .utf8) ?? ""
-        print(
-          "[DayflowBackendProvider] daily decode error request_id=\(requestId) body=\(responseBody)"
-        )
-        throw NSError(
-          domain: "DayflowBackend",
-          code: -12,
-          userInfo: [
-            NSLocalizedDescriptionKey: "Failed to decode daily generation response: \(responseBody)"
-          ]
-        )
-      }
-
-      var successProps = baseProps
-      successProps["latency_ms"] = Int(Date().timeIntervalSince(startedAt) * 1000)
-      successProps["http_status"] = httpResponse.statusCode
-      successProps["request_bytes"] = requestByteCount
-      successProps["response_bytes"] = responseByteCount
-      successProps["highlights_count"] = decoded.highlights.count
-      successProps["unfinished_count"] = decoded.unfinished.count
-      successProps["blockers_count"] = decoded.blockers.count
-      AnalyticsService.shared.capture("daily_generation_request_succeeded", successProps)
-
-      return decoded
-    } catch {
-      let nsError = error as NSError
-      var failureProps = baseProps
-      failureProps["latency_ms"] = Int(Date().timeIntervalSince(startedAt) * 1000)
-      failureProps["response_bytes"] = responseByteCount
-      failureProps["error_domain"] = nsError.domain
-      failureProps["error_code"] = nsError.code
-      if let httpStatusCode {
-        failureProps["http_status"] = httpStatusCode
-      } else if nsError.code >= 100, nsError.code <= 599 {
-        failureProps["http_status"] = nsError.code
-      }
-      print(
-        "[DayflowBackendProvider] daily failure request_id=\(requestId) "
-          + "error_domain=\(nsError.domain) error_code=\(nsError.code) "
-          + "error_message=\(nsError.localizedDescription)"
-      )
-      AnalyticsService.shared.capture("daily_generation_request_failed", failureProps)
-      throw error
-    }
-  }
-
   /// Matches the server's MAX_SCREENSHOTS_PER_REQUEST so we never upload frames it would discard.
   private static let maxFramesPerBatch = 15
   /// Frames for one-step timeline generation go up larger than for transcription; small text
@@ -431,7 +254,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       "loaded_screenshots_count": screenshotPayloads.count,
       "batch_id": batchId as Any,
     ]
-    AnalyticsService.shared.capture("backend_transcription_request_started", baseProps)
     print(
       "🌐 [DayflowBackendProvider] transcribe start request_id=\(requestId) "
         + "endpoint=\(url.absoluteString) screenshots=\(screenshots.count) "
@@ -520,7 +342,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       successProps["observations_count"] = observations.count
       successProps["provider"] = decoded.provider
       successProps["model"] = decoded.model
-      AnalyticsService.shared.capture("backend_transcription_request_succeeded", successProps)
       print(
         "✅ [DayflowBackendProvider] transcribe succeeded request_id=\(requestId) "
           + "observations=\(observations.count) provider=\(decoded.provider) model=\(decoded.model)"
@@ -545,7 +366,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       } else if nsError.code >= 100, nsError.code <= 599 {
         failureProps["http_status"] = nsError.code
       }
-      AnalyticsService.shared.capture("backend_transcription_request_failed", failureProps)
       print(
         "❌ [DayflowBackendProvider] transcribe error request_id=\(requestId) "
           + "domain=\(nsError.domain) code=\(nsError.code) message=\(nsError.localizedDescription)"
@@ -623,7 +443,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       "categories_count": context.categories.count,
       "batch_id": batchId as Any,
     ]
-    AnalyticsService.shared.capture("backend_timeline_request_started", baseProps)
     print(
       "🌐 [DayflowBackendProvider] timeline start request_id=\(requestId) "
         + "endpoint=\(url.absoluteString) screenshots=\(screenshots.count) "
@@ -716,7 +535,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       successProps["observations_count"] = observations.count
       successProps["provider"] = decoded.provider
       successProps["model"] = decoded.model
-      AnalyticsService.shared.capture("backend_timeline_request_succeeded", successProps)
       print(
         "✅ [DayflowBackendProvider] timeline succeeded request_id=\(requestId) "
           + "cards=\(decoded.cards.count) observations=\(observations.count) "
@@ -742,7 +560,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       } else if nsError.code >= 100, nsError.code <= 599 {
         failureProps["http_status"] = nsError.code
       }
-      AnalyticsService.shared.capture("backend_timeline_request_failed", failureProps)
       print(
         "❌ [DayflowBackendProvider] timeline error request_id=\(requestId) "
           + "domain=\(nsError.domain) code=\(nsError.code) message=\(nsError.localizedDescription)"
@@ -811,7 +628,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       "existing_cards_count": context.existingCards.count,
       "categories_count": context.categories.count,
     ]
-    AnalyticsService.shared.capture("activity_card_generation_request_started", baseProps)
     print(
       "🌐 [DayflowBackendProvider] cards start request_id=\(requestId) "
         + "endpoint=\(url.absoluteString) observations=\(observations.count) "
@@ -887,7 +703,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       successProps["cards_count"] = decoded.cards.count
       successProps["provider"] = decoded.provider
       successProps["model"] = decoded.model
-      AnalyticsService.shared.capture("activity_card_generation_request_succeeded", successProps)
       print(
         "✅ [DayflowBackendProvider] cards succeeded request_id=\(requestId) "
           + "cards=\(decoded.cards.count) provider=\(decoded.provider) model=\(decoded.model)"
@@ -912,7 +727,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
       } else if nsError.code >= 100, nsError.code <= 599 {
         failureProps["http_status"] = nsError.code
       }
-      AnalyticsService.shared.capture("activity_card_generation_request_failed", failureProps)
       print(
         "❌ [DayflowBackendProvider] cards error request_id=\(requestId) "
           + "domain=\(nsError.domain) code=\(nsError.code) message=\(nsError.localizedDescription)"

@@ -33,7 +33,7 @@ struct SettingsView: View {
     }
   }
 
-  @AppStorage(DayflowAppearance.storageKey) private var appearance: DayflowAppearance = .system
+  @AppStorage(DayflowAppearance.storageKey, store: AppStoragePaths.defaults) private var appearance: DayflowAppearance = .system
   @State private var selectedTab: SettingsTab = .storage
   @State private var appLanguage = AppLanguagePreferences.selection()
   @State private var languageChanged = false
@@ -79,22 +79,6 @@ struct SettingsView: View {
           }
         )
         .frame(minWidth: 900, minHeight: 650)
-      }
-      .sheet(isPresented: $providersViewModel.isShowingLocalModelUpgradeSheet) {
-        LocalModelUpgradeSheet(
-          preset: .qwen3VL4B,
-          initialEngine: providersViewModel.localEngine,
-          initialBaseURL: providersViewModel.localBaseURL,
-          initialModelId: providersViewModel.localModelId,
-          initialAPIKey: providersViewModel.localAPIKey,
-          onCancel: { providersViewModel.isShowingLocalModelUpgradeSheet = false },
-          onUpgradeSuccess: { engine, baseURL, modelId, apiKey in
-            providersViewModel.handleUpgradeSuccess(
-              engine: engine, baseURL: baseURL, modelId: modelId, apiKey: apiKey)
-            providersViewModel.isShowingLocalModelUpgradeSheet = false
-          }
-        )
-        .frame(minWidth: 720, minHeight: 560)
       }
   }
 

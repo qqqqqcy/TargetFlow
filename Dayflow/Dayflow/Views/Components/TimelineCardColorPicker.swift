@@ -9,18 +9,9 @@ struct ColorOrganizerRoot: View {
     case sheet
   }
 
-  enum FlowMode {
-    case detailsAndColors
-    case colorsOnly
-  }
-
   var presentationStyle: PresentationStyle = .embedded
-  var flowMode: FlowMode = .detailsAndColors
-  var onBack: (() -> Void)?
   var onDismiss: (() -> Void)?
   var completionButtonTitle: String?
-  var showsTitles: Bool = true
-  var analyticsSurface: String? = nil
   @EnvironmentObject private var categoryStore: CategoryStore
   @Environment(\.dayflowTheme) private var theme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -38,57 +29,24 @@ struct ColorOrganizerRoot: View {
   @State private var normalizedRadius: Double = 0.7
   @State private var currentAngle: Double = -Double.pi / 2
   @State private var isDraggingColor: Bool = false
-  @State private var showFirstTimeHints: Bool = !UserDefaults.standard.bool(
+  @State private var showFirstTimeHints: Bool = !AppStoragePaths.defaults.bool(
     forKey: CategoryStore.StoreKeys.hasUsedApp)
   @State private var pendingScrollTarget: UUID? = nil
   @State private var isAddButtonHovered: Bool = false
-  @State private var trackedStages: Set<CategorySetupStage> = []
-  @State private var addCount = 0
-  @State private var deleteCount = 0
-  @State private var renameCount = 0
-  @State private var detailsUpdateCount = 0
-  @State private var colorChangeCount = 0
-  @State private var didAdjustPalette = false
 
   init(
     presentationStyle: PresentationStyle = .embedded,
-    flowMode: FlowMode = .detailsAndColors,
-    onBack: (() -> Void)? = nil,
     onDismiss: (() -> Void)? = nil,
-    completionButtonTitle: String? = nil,
-    showsTitles: Bool = true,
-    analyticsSurface: String? = nil
+    completionButtonTitle: String? = nil
   ) {
     self.presentationStyle = presentationStyle
-    self.flowMode = flowMode
-    self.onBack = onBack
     self.onDismiss = onDismiss
     self.completionButtonTitle = completionButtonTitle
-    self.showsTitles = showsTitles
-    self.analyticsSurface = analyticsSurface
-    _stage = State(initialValue: flowMode == .colorsOnly ? .colors : .details)
+    _stage = State(initialValue: .details)
   }
 
   private var categories: [TimelineCategory] {
     categoryStore.editableCategories
-  }
-
-  private var isOnboardingAnalyticsEnabled: Bool {
-    analyticsSurface == "onboarding"
-  }
-
-  private var onboardingRole: String {
-    UserDefaults.standard.string(forKey: CategoryStore.StoreKeys.onboardingSelectedRole)
-      ?? "unknown"
-  }
-
-  private var onboardingPreset: String {
-    UserDefaults.standard.string(forKey: CategoryStore.StoreKeys.onboardingAppliedCategoryPreset)
-      ?? "unknown"
-  }
-
-  private var supportsDetailsStage: Bool {
-    flowMode == .detailsAndColors
   }
 
   private var spectrumColors: [String] {
@@ -113,12 +71,6 @@ struct ColorOrganizerRoot: View {
           .padding(.bottom, 32)
       }
     }
-    .onAppear {
-      trackStageViewIfNeeded(stage)
-    }
-    .onChange(of: stage) { _, newStage in
-      trackStageViewIfNeeded(newStage)
-    }
     .onDisappear {
       commitPendingEditsIfNeeded()
     }
@@ -130,39 +82,37 @@ struct ColorOrganizerRoot: View {
       let sideBySide = proxy.size.width >= 720
 
       VStack(spacing: 0) {
-        if showsTitles {
-          HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 7) {
-              Text(stage == .details ? String(localized: "Events and Goals") : String(localized: "Event colors"))
-                .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(theme.textPrimary)
-              Text(stage == .details ? String(localized: "Manage events and choose the goals you want to work on now.") : String(localized: "Use colors to identify events. Colors do not affect goal evaluation."))
-                .font(.system(size: 12))
-                .foregroundStyle(theme.textSecondary)
-            }
-            Spacer(minLength: 0)
-            if presentationStyle == .sheet {
-              Button {
-                commitPendingEditsIfNeeded()
-                categoryStore.persist()
-                onDismiss?()
-              } label: {
-                Image(systemName: "xmark")
-                  .font(.system(size: 11, weight: .semibold))
-                  .foregroundStyle(theme.textTertiary)
-                  .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
-                  .background(
-                    theme.panelSolid,
-                    in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
-              }
-              .buttonStyle(.plain)
-              .pointingHandCursor()
-              .accessibilityLabel("Close Events and Goals")
-            }
+        HStack(alignment: .top, spacing: 16) {
+          VStack(alignment: .leading, spacing: 7) {
+            Text(stage == .details ? String(localized: "Events and Goals") : String(localized: "Event colors"))
+              .font(.system(size: 23, weight: .semibold))
+              .foregroundStyle(theme.textPrimary)
+            Text(stage == .details ? String(localized: "Manage events and choose the goals you want to work on now.") : String(localized: "Use colors to identify events. Colors do not affect goal evaluation."))
+              .font(.system(size: 12))
+              .foregroundStyle(theme.textSecondary)
           }
-          .padding(24)
-          Rectangle().fill(theme.rightPanelDivider).frame(height: 1)
+          Spacer(minLength: 0)
+          if presentationStyle == .sheet {
+            Button {
+              commitPendingEditsIfNeeded()
+              categoryStore.persist()
+              onDismiss?()
+            } label: {
+              Image(systemName: "xmark")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.textTertiary)
+                .frame(width: DayflowLayout.buttonHeight, height: DayflowLayout.buttonHeight)
+                .background(
+                  theme.panelSolid,
+                  in: RoundedRectangle(cornerRadius: DayflowLayout.buttonRadius))
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .accessibilityLabel("Close Events and Goals")
+          }
         }
+        .padding(24)
+        Rectangle().fill(theme.rightPanelDivider).frame(height: 1)
 
         ScrollView {
           ZStack(alignment: .topLeading) {
@@ -170,26 +120,26 @@ struct ColorOrganizerRoot: View {
               if stage == .details {
                 if sideBySide {
                   HStack(alignment: .top, spacing: 28) {
-                    instructionsPanel(isCompact: isCompact, showTitles: showsTitles)
+                    instructionsPanel(isCompact: isCompact)
                       .frame(width: isCompact ? 210 : 240, alignment: .leading)
                     categoryEditorPanel(isCompact: isCompact)
                   }
                 } else {
                   VStack(alignment: .leading, spacing: 20) {
-                    instructionsPanel(isCompact: true, showTitles: showsTitles)
+                    instructionsPanel(isCompact: true)
                     categoryEditorPanel(isCompact: true)
                   }
                 }
               } else {
                 if sideBySide {
                   HStack(alignment: .top, spacing: 28) {
-                    colorPickerPanel(isCompact: isCompact, showTitles: showsTitles)
+                    colorPickerPanel
                       .frame(width: 240, alignment: .leading)
                     colorAssignmentPanel(isCompact: isCompact)
                   }
                 } else {
                   VStack(alignment: .leading, spacing: 20) {
-                    colorPickerPanel(isCompact: true, showTitles: showsTitles)
+                    colorPickerPanel
                     colorAssignmentPanel(isCompact: true)
                   }
                 }
@@ -221,29 +171,27 @@ struct ColorOrganizerRoot: View {
     }
   }
 
-  private func instructionsPanel(isCompact: Bool, showTitles: Bool) -> some View {
-    VStack(alignment: .leading, spacing: showTitles ? 20 : 16) {
-      if showTitles {
-        VStack(alignment: .leading, spacing: 6) {
-          Text(presentationStyle == .sheet ? String(localized: "You can select multiple current goals") : String(localized: "Part 1 of 2"))
-            .font(Font.system(size: 14).weight(.bold))
-            .foregroundColor(
-              theme.accent
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
+  private func instructionsPanel(isCompact: Bool) -> some View {
+    VStack(alignment: .leading, spacing: 20) {
+      VStack(alignment: .leading, spacing: 6) {
+        Text(presentationStyle == .sheet ? String(localized: "You can select multiple current goals") : String(localized: "Part 1 of 2"))
+          .font(Font.system(size: 14).weight(.bold))
+          .foregroundColor(
+            theme.accent
+          )
+          .frame(maxWidth: .infinity, alignment: .leading)
 
-          Text("Describe your events")
-            .font(
-              Font.system(size: 20, weight: .semibold)
-            )
-            .foregroundColor(theme.textPrimary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
+        Text("Describe your events")
+          .font(
+            Font.system(size: 20, weight: .semibold)
+          )
+          .foregroundColor(theme.textPrimary)
+          .frame(maxWidth: .infinity, alignment: .leading)
       }
 
       VStack(alignment: .leading, spacing: 16) {
         instructionRow(
-          icon: "CategoriesOrganize",
+          icon: "text.alignleft",
           text:
             String(
               localized:
@@ -253,7 +201,7 @@ struct ColorOrganizerRoot: View {
         .frame(maxWidth: isCompact ? .infinity : 280, alignment: .leading)
 
         instructionRow(
-          icon: "CategoriesTextSelect",
+          icon: "checkmark.circle",
           text:
             String(
               localized:
@@ -276,7 +224,7 @@ struct ColorOrganizerRoot: View {
 
   private func instructionRow(icon: String, text: String) -> some View {
     HStack(alignment: .top, spacing: 12) {
-      Image(systemName: icon == "CategoriesOrganize" ? "text.alignleft" : "checkmark.circle")
+      Image(systemName: icon)
         .font(.system(size: 15, weight: .medium))
         .foregroundStyle(theme.accent)
         .frame(width: 28, height: 28)
@@ -289,24 +237,22 @@ struct ColorOrganizerRoot: View {
     }
   }
 
-  private func colorPickerPanel(isCompact: Bool, showTitles: Bool) -> some View {
+  private var colorPickerPanel: some View {
     VStack(alignment: .leading, spacing: 24) {
-      if showTitles {
-        VStack(alignment: .leading, spacing: 6) {
-          Text("Visual cues")
-            .font(Font.system(size: 14).weight(.bold))
-            .foregroundColor(
-              theme.accent
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
+      VStack(alignment: .leading, spacing: 6) {
+        Text("Visual cues")
+          .font(Font.system(size: 14).weight(.bold))
+          .foregroundColor(
+            theme.accent
+          )
+          .frame(maxWidth: .infinity, alignment: .leading)
 
-          Text("Edit colors")
-            .font(
-              Font.system(size: 20, weight: .semibold)
-            )
-            .foregroundColor(theme.textPrimary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
+        Text("Edit colors")
+          .font(
+            Font.system(size: 20, weight: .semibold)
+          )
+          .foregroundColor(theme.textPrimary)
+          .frame(maxWidth: .infinity, alignment: .leading)
       }
 
       VStack(spacing: 12) {
@@ -323,11 +269,8 @@ struct ColorOrganizerRoot: View {
             spreadFactor: 0.4,
             minSpread: .pi / 1.5,
             maxSpread: .pi / 3,
-            minLight: 15,
             maxLight: 90,
-            showColorWheel: false,
             numPoints: numPoints,
-            onColorChange: { _ in },
             onRadiusChange: { updatePaletteRadius($0) },
             onAngleChange: { updatePaletteAngle($0) }
           )
@@ -420,7 +363,6 @@ struct ColorOrganizerRoot: View {
             ForEach(categories) { category in
               ColorAssignmentCard(
                 category: category,
-                showDetails: supportsDetailsStage,
                 onColorDrop: { hex in
                   assignColor(hex, to: category)
                   isDraggingColor = false
@@ -456,13 +398,6 @@ struct ColorOrganizerRoot: View {
       Spacer(minLength: 12)
 
       if stage == .details {
-        if supportsDetailsStage == false, let onBack {
-          SettingsSecondaryButton(title: String(localized: "Back")) {
-            commitPendingEditsIfNeeded()
-            onBack()
-          }
-        }
-
         if presentationStyle == .sheet {
           SettingsSecondaryButton(title: String(localized: "Adjust colors")) {
             commitPendingEditsIfNeeded()
@@ -479,7 +414,6 @@ struct ColorOrganizerRoot: View {
             isDisabled: categories.isEmpty
           ) {
             commitPendingEditsIfNeeded()
-            trackDetailsCompletion()
             categoryStore.persist()
             withAnimation(.easeInOut(duration: 0.25)) {
               stage = .colors
@@ -488,13 +422,9 @@ struct ColorOrganizerRoot: View {
         }
       } else {
         SettingsSecondaryButton(title: String(localized: "Back")) {
-          if supportsDetailsStage {
-            withAnimation(.easeInOut(duration: 0.25)) {
-              isDraggingColor = false
-              stage = .details
-            }
-          } else {
-            onBack?()
+          withAnimation(.easeInOut(duration: 0.25)) {
+            isDraggingColor = false
+            stage = .details
           }
         }
 
@@ -502,7 +432,6 @@ struct ColorOrganizerRoot: View {
           title: completionButtonTitle ?? String(localized: "Next"), systemImage: "chevron.right",
           isDisabled: categories.isEmpty
         ) {
-          trackColorsCompletion()
           categoryStore.persist()
           onDismiss?()
         }
@@ -622,16 +551,8 @@ struct ColorOrganizerRoot: View {
         suffix += 1
       }
 
-      categoryStore.markOnboardingCategoriesCustomized()
       categoryStore.addCategory(name: candidate)
-      addCount += 1
-      captureOnboardingEvent(
-        "onboarding_category_added",
-        [
-          "category_name": candidate,
-          "total_count": categoryStore.editableCategories.count,
-          "stage": CategorySetupStage.details.rawValue,
-        ])
+
       let editable = categoryStore.editableCategories
       if let newlyCreated = editable.last {
         editingCategoryID = newlyCreated.id
@@ -659,37 +580,11 @@ struct ColorOrganizerRoot: View {
   private func saveEdits(for category: TimelineCategory) {
     let trimmedName = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
     let didRename = !trimmedName.isEmpty && trimmedName != category.name
-    let didUpdateDetails = draftDetails != category.details
-    let previousName = category.name
-    let previousDetails = category.details
-
-    if didRename || didUpdateDetails {
-      categoryStore.markOnboardingCategoriesCustomized()
-    }
-
     if didRename {
       categoryStore.renameCategory(id: category.id, to: trimmedName)
-      renameCount += 1
-      captureOnboardingEvent(
-        "onboarding_category_renamed",
-        [
-          "category_name": trimmedName,
-          "previous_name": previousName,
-          "stage": CategorySetupStage.details.rawValue,
-        ])
+
     }
     categoryStore.updateDetails(draftDetails, for: category.id)
-    if didUpdateDetails {
-      detailsUpdateCount += 1
-      captureOnboardingEvent(
-        "onboarding_category_details_updated",
-        [
-          "category_name": didRename ? trimmedName : previousName,
-          "details_length": draftDetails.count,
-          "had_previous_details": previousDetails.isEmpty == false,
-          "stage": CategorySetupStage.details.rawValue,
-        ])
-    }
     endEditing()
   }
 
@@ -698,102 +593,27 @@ struct ColorOrganizerRoot: View {
       if editingCategoryID == category.id {
         endEditing()
       }
-      categoryStore.markOnboardingCategoriesCustomized()
+
       categoryStore.removeCategory(id: category.id)
-      deleteCount += 1
-      captureOnboardingEvent(
-        "onboarding_category_deleted",
-        [
-          "category_name": category.name,
-          "remaining_count": categoryStore.editableCategories.count,
-          "stage": stage.rawValue,
-        ])
+
     }
   }
 
   private func assignColor(_ hex: String, to category: TimelineCategory) {
     let previousHex = category.colorHex
-    categoryStore.markOnboardingCategoriesCustomized()
+
     categoryStore.assignColor(hex, to: category.id)
 
     guard hex != previousHex else { return }
 
-    colorChangeCount += 1
-    captureOnboardingEvent(
-      "onboarding_category_color_changed",
-      [
-        "category_name": category.name,
-        "color_hex": hex,
-        "previous_color_hex": previousHex,
-        "stage": CategorySetupStage.colors.rawValue,
-      ])
   }
 
   private func updatePaletteRadius(_ newRadius: Double) {
-    if abs(newRadius - normalizedRadius) > 0.0001 {
-      didAdjustPalette = true
-    }
     normalizedRadius = newRadius
   }
 
   private func updatePaletteAngle(_ newAngle: Double) {
-    if abs(newAngle - currentAngle) > 0.0001 {
-      didAdjustPalette = true
-    }
     currentAngle = newAngle
-  }
-
-  private func trackStageViewIfNeeded(_ stage: CategorySetupStage) {
-    guard isOnboardingAnalyticsEnabled else { return }
-    guard trackedStages.contains(stage) == false else { return }
-
-    trackedStages.insert(stage)
-    AnalyticsService.shared.screen("onboarding_categories_\(stage.rawValue)")
-  }
-
-  private func trackDetailsCompletion() {
-    captureOnboardingEvent(
-      "onboarding_categories_details_completed",
-      [
-        "stage": CategorySetupStage.details.rawValue,
-        "added_count": addCount,
-        "renamed_count": renameCount,
-        "details_updated_count": detailsUpdateCount,
-        "deleted_count": deleteCount,
-      ])
-  }
-
-  private func trackColorsCompletion() {
-    captureOnboardingEvent(
-      "onboarding_categories_colors_completed",
-      [
-        "stage": CategorySetupStage.colors.rawValue,
-        "added_count": addCount,
-        "renamed_count": renameCount,
-        "details_updated_count": detailsUpdateCount,
-        "deleted_count": deleteCount,
-        "color_changed_count": colorChangeCount,
-        "did_adjust_palette": didAdjustPalette,
-        "palette_radius": normalizedRadius,
-        "palette_angle": currentAngle,
-      ])
-  }
-
-  private func captureOnboardingEvent(_ name: String, _ extra: [String: Any]) {
-    guard isOnboardingAnalyticsEnabled else { return }
-
-    var payload: [String: Any] = [
-      "surface": analyticsSurface ?? "unknown",
-      "role": onboardingRole,
-      "preset": onboardingPreset,
-      "category_count": categories.count,
-    ]
-
-    extra.forEach { key, value in
-      payload[key] = value
-    }
-
-    AnalyticsService.shared.capture(name, payload)
   }
 
   private func commitPendingEditsIfNeeded() {

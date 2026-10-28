@@ -5,7 +5,7 @@ final class AIConfigurationTests: XCTestCase {
   private var suites: [String] = []
 
   override func tearDown() {
-    for suite in suites { UserDefaults.standard.removePersistentDomain(forName: suite) }
+    for suite in suites { AppStoragePaths.defaults.removePersistentDomain(forName: suite) }
     super.tearDown()
   }
 
@@ -87,7 +87,7 @@ final class AIConfigurationTests: XCTestCase {
     XCTAssertEqual(route.primary.modelID, "timeline-model")
     XCTAssertEqual(route.primary.effort, "high")
     XCTAssertEqual(route.fallbacks.map(\.modelID), ["fallback-a", "fallback-b"])
-    XCTAssertNil(first.routes[.chat]?.primary.effort)
+    XCTAssertNil(first.routes[.text]?.primary.effort)
     XCTAssertNil(first.routes[.transcription])
     XCTAssertEqual(defaults.data(forKey: LLMProviderRoutingStore.storageKey), routingData)
     XCTAssertEqual(defaults.data(forKey: ModelPreferences.storageKey(for: .chatGPT)), preferencesData)
@@ -97,19 +97,6 @@ final class AIConfigurationTests: XCTestCase {
     XCTAssertEqual(try store.load().connections.map(\.id), first.connections.map(\.id))
   }
 
-  func testMigrationPreservesFlowSettingsAndDailyRecapOff() throws {
-    let defaults = try makeDefaults()
-    defaults.set(try JSONEncoder().encode(LLMProviderRouting(primary: .chatGPT)),
-      forKey: LLMProviderRoutingStore.storageKey)
-    defaults.set("custom-flow-model", forKey: "flowAgentModel")
-    defaults.set("medium", forKey: "flowAgentReasoning")
-    defaults.set("none", forKey: "dailyRecapProvider_v1")
-    let configuration = try makeStore(defaults).load()
-    XCTAssertEqual(configuration.routes[.flow]?.primary.modelID, "custom-flow-model")
-    XCTAssertEqual(configuration.routes[.flow]?.primary.effort, "medium")
-    XCTAssertNil(configuration.routes[.dailyRecap])
-    XCTAssertNil(configuration.routes[.targetEvaluation])
-  }
 
   func testMigrationNeverInventsModelsOrEffortsForAnUnconfiguredCatalog() throws {
     let defaults = try makeDefaults()
@@ -208,13 +195,13 @@ final class AIConfigurationTests: XCTestCase {
     let legacy = AIModelAssignment(connectionID: UUID(), modelID: "unused")
     var configuration = AIConfiguration(routes: [.timeline: .init(primary: primary, fallbacks: [legacy])], defaultModel: primary)
     XCTAssertEqual(configuration.assignments(for: .timeline), [primary])
-    XCTAssertEqual(configuration.assignments(for: .chat), [primary])
+    XCTAssertEqual(configuration.assignments(for: .text), [primary])
     var differentEffort = primary
     differentEffort.effort = "high"
     configuration.defaultModel = differentEffort
     XCTAssertEqual(configuration.assignments(for: .timeline), [primary, differentEffort])
     configuration.defaultModel = nil
-    XCTAssertEqual(configuration.assignments(for: .chat), [])
+    XCTAssertEqual(configuration.assignments(for: .text), [])
   }
 
   func testUnsetSplitStagesInheritDefaultIndependentlyFromTimelineOverride() {
@@ -241,11 +228,11 @@ final class AIConfigurationTests: XCTestCase {
     let store = makeStore(defaults)
     var loaded = try store.load()
     XCTAssertEqual(loaded.defaultModel, assignment)
-    XCTAssertEqual(loaded.assignments(for: .chat), [assignment])
+    XCTAssertEqual(loaded.assignments(for: .text), [assignment])
     loaded.defaultModel = nil
     try store.save(loaded)
     XCTAssertNil(try store.load().defaultModel)
-    XCTAssertEqual(try store.load().assignments(for: .chat), [])
+    XCTAssertEqual(try store.load().assignments(for: .text), [])
     XCTAssertEqual(try store.load().routes[.timeline]?.primary, assignment)
   }
 

@@ -7,14 +7,6 @@ enum LocalEngine: String, CaseIterable, Identifiable, Codable {
 
   var id: String { rawValue }
 
-  var displayName: String {
-    switch self {
-    case .ollama: return String(localized: "Ollama")
-    case .lmstudio: return String(localized: "LM Studio")
-    case .custom: return String(localized: "Custom")
-    }
-  }
-
   var defaultBaseURL: String {
     switch self {
     case .ollama: return "http://localhost:11434"

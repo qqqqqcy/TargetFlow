@@ -29,13 +29,10 @@ struct DayflowButton: View {
 
   var body: some View {
     Button(action: {
-      // Haptic feedback on macOS 11+
-      if #available(macOS 11.0, *) {
-        NSHapticFeedbackManager.defaultPerformer.perform(
-          .levelChange,
-          performanceTime: .default
-        )
-      }
+      NSHapticFeedbackManager.defaultPerformer.perform(
+        .levelChange,
+        performanceTime: .default
+      )
 
       if !reduceMotion {
         withAnimation(pressAnimation) { showPulse = true }

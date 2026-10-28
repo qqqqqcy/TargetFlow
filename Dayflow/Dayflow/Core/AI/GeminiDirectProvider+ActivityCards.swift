@@ -197,16 +197,6 @@ extension GeminiDirectProvider {
 
         var errorMessages: [String] = []
         if !coverageValid && coverageError != nil {
-          AnalyticsService.shared.captureValidationFailure(
-            provider: "gemini",
-            providerID: .gemini,
-            operation: "generate_activity_cards",
-            validationType: "time_coverage",
-            attempt: attempt + 1,
-            model: modelState.current,
-            batchId: batchId,
-            errorDetail: coverageError
-          )
           errorMessages.append(
             """
             TIME COVERAGE ERROR:
@@ -217,16 +207,6 @@ extension GeminiDirectProvider {
         }
 
         if !durationValid && durationError != nil {
-          AnalyticsService.shared.captureValidationFailure(
-            provider: "gemini",
-            providerID: .gemini,
-            operation: "generate_activity_cards",
-            validationType: "duration",
-            attempt: attempt + 1,
-            model: modelState.current,
-            batchId: batchId,
-            errorDetail: durationError
-          )
           errorMessages.append(
             """
             DURATION ERROR:
@@ -239,7 +219,6 @@ extension GeminiDirectProvider {
         // Create enhanced prompt for validation retry
         actualPromptUsed =
           basePrompt + """
-
 
             PREVIOUS ATTEMPT FAILED - CRITICAL REQUIREMENTS NOT MET:
 
@@ -263,21 +242,7 @@ extension GeminiDirectProvider {
           let transition = modelState.advance()
         {
 
-          let reason = fallbackReason(for: nsError.code)
           print("↔️ Switching to \(transition.to) after \(nsError.code)")
-
-          Task { @MainActor in
-            AnalyticsService.shared.capture(
-              "llm_model_fallback",
-              [
-                "provider": "gemini",
-                "operation": "generate_activity_cards",
-                "from_model": transition.from,
-                "to_model": transition.to,
-                "reason": reason,
-                "batch_id": batchId as Any,
-              ])
-          }
 
           // Moving to the next model doesn't use up a retry, so every model in the chain gets tried.
           continue

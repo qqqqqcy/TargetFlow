@@ -24,17 +24,15 @@ final class AIConfigurationValidatorTests: XCTestCase {
     XCTAssertFalse(validator.running)
   }
 
-  func testHiddenRoutesArePreservedButNotProbed() async {
+  func testSharedPipelineStagesArePreservedButNotProbed() async {
     var configuration = configuration()
     let assignment = configuration.defaultModel!
-    configuration.routes[.chat] = .init(primary: assignment)
-    configuration.routes[.flow] = .init(primary: assignment)
-    configuration.routes[.dailyRecap] = .init(primary: assignment)
+    configuration.routes[.transcription] = .init(primary: assignment)
     configuration.routes[.text] = .init(primary: assignment)
     let validator = AIConfigurationValidator(probe: { _, _, _ in })
     await validator.validate(configuration: configuration)
     XCTAssertEqual(validator.results.map(\.feature), AIFeature.configurableCases)
-    XCTAssertEqual(configuration.routes.count, 5)
+    XCTAssertEqual(configuration.routes.count, 3)
   }
 
   func testMissingDefaultStillReportsEveryUnassignedFeatureAsFailed() async {
@@ -97,10 +95,7 @@ final class AIConfigurationValidatorTests: XCTestCase {
   func testContentValidationRejectsHTTPStyleSuccessAndWrongSchema() throws {
     XCTAssertThrowsError(try AIValidationFixture.checkJSON("OK", expected: AIValidationFixture.contextMarker, feature: .text))
     XCTAssertThrowsError(try AIValidationFixture.checkJSON("{\"answer\":\"wrong marker\"}", expected: AIValidationFixture.contextMarker, feature: .text))
-    XCTAssertNoThrow(try AIValidationFixture.checkJSON("{\"answer\":\"DAYFLOW CONTEXT 8316\"}", expected: AIValidationFixture.contextMarker, feature: .chat))
-    XCTAssertThrowsError(try AIValidationFixture.checkJSON("{\"summary\":\"DAYFLOW CONTEXT 8316\",\"highlights\":[\"report\"]}", expected: AIValidationFixture.contextMarker, feature: .dailyRecap))
-    XCTAssertNoThrow(try AIValidationFixture.checkJSON("{\"done\":[\"Finished DAYFLOW CONTEXT 8316\"],\"next\":null}", expected: AIValidationFixture.contextMarker, feature: .dailyRecap))
+    XCTAssertNoThrow(try AIValidationFixture.checkJSON("{\"answer\":\"DAYFLOW CONTEXT 8316\"}", expected: AIValidationFixture.contextMarker, feature: .text))
     XCTAssertNoThrow(try AIValidationFixture.checkJSON("{\"alignment\":\"focused\",\"reason\":\"Completed DAYFLOW CONTEXT 8316\",\"reminder\":\"\"}", expected: AIValidationFixture.contextMarker, feature: .targetEvaluation))
-    XCTAssertThrowsError(try AIValidationFixture.checkJSON("{\"status\":\"on_task\",\"action\":\"none\",\"seeing\":\"wrong\",\"message\":\"\",\"reason\":\"\"}", expected: AIValidationFixture.imageMarker, feature: .flow))
   }
 }

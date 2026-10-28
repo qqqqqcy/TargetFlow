@@ -155,47 +155,6 @@ final class OpenAICompatibleProviderTests: XCTestCase {
     XCTAssertEqual(requests, 2)
     XCTAssertEqual(result.cards.first?.detailedSummary, "Details")
   }
-  func testConfiguredDeepSeekRequestCarriesSharedCardPrompts() async throws {
-    let defaults = UserDefaults.standard
-    let previous = defaults.object(forKey: ActivityCardPromptPreferences.storageKey)
-    defer {
-      if let previous { defaults.set(previous, forKey: ActivityCardPromptPreferences.storageKey) }
-      else { defaults.removeObject(forKey: ActivityCardPromptPreferences.storageKey) }
-    }
-    try ActivityCardPromptPreferences.saveVerified(.init(
-      titleBlock: "CUSTOM_DEEPSEEK_TITLE", summaryBlock: "CUSTOM_DEEPSEEK_SUMMARY",
-      detailedBlock: "CUSTOM_DEEPSEEK_DETAILS"))
-    let connection = AIProviderConnection(
-      name: "DeepSeek", kind: .openAICompatible, endpoint: "https://api.deepseek.com/v1")
-    let configuration = AIConfiguration(connections: [connection], defaultModel: .init(
-      connectionID: connection.id, modelID: "deepseek-chat"))
-    let selection = try configuration.selection(for: XCTUnwrap(configuration.defaultModel))
-    let runtime = OpenAICompatibleRuntimeConfiguration(
-      configuration: .init(preset: .custom, baseURL: connection.endpoint!, modelID: selection.modelID),
-      bearerToken: "test-token")
-    let card = ActivityCardData(
-      startTime: "1:00 PM", endTime: "1:15 PM", category: "Work", subcategory: "",
-      title: "Release notes", summary: "Edited release notes.", detailedSummary: "Details",
-      distractions: nil, appSites: nil)
-    var requests = 0
-    let provider = OpenAICompatibleProvider(configuration: runtime) { request, operation, _ in
-      requests += 1
-      XCTAssertEqual(operation, "generate_cards")
-      XCTAssertEqual(request.model, "deepseek-chat")
-      let prompt = try XCTUnwrap(request.messages[1].content.first?.text)
-      for marker in ["CUSTOM_DEEPSEEK_TITLE", "CUSTOM_DEEPSEEK_SUMMARY", "CUSTOM_DEEPSEEK_DETAILS"] {
-        XCTAssertTrue(prompt.contains(marker))
-      }
-      return String(decoding: try JSONEncoder().encode([card]), as: UTF8.self)
-    }
-    let context = ActivityGenerationContext(
-      batchObservations: [], existingCards: [card], currentTime: Date(), categories: [],
-      hasPreviousCardWithinFiveMinutes: true)
-    let result = try await AIRequestContext.$assignment.withValue(selection) {
-      try await provider.generateActivityCards(observations: [], context: context, batchId: nil)
-    }
-    XCTAssertEqual(requests, 1)
-    XCTAssertEqual(result.cards.first?.title, card.title)
-  }
+
 
 }

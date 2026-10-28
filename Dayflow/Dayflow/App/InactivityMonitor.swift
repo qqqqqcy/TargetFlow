@@ -14,10 +14,10 @@ final class InactivityMonitor: ObservableObject {
   private let defaultThresholdSeconds: TimeInterval = 15 * 60
 
   var thresholdSeconds: TimeInterval {
-    let override = UserDefaults.standard.double(forKey: secondsOverrideKey)
+    let override = AppStoragePaths.defaults.double(forKey: secondsOverrideKey)
     if override > 0 { return override }
 
-    let legacyMinutes = UserDefaults.standard.integer(forKey: legacyMinutesKey)
+    let legacyMinutes = AppStoragePaths.defaults.integer(forKey: legacyMinutesKey)
     if legacyMinutes > 0 {
       return TimeInterval(legacyMinutes * 60)
     }

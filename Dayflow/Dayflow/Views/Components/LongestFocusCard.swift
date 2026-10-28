@@ -46,7 +46,6 @@ struct LongestFocusCard: View {
   private enum Design {
     // Sizing
     static let cardHeight: CGFloat = 185
-    static let cardCornerRadius: CGFloat = 8
     static let blockCornerRadius: CGFloat = 6
     static let dotSize: CGFloat = 4
 

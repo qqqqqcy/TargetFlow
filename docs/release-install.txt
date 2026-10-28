@@ -1,0 +1,22 @@
+Target Flow — Installation
+
+This build uses a persistent code-signing certificate and has not been
+notarized by Apple.
+Requires macOS 14 or later. Download the package matching your Mac:
+arm64 = Apple silicon (M-series); x86_64 = Intel.
+
+1. Drag TargetFlow.app into Applications. Launch it from Applications.
+2. macOS may block the first launch because the developer cannot be verified.
+   After attempting to open it, go to System Settings > Privacy & Security,
+   find the blocked-app message, click Open Anyway, and confirm.
+   Only do this for a download you trust from qqqqqcy/TargetFlow on GitHub.
+3. Configure your own AI provider and grant Screen Recording permission.
+4. Choose English or Simplified Chinese in the Settings header. Fully quit and
+   reopen the app after changing the language.
+
+Keep installing updates from the same signer into /Applications/TargetFlow.app.
+Later builds retain the same signing requirement when the same certificate is
+used. macOS still controls permission prompts; this does not bypass Gatekeeper
+or notarization.
+This package does not include model API keys or a paid AI subscription.
+To fully exit, use Quit Completely in the menu bar.

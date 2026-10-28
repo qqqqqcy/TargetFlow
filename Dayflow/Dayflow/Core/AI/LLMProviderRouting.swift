@@ -32,7 +32,7 @@ enum LLMProviderRoutingStore {
 
   private static let lock = NSLock()
 
-  static func load(from defaults: UserDefaults = .standard) throws -> LLMProviderRouting {
+  static func load(from defaults: UserDefaults = AppStoragePaths.defaults) throws -> LLMProviderRouting {
     lock.lock()
     defer { lock.unlock() }
 
@@ -48,7 +48,7 @@ enum LLMProviderRoutingStore {
 
   static func save(
     _ routing: LLMProviderRouting,
-    to defaults: UserDefaults = .standard
+    to defaults: UserDefaults = AppStoragePaths.defaults
   ) throws {
     lock.lock()
     defer { lock.unlock() }

@@ -8,7 +8,6 @@ import AppKit
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
   enum PendingNotificationNavigationDestination: Equatable {
-    case timeline
     case events
   }
 
@@ -24,7 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   // Closing or soft-quitting keeps recording available from the menu bar.
   static var allowTermination = false
 
-  static func permitTermination(reason: String) {
+  static func permitTermination() {
     allowTermination = true
   }
 
@@ -48,7 +47,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     {
       NSApp.applicationIconImage = icon
     }
-    if AppStoragePaths.isUIPreview {
+    if AppStoragePaths.isIsolated {
       Self.allowTermination = true
       NSApp.setActivationPolicy(.regular)
       AppState.shared.isRecording = false
@@ -63,7 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     recorder = ScreenRecorder(autoStart: true)
     AppState.shared.enablePersistence()
 
-    if UserDefaults.standard.bool(forKey: "didOnboard") {
+    if AppStoragePaths.defaults.bool(forKey: "didOnboard") {
       if ScreenRecordingPermissionNotice.isGranted {
         AppState.shared.setRecording(AppState.shared.getSavedPreference() ?? true)
       } else {
@@ -86,7 +85,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       queue: .main
     ) { _ in
       MainActor.assumeIsolated {
-        AppDelegate.permitTermination(reason: "power_off_or_logout")
+        AppDelegate.permitTermination()
       }
     }
   }
@@ -111,7 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func applySavedDockIconPreference() {
-    let showDockIcon = UserDefaults.standard.object(forKey: "showDockIcon") as? Bool ?? true
+    let showDockIcon = AppStoragePaths.defaults.object(forKey: "showDockIcon") as? Bool ?? true
     NSApp.setActivationPolicy(showDockIcon ? .regular : .accessory)
   }
 

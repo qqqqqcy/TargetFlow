@@ -228,9 +228,9 @@ struct AIConfigurationSettingsView: View {
         }
       }
       if let feature {
-        Label([AIFeature.timeline, .transcription, .flow].contains(feature)
+        Label([AIFeature.timeline, .transcription].contains(feature)
           ? String(localized: "Image input required") : String(localized: "Text input only · No images required"),
-          systemImage: [AIFeature.timeline, .transcription, .flow].contains(feature) ? "photo" : "text.alignleft")
+          systemImage: [AIFeature.timeline, .transcription].contains(feature) ? "photo" : "text.alignleft")
           .font(.system(size: 11, weight: .medium)).foregroundColor(SettingsStyle.secondary)
       }
       Text(feature.map(capabilityNote) ?? String(localized: "Used by features without a custom model, and retried if a custom model fails."))
@@ -423,9 +423,6 @@ struct AIConfigurationSettingsView: View {
     switch feature {
     case .timeline: return "clock"
     case .targetEvaluation: return "target"
-    case .flow: return "focus"
-    case .chat: return "bubble.left.and.bubble.right"
-    case .dailyRecap: return "sun.max"
     case .transcription: return "text.viewfinder"
     case .activityCards: return "rectangle.stack"
     case .text: return "text.alignleft"
@@ -436,9 +433,6 @@ struct AIConfigurationSettingsView: View {
     switch feature {
     case .timeline: return String(localized: "Screenshots → final activity cards in one call, including titles, summaries, and minute-by-minute details. Requires image input.")
     case .targetEvaluation: return String(localized: "Checks how recent activities align with your current goals.")
-    case .flow: return String(localized: "Checks the current screen against your focus goal. Requires image input.")
-    case .chat: return String(localized: "Answers questions about your recent timeline and activity context.")
-    case .dailyRecap: return String(localized: "Summarizes completed work and suggests the next step from your daily timeline.")
     case .transcription: return String(localized: "Split path, step 1: screenshots → timestamped observations. These are intermediate evidence, not the card details displayed on the timeline.")
     case .activityCards: return String(localized: "Split path, step 2: observations → final activity cards, including titles, summaries, and minute-by-minute details. This model does not receive screenshots.")
     case .text: return String(localized: "Generates text from the context supplied by the app.")
@@ -686,7 +680,7 @@ private struct AIConfigurationExample: Identifiable {
   let feature: AIFeature
   var id: String { feature.rawValue }
   var title: String { feature.displayName }
-  var includesImage: Bool { [.timeline, .transcription, .flow].contains(feature) }
+  var includesImage: Bool { [.timeline, .transcription].contains(feature) }
 
   var input: String {
     switch feature {
@@ -698,12 +692,6 @@ private struct AIConfigurationExample: Identifiable {
       return String(localized: "09:00–09:15: Worked on report DAYFLOW CONTEXT 8316 and completed its summary.\nCategories: Work, Personal, Idle.\nGroup these observations into an activity card.")
     case .targetEvaluation:
       return String(localized: "Current goals: Complete report DAYFLOW CONTEXT 8316.\nActivity: Finished and delivered report DAYFLOW CONTEXT 8316.\nDuration: 15 minutes. Crosses target boundary: false.\nEvaluate whether this activity advances any current goal.")
-    case .flow:
-      return String(localized: "Focus goal: Work on the validation report.\nCurrent screen: the synthetic report editor below.\nDecide whether the visible activity is on task and whether a reminder is needed.")
-    case .chat:
-      return String(localized: "User: What report did I finish?\nRecent timeline: Completed report DAYFLOW CONTEXT 8316, 09:00–09:15.\nAnswer using the supplied timeline context.")
-    case .dailyRecap:
-      return String(localized: "Daily timeline: 09:00–09:15, completed and delivered report DAYFLOW CONTEXT 8316.\nSummarize completed work in up to five bullets. Include a next step only when the timeline supports one.")
     case .text:
       return String(localized: "Extract the report title from: Completed report DAYFLOW CONTEXT 8316.\nReturn JSON with an answer field containing the exact title.")
     }
@@ -809,25 +797,6 @@ private struct AIConfigurationExample: Identifiable {
           "reminder": ""
         }
         """
-    case .flow:
-      return """
-        {
-          "seeing": "Report editor with validation summary",
-          "status": "on_task",
-          "action": "none",
-          "message": "",
-          "reason": ""
-        }
-        """
-    case .dailyRecap:
-      return """
-        {
-          "done": ["Completed and delivered report DAYFLOW CONTEXT 8316."],
-          "next": null
-        }
-        """
-    case .chat:
-      return String(localized: "You finished report DAYFLOW CONTEXT 8316 between 09:00 and 09:15.")
     case .text:
       return "{\"answer\": \"DAYFLOW CONTEXT 8316\"}"
     }

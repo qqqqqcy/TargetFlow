@@ -13,22 +13,10 @@ struct TimelineCalendarButtonFramePreferenceKey: PreferenceKey {
   }
 }
 
-enum TimelineAlignment {
-  static let topInset: CGFloat = 24
-  static let pickerRowOffset: CGFloat = -10
-  static let categoryRowInset: CGFloat = 55
-  static let headerContentGap: CGFloat = 18
-}
-
 enum TimelineNavigationLayout {
   static let arrowSize: CGFloat = 24
   static let hoverCircleSize = DayflowLayout.buttonHeight
   static let calendarGap: CGFloat = 4
-}
-
-enum LogoPosition {
-  static let logoSize: CGFloat = 48
-  static let logoVerticalOffset: CGFloat = 8
 }
 
 extension MainView {
@@ -206,13 +194,6 @@ extension MainView {
     .padding(.top, 12)
     .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .dayflowPanel()
-    .coordinateSpace(name: "TimelinePane")
-    .onPreferenceChange(TimelineTimeLabelFramesPreferenceKey.self) { frames in
-      timelineTimeLabelFrames = frames
-    }
-    .onPreferenceChange(WeeklyHoursFramePreferenceKey.self) { frame in
-      DispatchQueue.main.async { weeklyHoursFrame = frame }
-    }
   }
 
   private func categoryFilters(isVertical: Bool) -> some View {
@@ -238,8 +219,6 @@ extension MainView {
             scrollToNowTick: $scrollToNowTick,
             hasAnyActivities: $hasAnyActivities,
             refreshTrigger: $refreshActivitiesTrigger,
-            weeklyHoursFrame: weeklyHoursFrame,
-            weeklyHoursIntersectsCard: $weeklyHoursIntersectsCard,
             contentLeadingInset: 0,
             hourHeight: TimelineScale.hourHeight,
             cardTextFontSize: TimelineTypography.cardTextFontSize,
@@ -271,8 +250,6 @@ extension MainView {
                 weekRange: timelineWeekRange,
                 onSelectActivity: selectTimelineActivity,
                 onClearSelection: { clearTimelineSelection() },
-                weeklyHoursFrame: weeklyHoursFrame,
-                weeklyHoursIntersectsCard: $weeklyHoursIntersectsCard,
                 hideCardsForModeSwitch: hideWeekCardsDuringModeSwitch,
                 mutedCategoryKeys: mutedCategoryKeys
               )
@@ -296,12 +273,10 @@ extension MainView {
   }
 
   private var timelineFooter: some View {
-    let weeklyHoursOpacity = 1.0
-
-    return VStack(spacing: 8) {
+    VStack(spacing: 8) {
       HStack(alignment: .center) {
         weeklyHoursText
-          .opacity(contentOpacity * weeklyHoursOpacity)
+          .opacity(contentOpacity)
 
         Spacer()
 
@@ -437,51 +412,21 @@ extension MainView {
           }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .allowsHitTesting(!feedbackModalVisible)
+
         .padding(.bottom, rateSummaryFooterHeight)
 
-        if !feedbackModalVisible {
-          TimelineRateSummaryView(
+        if selectedActivity != nil {
+          TimelineDeleteButton(
             activityID: activity.id,
-            onRate: handleTimelineRating,
             onDelete: handleTimelineDelete
           )
           .frame(maxWidth: .infinity)
-          .allowsHitTesting(!feedbackModalVisible)
+
           .transition(.move(edge: .bottom).combined(with: .opacity))
         }
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .overlay(alignment: .bottomLeading) {
-      if let direction = feedbackDirection, feedbackModalVisible {
-        TimelineFeedbackModal(
-          message: $feedbackMessage,
-          shareLogs: $feedbackShareLogs,
-          direction: direction,
-          mode: feedbackMode,
-          content: .timeline,
-          onSubmit: handleFeedbackSubmit,
-          onClose: { dismissFeedbackModal() }
-        )
-        .padding(.leading, 24)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-      }
-    }
-  }
-
-  private var weeklyHoursFadeOpacity: Double {
-    guard weeklyHoursFrame != .zero, !timelineTimeLabelFrames.isEmpty else { return 1 }
-    var maxOverlap: CGFloat = 0
-    for frame in timelineTimeLabelFrames {
-      let intersection = weeklyHoursFrame.intersection(frame)
-      if !intersection.isNull {
-        maxOverlap = max(maxOverlap, intersection.height)
-      }
-    }
-    guard maxOverlap > 0 else { return 1 }
-    let clamped = min(maxOverlap, weeklyHoursFadeDistance)
-    return Double(1 - (clamped / weeklyHoursFadeDistance))
   }
 
   private var weeklyHoursText: some View {
@@ -497,14 +442,6 @@ extension MainView {
         .font(Font.custom("Figtree", size: 11).weight(.regular))
     }
     .foregroundColor(textColor)
-    .background(
-      GeometryReader { proxy in
-        Color.clear.preference(
-          key: WeeklyHoursFramePreferenceKey.self,
-          value: proxy.frame(in: .named("TimelinePane"))
-        )
-      }
-    )
   }
 
   private var copyTimelineButton: some View {
@@ -571,10 +508,7 @@ extension MainView {
       enabled: copyTimelineState != .copying,
       scale: 1.02
     )
-    .pointingHandCursorOnHover(
-      enabled: copyTimelineState != .copying,
-      reassertOnPressEnd: true
-    )
+    .pointingHandCursor(enabled: copyTimelineState != .copying)
     .accessibilityLabel(Text("Copy timeline to clipboard"))
   }
 }

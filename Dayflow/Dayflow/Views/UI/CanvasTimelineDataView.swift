@@ -16,17 +16,6 @@ private struct CanvasConfig {
   static let endHour: Int = 28  // 4 AM next day
 }
 
-private struct TimelineCardsLayerFramePreferenceKey: PreferenceKey {
-  static var defaultValue: CGRect = .zero
-
-  static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-    let next = nextValue()
-    if next != .zero {
-      value = next
-    }
-  }
-}
-
 // Positioned activity for Canvas rendering
 private struct CanvasPositionedActivity: Identifiable {
   let id: String
@@ -53,12 +42,10 @@ struct CanvasTimelineDataView: View {
   @Binding var scrollToNowTick: Int
   @Binding var hasAnyActivities: Bool
   @Binding var refreshTrigger: Int
-  let weeklyHoursFrame: CGRect
-  @Binding var weeklyHoursIntersectsCard: Bool
   let contentLeadingInset: CGFloat
   let hourHeight: CGFloat
   let cardTextFontSize: CGFloat
-  let cardTextFontWeight: TimelineCardTextWeight
+  let cardTextFontWeight: Font.Weight
   let timeLabelFontSize: CGFloat
   let cardIconLeadingInset: CGFloat
   let cardIconTextSpacing: CGFloat
@@ -76,7 +63,6 @@ struct CanvasTimelineDataView: View {
   @State private var selectedCardId: String? = nil
   @State private var positionedActivities: [CanvasPositionedActivity] = []
   @State private var recordingProjection: TimelineRecordingProjectionWindow?
-  @State private var cardsLayerFrame: CGRect = .zero
   @State private var refreshTimer: Timer?
   @State private var didInitialScrollInView: Bool = false
   // Gate the ScrollView's visibility on whether the initial auto-scroll has
@@ -152,17 +138,7 @@ struct CanvasTimelineDataView: View {
       ) { _ in
         handleDayTimelineDidBecomeActive()
       }
-      .onPreferenceChange(TimelineCardsLayerFramePreferenceKey.self) { frame in
-        // Preference callbacks fire mid-layout; writing state that feeds the
-        // card ForEach from here can trip AttributeGraph. Defer one turn.
-        DispatchQueue.main.async {
-          cardsLayerFrame = frame
-          updateWeeklyHoursIntersection()
-        }
-      }
-      .onChange(of: weeklyHoursFrame) {
-        updateWeeklyHoursIntersection()
-      }
+
   }
 
   // Inner ScrollViewReader + scroll-trigger handlers. Held in its own `some
@@ -229,7 +205,6 @@ struct CanvasTimelineDataView: View {
     stopRefreshTimer()
     loadTask?.cancel()
     loadTask = nil
-    weeklyHoursIntersectsCard = false
   }
 
   private func handleDayTimelineDidBecomeActive() {
@@ -237,12 +212,6 @@ struct CanvasTimelineDataView: View {
     if refreshTimer == nil {
       startRefreshTimer()
     }
-    AnalyticsService.shared.capture(
-      "app_became_active",
-      [
-        "screen": "timeline",
-        "selected_date_is_today": timelineIsToday(selectedDate),
-      ])
   }
 
   @ViewBuilder
@@ -310,14 +279,6 @@ struct CanvasTimelineDataView: View {
           .lineLimit(1)
           .minimumScaleFactor(0.95)
           .allowsTightening(true)
-          .background(
-            GeometryReader { proxy in
-              Color.clear.preference(
-                key: TimelineTimeLabelFramesPreferenceKey.self,
-                value: [proxy.frame(in: .named("TimelinePane"))]
-              )
-            }
-          )
           .frame(height: hourHeight, alignment: .top)
           .offset(y: -8)
           .id("hour-\(hourIndex)")
@@ -393,13 +354,6 @@ struct CanvasTimelineDataView: View {
         }
       }
     }
-    // `.clipped()` was here previously with the comment "Prevent shadows/
-    // animations from affecting scroll geometry." Removing it because the
-    // hovered card's `.hoverScaleEffect(scale: 1.01)` rendered ~0.5% past
-    // the cards-layer bounds on each side, and the clip was chopping the
-    // scaled card's edges. Watch for any regression in vertical scroll
-    // behavior or the weekly-hours-footer overlap logic — those are the
-    // paths most likely to have depended on the old clipping.
     .frame(minWidth: 0, maxWidth: .infinity)
     .onHover { hovering in
       cardsHover.isHovering = hovering
@@ -410,14 +364,6 @@ struct CanvasTimelineDataView: View {
         loadActivities(animate: false, deferWhileHovering: true)
       }
     }
-    .background(
-      GeometryReader { proxy in
-        Color.clear.preference(
-          key: TimelineCardsLayerFramePreferenceKey.self,
-          value: proxy.frame(in: .named("TimelinePane"))
-        )
-      }
-    )
   }
 
   private var mainTimelineRow: some View {
@@ -596,19 +542,9 @@ struct CanvasTimelineDataView: View {
     case .active:
       return
     case .pausedTimed, .pausedIndefinite:
-      AnalyticsService.shared.capture(
-        "timeline_paused_card_clicked",
-        [
-          "action": "resume_recording"
-        ])
-      PauseManager.shared.resume(source: .userClickedMainApp)
+      PauseManager.shared.resume()
     case .stopped:
-      AnalyticsService.shared.capture(
-        "timeline_stopped_card_clicked",
-        [
-          "action": "start_recording"
-        ])
-      RecordingControl.start(reason: "user_main_app")
+      RecordingControl.start()
     }
   }
 
@@ -728,7 +664,6 @@ struct CanvasTimelineDataView: View {
         {
           clearSelection()
         }
-        self.updateWeeklyHoursIntersection()
 
         if animate {
           // Trigger staggered entrance animation after a brief layout delay
@@ -750,47 +685,6 @@ struct CanvasTimelineDataView: View {
           userInfo: ["dayString": dayString]
         )
       }
-    }
-  }
-
-  private func updateWeeklyHoursIntersection() {
-    guard weeklyHoursFrame != .zero,
-      cardsLayerFrame != .zero,
-      weeklyHoursFrame.intersects(cardsLayerFrame)
-    else {
-      if weeklyHoursIntersectsCard {
-        weeklyHoursIntersectsCard = false
-      }
-      return
-    }
-
-    let intersectsTimelineCard = positionedActivities.contains { item in
-      let cardFrame = CGRect(
-        x: cardsLayerFrame.minX,
-        y: cardsLayerFrame.minY + item.yPosition,
-        width: cardsLayerFrame.width,
-        height: item.height
-      )
-      return cardFrame.intersects(weeklyHoursFrame)
-    }
-
-    let intersectsStatusCard: Bool
-    if let projection = recordingProjection {
-      let statusFrame = CGRect(
-        x: cardsLayerFrame.minX,
-        y: cardsLayerFrame.minY + calculateYPosition(for: projection.start) + 1,
-        width: cardsLayerFrame.width,
-        height: recordingProjectionHeight(for: projection)
-      )
-      intersectsStatusCard = statusFrame.intersects(weeklyHoursFrame)
-    } else {
-      intersectsStatusCard = false
-    }
-
-    let intersects = intersectsTimelineCard || intersectsStatusCard
-
-    if weeklyHoursIntersectsCard != intersects {
-      weeklyHoursIntersectsCard = intersects
     }
   }
 
@@ -912,7 +806,6 @@ extension CanvasTimelineDataView {
     @State private var selected: TimelineActivity? = nil
     @State private var tick: Int = 0
     @State private var refresh: Int = 0
-    @State private var weeklyHoursIntersectsCard = false
     var body: some View {
       CanvasTimelineDataView(
         selectedDate: $date,
@@ -920,8 +813,6 @@ extension CanvasTimelineDataView {
         scrollToNowTick: $tick,
         hasAnyActivities: .constant(true),
         refreshTrigger: $refresh,
-        weeklyHoursFrame: .zero,
-        weeklyHoursIntersectsCard: $weeklyHoursIntersectsCard,
         contentLeadingInset: 0,
         hourHeight: TimelineScale.hourHeight,
         cardTextFontSize: TimelineTypography.cardTextFontSize,

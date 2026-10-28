@@ -27,11 +27,6 @@ struct IdleBatchAssessment {
   let largestUncoveredGapSeconds: Int
   let screenshotCount: Int
   let sampledIdleScreenshotCount: Int
-  let qualifiedIdleScreenshotCount: Int
-  let qualifiedIdleRatio: Double
-  let idleSampleAvailabilityRatio: Double
-  let minIdleSecondsAtCapture: Int
-  let medianIdleSecondsAtCapture: Int
   let averageIdleSecondsAtCapture: Double
   let maxIdleSecondsAtCapture: Int
 }
@@ -86,7 +81,6 @@ enum IdleBatchClassifier {
       return nil
     }
 
-    let sortedIdleValues = idleValues.sorted()
     let averageIdleSeconds = Double(idleValues.reduce(0, +)) / Double(idleValues.count)
 
     return IdleBatchAssessment(
@@ -97,11 +91,6 @@ enum IdleBatchClassifier {
       largestUncoveredGapSeconds: largestUncoveredGapSeconds,
       screenshotCount: ordered.count,
       sampledIdleScreenshotCount: idleSamples.count,
-      qualifiedIdleScreenshotCount: qualifiedIdleScreenshotCount,
-      qualifiedIdleRatio: qualifiedIdleRatio,
-      idleSampleAvailabilityRatio: idleSampleAvailabilityRatio,
-      minIdleSecondsAtCapture: sortedIdleValues.first ?? 0,
-      medianIdleSecondsAtCapture: sortedIdleValues[sortedIdleValues.count / 2],
       averageIdleSecondsAtCapture: averageIdleSeconds,
       maxIdleSecondsAtCapture: idleValues.max() ?? 0
     )

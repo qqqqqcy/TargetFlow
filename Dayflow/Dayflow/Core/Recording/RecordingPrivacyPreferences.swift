@@ -59,32 +59,21 @@ enum RecordingPrivacyPreferences {
     "yubico",
   ]
 
-  static func blockedApplicationIdentifiers(defaults: UserDefaults = .standard) -> [String] {
+  static func blockedApplicationIdentifiers(defaults: UserDefaults = AppStoragePaths.defaults) -> [String] {
     let stored = defaults.stringArray(forKey: blockedApplicationIdentifiersKey) ?? []
     return normalizedIdentifiers(from: stored)
   }
 
-  static func blockedApplicationsText(defaults: UserDefaults = .standard) -> String {
-    blockedApplicationIdentifiers(defaults: defaults).joined(separator: "\n")
-  }
-
-  static func saveBlockedApplicationsText(
-    _ text: String,
-    defaults: UserDefaults = .standard
-  ) {
-    saveBlockedApplicationIdentifiers(identifiers(from: text), defaults: defaults)
-  }
-
   static func saveBlockedApplicationIdentifiers(
     _ identifiers: [String],
-    defaults: UserDefaults = .standard
+    defaults: UserDefaults = AppStoragePaths.defaults
   ) {
     defaults.set(normalizedIdentifiers(from: identifiers), forKey: blockedApplicationIdentifiersKey)
   }
 
   static func seedDefaultSecretApplicationsIfNeeded(
     from applications: [RecordingPrivacyApplication],
-    defaults: UserDefaults = .standard
+    defaults: UserDefaults = AppStoragePaths.defaults
   ) {
     guard !defaults.bool(forKey: didSeedDefaultSecretAppsKey) else { return }
 
@@ -98,14 +87,10 @@ enum RecordingPrivacyPreferences {
     defaults.set(true, forKey: didSeedDefaultSecretAppsKey)
   }
 
-  static func identifiers(from text: String) -> [String] {
-    normalizedIdentifiers(from: text.components(separatedBy: .newlines))
-  }
-
   static func isApplicationBlocked(
     bundleIdentifier: String?,
     applicationName: String?,
-    defaults: UserDefaults = .standard
+    defaults: UserDefaults = AppStoragePaths.defaults
   ) -> Bool {
     let blocked = Set(blockedApplicationIdentifiers(defaults: defaults))
     guard !blocked.isEmpty else { return false }
@@ -120,7 +105,7 @@ enum RecordingPrivacyPreferences {
 
   @MainActor
   static func frontmostBlockedApplication(
-    defaults: UserDefaults = .standard
+    defaults: UserDefaults = AppStoragePaths.defaults
   ) -> RecordingPrivacyApplication? {
     guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
     guard
@@ -141,7 +126,7 @@ enum RecordingPrivacyPreferences {
 
   static func blockedScreenCaptureApplications(
     in content: SCShareableContent,
-    defaults: UserDefaults = .standard
+    defaults: UserDefaults = AppStoragePaths.defaults
   ) -> [SCRunningApplication] {
     content.applications.filter { app in
       isApplicationBlocked(
@@ -150,33 +135,6 @@ enum RecordingPrivacyPreferences {
         defaults: defaults
       )
     }
-  }
-
-  @MainActor
-  static func runningApplications() -> [RecordingPrivacyApplication] {
-    let apps = NSWorkspace.shared.runningApplications.compactMap {
-      app -> RecordingPrivacyApplication? in
-      guard app.activationPolicy == .regular else { return nil }
-      guard let bundleIdentifier = app.bundleIdentifier, !bundleIdentifier.isEmpty else {
-        return nil
-      }
-
-      return RecordingPrivacyApplication(
-        name: app.localizedName ?? bundleIdentifier,
-        bundleIdentifier: bundleIdentifier
-      )
-    }
-
-    var seen = Set<String>()
-    return
-      apps
-      .filter { app in
-        let key = normalizedIdentifier(app.bundleIdentifier) ?? app.bundleIdentifier
-        return seen.insert(key).inserted
-      }
-      .sorted {
-        $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-      }
   }
 
   static func installedApplications() -> [RecordingPrivacyApplication] {

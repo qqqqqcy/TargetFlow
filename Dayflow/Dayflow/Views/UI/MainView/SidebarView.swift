@@ -4,17 +4,6 @@ enum SidebarIcon: String, CaseIterable {
   case timeline
   case settings
 
-  var assetName: String? {
-    self == .timeline ? "TimelineIcon" : nil
-  }
-
-  var systemNameFallback: String? {
-    switch self {
-    case .timeline: return nil
-    case .settings: return "gearshape.fill"
-    }
-  }
-
   var displayName: String {
     switch self {
     case .timeline: return String(localized: "Timeline")
@@ -22,7 +11,6 @@ enum SidebarIcon: String, CaseIterable {
     }
   }
 
-  var analyticsTabName: String { rawValue }
 }
 
 struct SidebarView: View {
@@ -49,7 +37,6 @@ struct SidebarIconButton: View {
   @Environment(\.dayflowTheme) private var theme
   let icon: SidebarIcon
   let isSelected: Bool
-  var showBadge = false
   var selectionNamespace: Namespace.ID? = nil
   let action: () -> Void
 
@@ -62,7 +49,6 @@ struct SidebarIconButton: View {
         Text(icon.displayName)
           .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
         Spacer(minLength: 0)
-        if showBadge { Circle().frame(width: 5, height: 5) }
       }
       .foregroundStyle(isSelected ? theme.sidebarLabelActive : theme.sidebarLabel)
       .padding(.leading, 18)

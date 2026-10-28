@@ -27,7 +27,7 @@ struct CategoryEditCircleButton: View {
     }
     .buttonStyle(DayflowPressScaleButtonStyle(pressedScale: 0.97))
     .hoverScaleEffect(scale: 1.02)
-    .pointingHandCursorOnHover(reassertOnPressEnd: true)
+    .pointingHandCursor()
     .accessibilityLabel(accessibilityLabel)
   }
 }

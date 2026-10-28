@@ -4,7 +4,7 @@ import Foundation
 extension CodexProvider {
   // MARK: - Codex one-step timeline
 
-  static func timelineModelConfiguration(defaults: UserDefaults = .standard) -> (model: String, reasoningEffort: String?) {
+  static func timelineModelConfiguration(defaults: UserDefaults = AppStoragePaths.defaults) -> (model: String, reasoningEffort: String?) {
     ModelPreferences.resolve(
       provider: .chatGPT, feature: .timeline,
       defaultModel: "gpt-6-luna", defaultEffort: "high", defaults: defaults
@@ -92,16 +92,6 @@ extension CodexProvider {
               cards, existingCards: previousCards, observations: [window])
           } catch {
             let detail = error.localizedDescription
-            AnalyticsService.shared.captureValidationFailure(
-              provider: "chat_cli",
-              providerID: providerID,
-              operation: "generate_timeline",
-              validationType: "time_coverage",
-              attempt: attempt,
-              model: model,
-              batchId: batchId,
-              errorDetail: detail
-            )
             lastError = NSError(
               domain: "ChatCLI", code: -93, userInfo: [NSLocalizedDescriptionKey: detail])
             // Each run is a fresh session with the images attached again, so the correction
@@ -139,7 +129,7 @@ extension CodexProvider {
             let fallback = Self.availabilityFallback(
               for: model, error: error, stderr: lastRun?.stderr)
           {
-            Self.recordModelFallback(from: model, to: fallback, operation: "generate_timeline")
+
             model = fallback
           }
           lastError = error
@@ -190,7 +180,8 @@ extension CodexProvider {
   func buildTimelinePrompt(
     frames: OneStepTimelineFrames,
     previousCards: [ActivityCardData],
-    categories: [LLMCategoryDescriptor]
+    categories: [LLMCategoryDescriptor],
+    overrides: ActivityCardPromptOverrides? = nil
   ) -> String {
     let userName = NSFullUserName()
       .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
@@ -213,7 +204,7 @@ extension CodexProvider {
         of: ClaudeTimelinePrompt.perMinuteFrames, with: ClaudeTimelinePrompt.irregularFrames)
     }
 
-    prompt += "\n\n" + ActivityCardPromptPreferences.load().instructionBlock
+    prompt += "\n\n" + (overrides ?? ActivityCardPromptPreferences.load()).instructionBlock
 
     let previousCardsData = try? JSONEncoder().encode(previousCards)
     let previousCardsJSON = previousCardsData.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"

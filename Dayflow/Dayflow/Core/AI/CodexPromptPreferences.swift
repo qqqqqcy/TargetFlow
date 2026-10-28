@@ -4,13 +4,13 @@ enum CodexPromptPreferences {
   private static let overridesKey = "chatGPTPromptOverrides"
 
   static func hasStoredOverrides(
-    in defaults: UserDefaults = .standard
+    in defaults: UserDefaults = AppStoragePaths.defaults
   ) -> Bool {
     defaults.object(forKey: overridesKey) != nil
   }
 
   static func load(
-    from defaults: UserDefaults = .standard
+    from defaults: UserDefaults = AppStoragePaths.defaults
   ) -> ActivityCardPromptOverrides {
     guard let data = defaults.data(forKey: overridesKey) else {
       return ActivityCardPromptOverrides()
@@ -24,13 +24,13 @@ enum CodexPromptPreferences {
 
   static func save(
     _ overrides: ActivityCardPromptOverrides,
-    to defaults: UserDefaults = .standard
+    to defaults: UserDefaults = AppStoragePaths.defaults
   ) {
     try? saveVerified(overrides, to: defaults)
   }
 
   static func reset(
-    in defaults: UserDefaults = .standard
+    in defaults: UserDefaults = AppStoragePaths.defaults
   ) {
     defaults.removeObject(forKey: overridesKey)
   }

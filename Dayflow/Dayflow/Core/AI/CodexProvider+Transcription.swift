@@ -3,7 +3,7 @@ import Foundation
 extension CodexProvider {
   // MARK: - Codex screenshot transcription
 
-  static func transcriptionModelConfiguration(defaults: UserDefaults = .standard) -> (
+  static func transcriptionModelConfiguration(defaults: UserDefaults = AppStoragePaths.defaults) -> (
     model: String, reasoningEffort: String?
   ) {
     return ModelPreferences.resolve(
@@ -111,16 +111,6 @@ extension CodexProvider {
         }
 
         if let validationError = validateSegments(segments, duration: durationSeconds) {
-          AnalyticsService.shared.captureValidationFailure(
-            provider: "chat_cli",
-            providerID: providerID,
-            operation: "transcribe_screenshots",
-            validationType: "timeline",
-            attempt: attempt,
-            model: model,
-            batchId: batchId,
-            errorDetail: validationError
-          )
           lastError = NSError(
             domain: "ChatCLI", code: -98, userInfo: [NSLocalizedDescriptionKey: validationError])
           actualPrompt =
@@ -199,7 +189,7 @@ extension CodexProvider {
           let fallback = Self.availabilityFallback(
             for: model, error: error, stderr: lastRun?.stderr)
         {
-          Self.recordModelFallback(from: model, to: fallback, operation: "transcribe_screenshots")
+
           model = fallback
         }
         lastError = error

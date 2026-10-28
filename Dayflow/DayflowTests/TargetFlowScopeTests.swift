@@ -13,27 +13,14 @@ final class TargetFlowScopeTests: XCTestCase {
     let upstream = support.appendingPathComponent("Dayflow", isDirectory: true)
     let fork = AppStoragePaths.applicationSupport
 
-    XCTAssertEqual(fork, support.appendingPathComponent("TargetFlow", isDirectory: true))
+    XCTAssertTrue(AppStoragePaths.isTesting)
+    XCTAssertTrue(AppStoragePaths.isIsolated)
+    XCTAssertNotEqual(fork, support.appendingPathComponent("TargetFlow", isDirectory: true))
+    XCTAssertTrue(fork.path.contains("TargetFlowTests/"))
     XCTAssertNotEqual(fork, upstream)
     XCTAssertEqual(
       AppStoragePaths.timelapses,
       fork.appendingPathComponent("timelapses", isDirectory: true))
   }
 
-  func testTelemetryCannotBeEnabledWithoutAnOptInSurface() {
-    let defaults = UserDefaults.standard
-    let previous = defaults.object(forKey: "analyticsOptIn")
-    defer {
-      if let previous {
-        defaults.set(previous, forKey: "analyticsOptIn")
-      } else {
-        defaults.removeObject(forKey: "analyticsOptIn")
-      }
-    }
-
-    defaults.set(true, forKey: "analyticsOptIn")
-    XCTAssertFalse(AnalyticsService.shared.isOptedIn)
-    AnalyticsService.shared.isOptedIn = true
-    XCTAssertFalse(AnalyticsService.shared.isOptedIn)
-  }
 }

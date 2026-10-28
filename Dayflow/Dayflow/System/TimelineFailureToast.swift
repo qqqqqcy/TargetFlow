@@ -57,10 +57,6 @@ struct TimelineFailureToastPayload {
     return userInfo
   }
 
-  var analyticsProps: [String: Any] {
-    notificationUserInfo
-  }
-
   init(
     message: String,
     title: String?,

@@ -13,9 +13,6 @@ import Foundation
 import ImageIO
 
 extension Screenshot {
-  /// True when the row points at a frame inside an HEVC segment (vs. a legacy JPEG).
-  var isSegmentFrame: Bool { frameIndex != nil }
-
   /// True when the backing file still exists on disk.
   var isAvailable: Bool {
     FileManager.default.fileExists(atPath: filePath)
@@ -24,11 +21,6 @@ extension Screenshot {
   /// Decodes the frame. Pass `maxPixelSize` to get a downscaled copy for thumbnails.
   func loadCGImage(maxPixelSize: Int? = nil) -> CGImage? {
     FrameStore.shared.image(for: self, maxPixelSize: maxPixelSize)
-  }
-
-  func loadNSImage() -> NSImage? {
-    guard let image = loadCGImage() else { return nil }
-    return NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
   }
 
   /// Re-encodes the frame as JPEG, scaled down so its height is at most `maxHeight`.

@@ -15,15 +15,6 @@ import Foundation
 enum ChatCLITool: String, Codable {
   case codex
   case claude
-
-  var providerID: LLMProviderID {
-    switch self {
-    case .codex:
-      return .chatGPT
-    case .claude:
-      return .claude
-    }
-  }
 }
 
 /// Events emitted during JSONL streaming from CLI tools
@@ -51,12 +42,8 @@ struct ChatCLIRunResult {
   let stderr: String
   let shellCommand: String?
   let environmentOverrides: [String: String]
-  let startedAt: Date
   let finishedAt: Date
   let usage: TokenUsage?
-
-  var reportedModels: [String] { CLIReportedExecutionMetadata.parse(rawStdout).models }
-  var reportedReasoning: String? { CLIReportedExecutionMetadata.parse(rawStdout).reasoning }
 
   /// The CLI's own explanation of a failed run. Claude and Codex often print
   /// the real reason ("OAuth session expired", "usage limit") to stdout and
@@ -90,10 +77,6 @@ struct TokenUsage: Sendable {
     self.output = output
     self.costUSD = costUSD
     self.inputIncludesCachedTokens = inputIncludesCachedTokens
-  }
-
-  static var zero: TokenUsage {
-    TokenUsage(input: 0, cachedInput: 0, cacheCreationInput: 0, output: 0)
   }
 
   func adding(_ other: TokenUsage?) -> TokenUsage {

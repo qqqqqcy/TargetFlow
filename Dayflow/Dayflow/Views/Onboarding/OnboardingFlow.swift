@@ -10,13 +10,11 @@ import SwiftUI
 // Window manager removed - no longer needed!
 
 struct OnboardingFlow: View {
-  @AppStorage("onboardingStep") private var savedStepRawValue = 0
+  @AppStorage("onboardingStep", store: AppStoragePaths.defaults) private var savedStepRawValue = 0
   @State private var step: OnboardingStep = OnboardingStepMigration.restoredStep()
-  @AppStorage("didOnboard") private var didOnboard = false
-  @AppStorage("onboardingSelectedProviderID") private var selectedProviderIDRawValue =
+  @AppStorage("didOnboard", store: AppStoragePaths.defaults) private var didOnboard = false
+  @AppStorage("onboardingSelectedProviderID", store: AppStoragePaths.defaults) private var selectedProviderIDRawValue =
     LLMProviderID.gemini.rawValue
-  @State private var flowID = UUID().uuidString.lowercased()
-  @State private var routingSaveErrorMessage: String?
 
   private var selectedProviderID: LLMProviderID {
     let provider = LLMProviderID(rawValue: selectedProviderIDRawValue) ?? .gemini
@@ -45,29 +43,15 @@ struct OnboardingFlow: View {
         Color.clear.onAppear { setStep(step.normalizedForSetup) }
 
       case .llmSelection:
-        OnboardingPrototypeChooseProviderStep(
-          flowID: flowID,
-          flowVariant: "production_onboarding",
+        ProviderSelectionView(
           onSelect: { providerID in
             guard providerID != .dayflow else { return }
             selectedProviderIDRawValue = providerID.rawValue
 
-            var props: [String: Any] = [
-              "provider": providerID.analyticsName,
-              "provider_id": providerID.rawValue,
-            ]
-            if providerID == .local {
-              let localEngine = UserDefaults.standard.string(forKey: "llmLocalEngine") ?? "ollama"
-              props["local_engine"] = localEngine
-            }
-            AnalyticsService.shared.capture("llm_provider_selected", props)
-            advance(extraProps: props)
+            advance()
           }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-          AnalyticsService.shared.screen("onboarding_llm_selection")
-        }
 
       case .llmSetup:
         // COMPLETELY STANDALONE - no parent constraints!
@@ -77,20 +61,16 @@ struct OnboardingFlow: View {
             setStep(.llmSelection)
           },
           onComplete: { configuredProviderID in
-            guard saveRouting(primary: configuredProviderID, presentsError: false) else {
+            guard saveRouting(primary: configuredProviderID) else {
               return false
             }
             // Keep the stored selection in sync if the user switched CLI tools mid-setup
             selectedProviderIDRawValue = configuredProviderID.rawValue
-            recordCurrentProvider(configuredProviderID)
             advance()
             return true
           }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-          AnalyticsService.shared.screen("onboarding_llm_setup")
-        }
 
       case .screen:
         ScreenRecordingPermissionView(
@@ -100,9 +80,6 @@ struct OnboardingFlow: View {
           onNext: { advance() }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear {
-          AnalyticsService.shared.screen("onboarding_screen_recording")
-        }
       }
 
       // Progress ring — bottom-left, always in tree (opacity toggle preserves @State)
@@ -122,55 +99,16 @@ struct OnboardingFlow: View {
       OnboardingBackdrop()
     }
     .preferredColorScheme(.light)
-    .alert(
-      "Couldn't save your provider",
-      isPresented: Binding(
-        get: { routingSaveErrorMessage != nil },
-        set: { isPresented in
-          if !isPresented {
-            routingSaveErrorMessage = nil
-          }
-        }
-      )
-    ) {
-      Button("OK", role: .cancel) {
-        routingSaveErrorMessage = nil
-      }
-    } message: {
-      Text(routingSaveErrorMessage ?? String(localized: "Please try again."))
-    }
   }
 
-  private func saveRouting(
-    primary providerID: LLMProviderID,
-    presentsError: Bool = true
-  ) -> Bool {
+  private func saveRouting(primary providerID: LLMProviderID) -> Bool {
     guard providerID != .dayflow else { return false }
     do {
       try LLMProviderRoutingStore.save(LLMProviderRouting(primary: providerID))
       return true
     } catch {
-      if presentsError {
-        routingSaveErrorMessage = String(
-          localized: "Target Flow couldn't save this provider. Please try again.")
-      }
-      AnalyticsService.shared.capture(
-        "llm_provider_routing_save_failed",
-        [
-          "provider_id": providerID.rawValue,
-          "surface": "onboarding",
-        ]
-      )
       return false
     }
-  }
-
-  private func recordCurrentProvider(_ providerID: LLMProviderID) {
-    AnalyticsService.shared.setPersonProperties([
-      "current_llm_provider": providerID.analyticsName,
-      "current_llm_provider_id": providerID.rawValue,
-    ])
-    CLIVersionTelemetry.refresh()
   }
 
   private func restoreSavedStep() {
@@ -188,36 +126,19 @@ struct OnboardingFlow: View {
     savedStepRawValue = newStep.rawValue
   }
 
-  private func markStepCompleted(
-    _ completedStep: OnboardingStep,
-    extraProps: [String: Any] = [:]
-  ) {
-    var props: [String: Any] = ["step": completedStep.analyticsName]
-    extraProps.forEach { key, value in
-      props[key] = value
-    }
-    AnalyticsService.shared.capture("onboarding_step_completed", props)
-  }
-
-  private func advance(extraProps: [String: Any] = [:]) {
+  private func advance() {
     switch step {
     case .llmSelection:
-      markStepCompleted(step, extraProps: extraProps)
       setStep(.llmSetup)
     case .llmSetup:
-      markStepCompleted(step)
       setStep(.screen)
     case .screen:
       // Finish directly after permission; no tour, sample cards, or promotion.
       guard CGPreflightScreenCaptureAccess() else { return }
-      markStepCompleted(step)
       didOnboard = true
       savedStepRawValue = OnboardingStep.llmSelection.rawValue
-      AnalyticsService.shared.capture("onboarding_completed")
-      AnalyticsService.shared.setPersonProperties(["onboarding_status": "completed"])
-      AnalyticsService.shared.flush()
       Task { @MainActor in
-        AppState.shared.setRecording(true, analyticsReason: "onboarding")
+        AppState.shared.setRecording(true)
       }
     default:
       setStep(step.normalizedForSetup)
@@ -227,7 +148,7 @@ struct OnboardingFlow: View {
 
 /// Wizard step order
 enum OnboardingStep: Int, CaseIterable {
-  // Persisted values are also used by recording-permission bootstrapping.
+  // Keep historical raw values stable so saved onboarding steps can be migrated.
   case introVideo = 0
   case roleSelection = 1
   case referral = 2
@@ -244,32 +165,6 @@ enum OnboardingStep: Int, CaseIterable {
     case .llmSelection, .llmSetup, .screen: return self
     }
   }
-
-  var analyticsName: String {
-    switch self {
-    case .introVideo:
-      return "intro_video"
-    case .roleSelection:
-      return "role_selection"
-    case .referral:
-      return "referral"
-    case .llmSelection:
-      return "llm_selection"
-    case .llmSetup:
-      return "llm_setup"
-    case .screen:
-      return "screen_recording"
-    case .personalGoal:
-      return "personal_goal"
-    case .completion:
-      return "completion"
-    }
-  }
-
-  static func hasPassedScreenRecordingStep(rawValue: Int) -> Bool {
-    guard let step = OnboardingStep(rawValue: rawValue) else { return false }
-    return step.rawValue > OnboardingStep.screen.rawValue
-  }
 }
 
 enum OnboardingStepMigration {
@@ -278,7 +173,7 @@ enum OnboardingStepMigration {
   static let currentVersion = 7
 
   @discardableResult
-  static func migrateIfNeeded(defaults: UserDefaults = .standard) -> Int {
+  static func migrateIfNeeded(defaults: UserDefaults = AppStoragePaths.defaults) -> Int {
     let storedVersion = defaults.integer(forKey: schemaVersionKey)
     let rawValue = defaults.integer(forKey: onboardingStepKey)
 
@@ -341,7 +236,7 @@ enum OnboardingStepMigration {
     return migratedValue
   }
 
-  static func restoredStep(defaults: UserDefaults = .standard) -> OnboardingStep {
+  static func restoredStep(defaults: UserDefaults = AppStoragePaths.defaults) -> OnboardingStep {
     OnboardingStep(rawValue: migrateIfNeeded(defaults: defaults)) ?? .llmSelection
   }
 
@@ -412,338 +307,5 @@ enum OnboardingStepMigration {
     case 10: return 6  // completion → personalGoal (the new step right after screen)
     default: return 0
     }
-  }
-
-  // Keep for testing compatibility
-  static func migrateRawValue(_ rawValue: Int) -> Int {
-    migrateV5toV6(
-      migrateV4toV5(migrateV3toV4(migrateV2toV3(migrateV1toV2(migrateV0toV1(rawValue))))))
-  }
-}
-
-struct WelcomeView: View {
-  let fullText: String
-  @Binding var textOpacity: Double
-  @Binding var timelineOffset: CGFloat
-  let onStart: () -> Void
-
-  // The splash artwork is authored at 1200×680. The flower button baked into
-  // the art sits at this center; the hit target scales with the artwork.
-  private let artworkSize = CGSize(width: 1200, height: 680)
-  private let startButtonCenter = CGPoint(x: 600, y: 243)
-  private let startButtonDiameter: CGFloat = 133
-
-  @State private var isHoveringStart = false
-
-  var body: some View {
-    GeometryReader { proxy in
-      let scale = max(
-        proxy.size.width / artworkSize.width,
-        proxy.size.height / artworkSize.height
-      )
-      let originX = (proxy.size.width - artworkSize.width * scale) / 2
-      let originY = (proxy.size.height - artworkSize.height * scale) / 2
-
-      ZStack(alignment: .topLeading) {
-        Image("TargetFlowSplash")
-          .resizable()
-          .frame(width: artworkSize.width * scale, height: artworkSize.height * scale)
-          .offset(x: originX, y: originY)
-
-        Button(action: onStart) {
-          Circle()
-            .fill(Color.white.opacity(isHoveringStart ? 0.18 : 0))
-            .frame(
-              width: startButtonDiameter * scale,
-              height: startButtonDiameter * scale
-            )
-            .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .pointingHandCursor()
-        .scaleEffect(isHoveringStart ? 1.04 : 1)
-        .animation(.easeOut(duration: 0.15), value: isHoveringStart)
-        .onHover { isHoveringStart = $0 }
-        .position(
-          x: originX + startButtonCenter.x * scale,
-          y: originY + startButtonCenter.y * scale
-        )
-      }
-      .frame(width: proxy.size.width, height: proxy.size.height)
-      .clipped()
-    }
-    .ignoresSafeArea()
-    .opacity(textOpacity)
-    .onAppear {
-      withAnimation(.easeOut(duration: 0.6)) {
-        textOpacity = 1
-      }
-    }
-  }
-}
-
-struct OnboardingPrototypeReferralStep: View {
-  let onContinue: (ReferralOption, String?) -> Void
-
-  @State private var selectedReferral: ReferralOption? = nil
-  @State private var referralDetail = ""
-
-  private var trimmedDetail: String {
-    referralDetail.trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-
-  private var canContinue: Bool {
-    guard let option = selectedReferral else { return false }
-    if option.requiresDetail {
-      return !trimmedDetail.isEmpty
-    }
-    return true
-  }
-
-  var body: some View {
-    VStack(spacing: 0) {
-      Spacer()
-        .frame(height: 39)
-
-      Text("One quick question")
-        .font(.custom("InstrumentSerif-Regular", size: 40))
-        .tracking(-1.2)
-        .multilineTextAlignment(.center)
-        .foregroundColor(Color(hex: "492304"))
-        .lineSpacing(40 * 0.2)
-        .frame(maxWidth: 708)
-        .fixedSize(horizontal: false, vertical: true)
-
-      Spacer()
-        .frame(height: 48)
-
-      VStack(spacing: 20) {
-        ReferralSurveyView(
-          prompt: String(localized: "Where did you first hear about Target Flow?"),
-          showSubmitButton: false,
-          selectedReferral: $selectedReferral,
-          customReferral: $referralDetail
-        )
-      }
-      .frame(maxWidth: 720)
-      .padding(.horizontal, 24)
-
-      Spacer()
-
-      DayflowSurfaceButton(
-        action: {
-          guard let option = selectedReferral else { return }
-          let detail = option.requiresDetail ? trimmedDetail : nil
-          onContinue(option, detail)
-        },
-        content: {
-          Text("Continue")
-            .font(.custom("Figtree", size: 16))
-            .fontWeight(.medium)
-        },
-        background: Color(hex: "FF9F6F"),
-        foreground: .white,
-        borderColor: Color(hex: "F4C8B1"),
-        cornerRadius: 200,
-        horizontalPadding: 59,
-        verticalPadding: 18,
-        minWidth: 234,
-        showOverlayStroke: false,
-        innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
-      )
-      .opacity(canContinue ? 1.0 : 0.4)
-      .allowsHitTesting(canContinue)
-      .animation(.easeInOut(duration: 0.2), value: canContinue)
-
-      Spacer()
-        .frame(height: 60)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-  }
-}
-
-struct OnboardingPersonalGoalStep: View {
-  static let maxCharacters = 2_000
-
-  let onContinue: (String) -> Void
-
-  @State private var goalText = ""
-
-  private var trimmedGoal: String {
-    goalText.trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-
-  var body: some View {
-    VStack(spacing: 0) {
-      Spacer()
-        .frame(height: 39)
-
-      Text("Target Flow adapts to what you need")
-        .font(.custom("InstrumentSerif-Regular", size: 40))
-        .tracking(-1.2)
-        .multilineTextAlignment(.center)
-        .foregroundColor(Color(hex: "492304"))
-        .frame(maxWidth: 708)
-        .fixedSize(horizontal: false, vertical: true)
-
-      Spacer()
-        .frame(height: 12)
-
-      Text("Tell Target Flow what you're hoping to get out of it.")
-        .font(.custom("Figtree", size: 18))
-        .foregroundColor(Color(hex: "89380E").opacity(0.78))
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: 560)
-        .fixedSize(horizontal: false, vertical: true)
-
-      Spacer()
-        .frame(height: 36)
-
-      goalEditor
-        .frame(maxWidth: 620)
-        .padding(.horizontal, 24)
-
-      Spacer()
-
-      DayflowSurfaceButton(
-        action: {
-          onContinue(trimmedGoal)
-        },
-        content: {
-          Text("Continue")
-            .font(.custom("Figtree", size: 16))
-            .fontWeight(.medium)
-        },
-        background: Color(hex: "FF9F6F"),
-        foreground: .white,
-        borderColor: Color(hex: "F4C8B1"),
-        cornerRadius: 200,
-        horizontalPadding: 59,
-        verticalPadding: 18,
-        minWidth: 234,
-        showOverlayStroke: false,
-        innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
-      )
-      .opacity(trimmedGoal.isEmpty ? 0.4 : 1.0)
-      .allowsHitTesting(!trimmedGoal.isEmpty)
-      .animation(.easeInOut(duration: 0.2), value: trimmedGoal.isEmpty)
-
-      Button {
-        onContinue("")
-      } label: {
-        Text("Skip")
-          .font(.custom("Figtree", size: 14))
-          .foregroundColor(Color(hex: "89380E").opacity(0.7))
-          .padding(.vertical, 8)
-          .padding(.horizontal, 16)
-      }
-      .buttonStyle(.plain)
-      .pointingHandCursor()
-      .padding(.top, 8)
-
-      Spacer()
-        .frame(height: 40)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-  }
-
-  private var goalEditor: some View {
-    ZStack(alignment: .topLeading) {
-      TextEditor(text: $goalText)
-        .font(.custom("Figtree", size: 16))
-        .foregroundColor(Color(hex: "492304"))
-        .scrollContentBackground(.hidden)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 10)
-        .onChange(of: goalText) { _, newValue in
-          if newValue.count > Self.maxCharacters {
-            goalText = String(newValue.prefix(Self.maxCharacters))
-          }
-        }
-
-      if goalText.isEmpty {
-        Text(
-          "e.g. See where my time actually goes, cut down on distractions, or have an automatic log of my work for standups and reviews."
-        )
-        .font(.custom("Figtree", size: 16))
-        .foregroundColor(Color(hex: "492304").opacity(0.4))
-        .padding(.horizontal, 13)
-        .padding(.vertical, 10)
-        .allowsHitTesting(false)
-      }
-    }
-    .frame(height: 160)
-    .background(Color.white.opacity(0.42))
-    .cornerRadius(8)
-    .overlay(
-      RoundedRectangle(cornerRadius: 8)
-        .stroke(Color(hex: "E4D3C2"), lineWidth: 1)
-    )
-    .shadow(
-      color: Color(hex: "AF7246").opacity(0.15),
-      radius: 2, x: 0, y: 0
-    )
-  }
-}
-
-struct CompletionView: View {
-  let onFinish: () -> Void
-
-  var body: some View {
-    VStack(spacing: 16) {
-      Image("TargetFlowLogoMainApp")
-        .resizable()
-        .renderingMode(.original)
-        .scaledToFit()
-        .frame(height: 64)
-
-      // Title section
-      VStack(spacing: 8) {
-        Text("You are ready to go!")
-          .font(.custom("InstrumentSerif-Regular", size: 36))
-          .foregroundColor(.black.opacity(0.9))
-
-        Text(
-          "To get useful insights, let Target Flow run in the background for an hour or two to gather enough context, then check back in."
-        )
-        .font(.custom("Figtree", size: 15))
-        .foregroundColor(.black.opacity(0.6))
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
-      }
-
-      DayflowSurfaceButton(
-        action: {
-          onFinish()
-        },
-        content: {
-          Text("Launch Target Flow")
-            .font(.custom("Figtree", size: 16))
-            .fontWeight(.semibold)
-        },
-        background: Color(hex: "FF9F6F"),
-        foreground: .white,
-        borderColor: Color(hex: "F4C8B1"),
-        cornerRadius: 200,
-        horizontalPadding: 40,
-        verticalPadding: 14,
-        minWidth: 200,
-        showOverlayStroke: false,
-        innerGlowColor: Color(hex: "FFDCCB").opacity(0.9)
-      )
-      .padding(.top, 16)
-    }
-    .padding(.horizontal, 48)
-    .padding(.vertical, 60)
-    .frame(maxWidth: 720)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-  }
-}
-
-struct OnboardingFlow_Previews: PreviewProvider {
-  static var previews: some View {
-    OnboardingFlow()
-      .environmentObject(AppState.shared)
-      .frame(width: 1200, height: 800)
   }
 }

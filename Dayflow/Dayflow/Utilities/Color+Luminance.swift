@@ -27,10 +27,6 @@ extension NSColor {
       alpha: CGFloat(a) / 255.0
     )
   }
-
-  func blended(with fraction: CGFloat, of color: NSColor) -> NSColor? {
-    return usingColorSpace(.sRGB)?.blended(withFraction: fraction, of: color)
-  }
 }
 
 extension Color {
@@ -38,7 +34,4 @@ extension Color {
     self.init(nsColor: NSColor(hex: hex) ?? .black)
   }
 
-  init(nsColor: NSColor) {
-    self.init(nsColor)
-  }
 }

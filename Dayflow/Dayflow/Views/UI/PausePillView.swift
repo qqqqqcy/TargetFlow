@@ -291,7 +291,7 @@ struct PausePillView: View {
 
   private func startRecordingFromResumePill() {
     phase = .idle
-    RecordingControl.start(reason: "user_main_app")
+    RecordingControl.start()
     animatePausedToIdle()
   }
 
@@ -334,7 +334,7 @@ struct PausePillView: View {
 
   private func startPause(_ duration: PauseDuration) {
     phase = .paused
-    pauseManager.pause(for: duration, source: .mainApp)
+    pauseManager.pause(for: duration)
 
     exitChips()
 
@@ -372,7 +372,7 @@ struct PausePillView: View {
 
   private func resumeFromPause() {
     phase = .idle
-    pauseManager.resume(source: .userClickedMainApp)
+    pauseManager.resume()
     animatePausedToIdle()
   }
 

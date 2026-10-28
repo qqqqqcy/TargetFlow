@@ -46,7 +46,7 @@ final class AIConfiguredRuntimeTests: XCTestCase {
     let selected = connection()
     let assignment = AIModelAssignment(connectionID: selected.id, modelID: "model", effort: "low")
     let runtime = AIConfiguredRuntime(configuration: .init(connections: [selected], defaultModel: assignment))
-    let result = try await runtime.withConfiguration(feature: .chat) { _ in AIRequestContext.assignment }
+    let result = try await runtime.withConfiguration(feature: .text) { _ in AIRequestContext.assignment }
     XCTAssertEqual(result?.connection.id, selected.id)
     XCTAssertEqual(result?.effort, "low")
     XCTAssertNil(AIRequestContext.assignment)

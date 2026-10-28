@@ -1,13 +1,5 @@
 import Foundation
 
-// Daily standup document stored as a JSON blob keyed by standup day.
-struct DailyStandupEntry: Codable, Sendable {
-  let standupDay: String  // "2025-01-15" format (Gregorian, local timezone)
-  let payloadJSON: String  // Serialized standup payload blob
-  let createdAt: Date?
-  let updatedAt: Date?
-}
-
 // NEW: Observation struct for first-class transcript storage
 struct Observation: Codable, Sendable {
   let id: Int64?
@@ -147,37 +139,6 @@ struct LLMCallDBRecord: Sendable {
   let usageReceipt: LLMUsageReceipt
 }
 
-struct TimelineCardDebugEntry: Sendable {
-  let createdAt: Date?
-  let batchId: Int64?
-  let day: String
-  let startTime: String
-  let endTime: String
-  let category: String
-  let subcategory: String?
-  let title: String
-  let summary: String?
-  let detailedSummary: String?
-}
-
-struct LLMCallDebugEntry: Sendable {
-  let createdAt: Date?
-  let batchId: Int64?
-  let callGroupId: String?
-  let attempt: Int
-  let provider: String
-  let model: String?
-  let operation: String
-  let status: String
-  let latencyMs: Int?
-  let httpStatus: Int?
-  let requestMethod: String?
-  let requestURL: String?
-  let requestBody: String?
-  let responseBody: String?
-  let errorMessage: String?
-}
-
 // Add TimelineCardShell struct for the new save function
 struct TimelineCardShell: Sendable {
   let startTimestamp: String
@@ -242,15 +203,6 @@ struct TimelineMetadata: Codable {
   let appSites: AppSites?
   let isBackupGenerated: Bool?
   let idle: IdleCardMetadata?
-}
-
-struct AnalysisBatchDebugEntry: Sendable {
-  let id: Int64
-  let status: String
-  let startTs: Int
-  let endTs: Int
-  let createdAt: Date?
-  let reason: String?
 }
 
 // Extended TimelineCard with timestamp fields for internal use

@@ -37,9 +37,9 @@ final class GeminiDirectProvider {
       "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent"
   }
 
-  func selectedModels(feature: ModelFeature, defaults: UserDefaults = .standard) -> [String] {
+  func selectedModels(feature: ModelFeature, defaults: UserDefaults = AppStoragePaths.defaults) -> [String] {
     if let assignment = AIRequestContext.assignment { return [assignment.modelID] }
-    let legacy = (feature == .chat ? Self.dashboardChatModels : modelPreference.orderedModels)
+    let legacy = modelPreference.orderedModels
       .map(\.rawValue)
     let selection = ModelPreferences.resolve(
       provider: .gemini, feature: feature, defaultModel: legacy[0], defaultEffort: "high",
@@ -51,7 +51,7 @@ final class GeminiDirectProvider {
   }
 
   func thinkingConfig(
-    feature: ModelFeature, model: String, defaults: UserDefaults = .standard
+    feature: ModelFeature, model: String, defaults: UserDefaults = AppStoragePaths.defaults
   ) throws -> [String: Any]? {
     if let assignment = AIRequestContext.assignment {
       // The configuration validates reported capabilities; do not guess support

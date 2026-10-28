@@ -7,7 +7,7 @@ extension Notification.Name {
 enum TargetPreferences {
   static let alertsEnabledKey = "target.alertsEnabled"
 
-  static func alertsEnabled(defaults: UserDefaults = .standard) -> Bool {
+  static func alertsEnabled(defaults: UserDefaults = AppStoragePaths.defaults) -> Bool {
     defaults.object(forKey: alertsEnabledKey) as? Bool ?? true
   }
 }
