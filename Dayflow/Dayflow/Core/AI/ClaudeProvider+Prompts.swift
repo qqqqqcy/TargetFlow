@@ -33,23 +33,13 @@ extension ClaudeProvider {
       LLMOutputLanguagePreferences.languageInstruction(forJSON: true)
       .map { "\n\n\($0)" } ?? ""
 
-    let boundaryBlock: String
-    if context.hasPreviousCardWithinFiveMinutes {
-      boundaryBlock = """
-        <ongoing_segmentation>
-        Rewrite the full connected span from the supplied evidence. Previous cards preserve content only; their boundaries, titles, and categories are provisional.
-        Group time by the person's immediate activity. App switches within one task belong together. Sustained different activities deserve separate cards. Each card must be 10–60 minutes. Absorb interruptions under five minutes; a distinct 5–9-minute episode may borrow the minimum neighboring minutes to reach ten if the neighboring cards remain at least ten. Cover all observed time without overlaps and preserve real source gaps. A broad project or continuous computer session does not by itself make one activity.
-        If the entire connected span is under 10 minutes, return exactly one provisional card covering that span. Never invent time to reach ten minutes; later batches will extend it.
-        </ongoing_segmentation>
-        """
-    } else {
-      boundaryBlock = """
-        FRESH SEGMENT MODE — EXACTLY ONE CARD:
-        No previous card belongs to this batch's contiguous source-evidence segment. Nearby history separated by a genuine gap is left untouched. Return exactly ONE new card covering the entire supplied observation span, regardless of internal activity or goal changes. This card is provisional; later sliding-window passes may split it once each resulting activity has at least 10 minutes of supporting evidence.
-
-        Do not split this batch. Title and categorize its dominant activity, and put shorter or unrelated activity in the summary and detailed summary. This rule overrides all other coherence and splitting guidance for this call.
-        """
-    }
+    let boundaryBlock = """
+      Reconstruct the concrete activities and their supported times. Merge adjacent activities
+      with the same label into one card, even when their purposes differ. Keep different labels,
+      genuine gaps, privacy, recording pauses and 4 AM boundaries separate. Each card has positive
+      duration and is at most 60 minutes. Preserve all previous and new facts and timed details;
+      do not infer focus or inactivity from the label.
+      """
 
     return """
       <previous_cards>
@@ -79,10 +69,7 @@ extension ClaudeProvider {
   }
 
   func buildCardsCorrectionPrompt(validationError: String, requiresSingleCard: Bool) -> String {
-    let modeRequirement =
-      requiresSingleCard
-      ? "- This is a fresh segment. Return exactly ONE card covering the full supplied observation span."
-      : "- Recheck the entire array, not only the issue named above. Absorb every 1-4-minute card into the longer adjacent episode; a short first card merges into the full following session and a short final card merges backward. For every 5-9-minute card, move only enough neighboring minutes to bring it to 10, even when the borrowed minutes are unrelated, while preserving every neighboring episode that can remain at least 10 minutes. Examples: 4 minutes plus a following 33-minute same-session card becomes one 37-minute card; an 8-minute middle card followed by 15 minutes becomes 10 minutes plus 13 minutes; a distinct 6-minute ending after 20 minutes becomes 16 minutes plus 10 minutes. Never return the same invalid short boundary."
+    let modeRequirement = "- Preserve each concrete activity, including short first, middle and final activities."
 
     return """
       The previous JSON output has validation errors. Fix the existing output using the context from our ongoing conversation.
@@ -94,11 +81,10 @@ extension ClaudeProvider {
       - Return the FULL corrected JSON output (not a diff).
       - Preserve exactly the source-supported coverage. Keep genuine source gaps uncovered; never bridge them. Cards may be separated only where the inputs have a real gap. No overlaps.
       - Change the timestamps that caused the validation error; do not return the same invalid boundaries. If the issue says the cards do not cover all supplied observations, find every gap between consecutive cards and close the uncovered boundary by extending an adjacent card. In particular, if one card ends at 5:38 and the next begins at 5:39, make them meet at 5:38 or 5:39 rather than returning that one-minute gap again. If the issue says a card covers a genuine source gap, restore that gap instead.
-      - Every card must be 10-60 minutes, including the final card. There is no short-final-card exception unless the entire supplied span is under 10 minutes.
+      - Every card has positive duration and is at most 60 minutes. There is no minimum event length.
       \(modeRequirement)
-      - The duration rule overrides semantic purity. When unrelated activities must be merged, title and categorize the dominant activity and move the shorter activity into the summary and detailed summary.
-      - After merging, recompute the title and category from the combined duration. Never concatenate an absorbed short activity into the title unless it remains dominant by supported minutes. If nothing dominates, describe the ordinary mixed activity plainly, following the title guidance.
-      - A future pass may split an activity only after it has at least 10 supported minutes.
+      - Merge touching activities with the same label, but never borrow time across a genuine boundary.
+      - Keep source-supported titles and descriptions within their own event boundaries.
       - Output JSON only. No code fences or extra text.
       """
   }

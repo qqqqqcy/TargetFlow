@@ -66,6 +66,7 @@ struct WeekTimelineGridView: View {
   @State private var recordingProjection: TimelineRecordingProjectionWindow?
   @State private var refreshTimer: Timer?
   @State private var loadTask: Task<Void, Never>?
+  @State private var loadRevision = 0
   @State private var autoScrollWeekKey: String?
   // Gate the ScrollView's visibility on whether the initial auto-scroll has
   // fired. Prevents the flash-then-jump flicker where the ScrollView
@@ -200,6 +201,9 @@ struct WeekTimelineGridView: View {
       )
 
       loadActivities(trigger: "weekRangeChanged")
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .timelineCardsDidCommit).receive(on: DispatchQueue.main)) { _ in
+      loadActivities(trigger: "storageCommit")
     }
     .onChange(of: refreshTrigger) {
       loadActivities(trigger: "refreshTrigger")
@@ -361,7 +365,7 @@ struct WeekTimelineGridView: View {
           effectiveHeight: cardEffectiveHeight,
           durationMinutes: item.durationMinutes,
           palette: palette(for: item.categoryName),
-          isSelected: selectedActivity?.id == item.id,
+          isSelected: selectedActivity.map { item.activity.id == $0.id } ?? false,
           isHovered: isHov,
           showTimelineAppIcons: showTimelineAppIcons,
           faviconPrimaryRaw: item.faviconPrimaryRaw,
@@ -375,7 +379,7 @@ struct WeekTimelineGridView: View {
             scheduleHoverChange(cardID: item.id, hovering: hovering)
           }
         ) {
-          if selectedActivity?.id == item.id {
+          if let selectedActivity, item.activity.id == selectedActivity.id {
             onClearSelection()
           } else {
             onSelectActivity(item.activity)
@@ -451,6 +455,8 @@ struct WeekTimelineGridView: View {
   }
 
   private func loadActivities(trigger: String = "unspecified") {
+    loadRevision += 1
+    let requestedRevision = loadRevision
     let requestedSelectedDate = selectedDate
     let requestedSelectedDay = DateFormatter.yyyyMMdd.string(
       from: timelineDisplayDate(from: requestedSelectedDate)
@@ -512,12 +518,12 @@ struct WeekTimelineGridView: View {
           positioned.append(
             WeekPositionedActivity(
               id: segment.activity.id,
-              activity: segment.activity,
+              activity: segment.selectionActivity,
               columnIndex: dayLookup[day.dayString] ?? 0,
               yPosition: calculateYPosition(for: segment.start) + 1,
               height: height,
               durationMinutes: durationMinutes,
-              title: segment.activity.title,
+              title: segment.displayTitle,
               categoryName: segment.activity.category,
               faviconPrimaryRaw: primaryRaw,
               faviconSecondaryRaw: secondaryRaw,
@@ -569,14 +575,15 @@ struct WeekTimelineGridView: View {
       }
 
       await MainActor.run {
+        guard !Task.isCancelled, loadRevision == requestedRevision,
+          TimelineWeekRange.containing(selectedDate) == requestedWeekRange else { return }
         let commitStart = CFAbsoluteTimeGetCurrent()
         positionedActivities = positioned
         recordingProjection = projection
         hasAnyActivities = !positioned.isEmpty
-        if let selectedActivity,
-          !positioned.contains(where: { $0.activity.id == selectedActivity.id })
-        {
-          self.selectedActivity = nil
+        if let selectedActivity {
+          self.selectedActivity = TimelineActivityLoader.restoredSelection(
+            selectedActivity, in: positioned.map(\.activity))
         }
 
         if autoScrollWeekKey != requestedWeekID {
@@ -760,9 +767,8 @@ struct WeekTimelineGridView: View {
     let matched = categoryStore.categories.first {
       $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalizedCategory
     }
-    let fallback = categoryStore.categories.first ?? CategoryPersistence.defaultCategories.first!
-    let category = matched ?? fallback
-    let accent = Color(nsColor: NSColor(hex: category.colorHex) ?? .systemBlue)
+    let category = TimelineEventDisplay.reservedCategory(rawCategory) ?? matched
+    let accent = Color(nsColor: NSColor(hex: category?.colorHex ?? "#A0AEC0") ?? .systemGray)
 
     return WeekTimelineCardPalette(
       accent: accent,

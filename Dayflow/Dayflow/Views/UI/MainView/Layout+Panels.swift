@@ -220,7 +220,7 @@ extension MainView {
             hasAnyActivities: $hasAnyActivities,
             refreshTrigger: $refreshActivitiesTrigger,
             contentLeadingInset: 0,
-            hourHeight: TimelineScale.hourHeight,
+            zoom: dayTimelineZoom,
             cardTextFontSize: TimelineTypography.cardTextFontSize,
             cardTextFontWeight: TimelineTypography.cardTextFontWeight,
             timeLabelFontSize: TimelineTypography.timeLabelFontSize,

@@ -34,7 +34,8 @@ struct OneStepTimelineFrames {
   static func write(
     _ screenshots: [Screenshot], maxHeight: Int, directoryPrefix: String
   ) async throws -> OneStepTimelineFrames {
-    try await Task.detached(priority: .utility) {
+    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
+    return try await Task.detached(priority: .utility) {
       let sorted = screenshots.sorted { $0.capturedAt < $1.capturedAt }
       let selected = ClaudeTranscriptionInputBuilder.evenlySpacedIndices(itemCount: sorted.count)
         .map { sorted[$0] }
@@ -95,6 +96,7 @@ enum OneStepTimelineObservations {
       )
     }
 
+    let cards = cards.filter { $0.evidenceKind == nil || $0.evidenceKind == .visible }
     var observations: [Observation] = []
     for card in cards {
       for line in card.detailedSummary.components(separatedBy: .newlines) {

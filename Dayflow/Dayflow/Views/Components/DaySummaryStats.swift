@@ -23,7 +23,8 @@ enum DaySummaryStats {
   private static let minutesPerDay: Int = 24 * 60
 
   private static func normalizedCategoryName(_ name: String) -> String {
-    name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    let key = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return key == TimelineEventDisplay.unmatched || key == "idle time" ? "idle" : key
   }
 
   private static func timelineMinutes(for timeString: String) -> Int? {
@@ -110,7 +111,8 @@ enum DaySummaryStats {
     from precomputed: [CardWithDuration], categories: [TimelineCategory]
   ) -> [CardWithDuration] {
     let nonSystemDurations = precomputed.filter { item in
-      !isSystemCategoryStatic(item.card.category, categories: categories)
+      item.card.evidenceKind != .privacyRedacted
+        && !isSystemCategoryStatic(item.card.category, categories: categories)
     }
     return removeOverlaps(from: nonSystemDurations)
   }
@@ -129,7 +131,8 @@ enum DaySummaryStats {
       durationsByCategory[categoryKey, default: 0] += item.duration
 
       if fallbackNamesByCategory[categoryKey] == nil {
-        fallbackNamesByCategory[categoryKey] = item.card.category
+        fallbackNamesByCategory[categoryKey] =
+          TimelineEventDisplay.reservedCategory(item.card.category)?.name ?? item.card.category
       }
     }
 
@@ -184,7 +187,8 @@ enum DaySummaryStats {
   ) -> TimeInterval {
     normalizedNonSystemDurations(from: precomputed, categories: categories)
       .filter {
-        isGoalCategoryStatic($0.card.category, snapshots: snapshots, categories: categories)
+        $0.card.evidenceKind != .unknown
+          && isGoalCategoryStatic($0.card.category, snapshots: snapshots, categories: categories)
       }
       .reduce(0) { $0 + $1.duration }
   }
@@ -196,7 +200,8 @@ enum DaySummaryStats {
   ) -> [FocusBlock] {
     let focusCards = normalizedNonSystemDurations(from: precomputed, categories: categories)
       .filter {
-        isGoalCategoryStatic($0.card.category, snapshots: snapshots, categories: categories)
+        $0.card.evidenceKind != .unknown
+          && isGoalCategoryStatic($0.card.category, snapshots: snapshots, categories: categories)
       }
 
     var blocks: [(start: Int, end: Int)] = []
@@ -232,7 +237,8 @@ enum DaySummaryStats {
     normalizedNonSystemDurations(from: precomputed, categories: categories).reduce(0) {
       total, item in
       guard
-        isGoalCategoryStatic(item.card.category, snapshots: snapshots, categories: categories)
+        item.card.evidenceKind != .unknown
+          && isGoalCategoryStatic(item.card.category, snapshots: snapshots, categories: categories)
       else { return total }
       return total + item.duration
     }
@@ -244,7 +250,7 @@ enum DaySummaryStats {
     -> Bool
   {
     let normalized = normalizedCategoryName(name)
-    if normalized == "system" { return true }
+    if normalized == "system" || normalized == "idle" || normalized == TimelineEventDisplay.privacy { return true }
     guard let category = categories.first(where: { normalizedCategoryName($0.name) == normalized })
     else {
       return false
@@ -256,7 +262,7 @@ enum DaySummaryStats {
   private static func isGoalCategoryStatic(
     _ name: String, snapshots: [DayGoalCategorySnapshot], categories: [TimelineCategory]
   ) -> Bool {
-    if isSystemCategoryStatic(name, categories: categories) { return false }
+    if TimelineEventDisplay.isReserved(name) || isSystemCategoryStatic(name, categories: categories) { return false }
     let normalized = normalizedCategoryName(name)
     let selectedIDs = Set(snapshots.map(\.categoryID))
 

@@ -50,40 +50,13 @@ enum ClaudeTimelinePrompt {
     """#
 
   static let template = #"""
-    You are turning screenshots of a user's screen into event timeline cards. Each card describes one concrete thing they did, with a specific subject and action; labels are secondary metadata.
+    You are turning screenshots of a user's screen into event timeline cards. Each card describes consecutive activities with one label, preserving their specific subjects and actions.
 
     CORE PRINCIPLE:
-    Each card = one coherent activity. Time is a constraint (10-60 min), not a goal.
-
-    CARD BOUNDARIES:
-    - Minimum card length: 10 minutes
-    - Maximum card length: 60 minutes
-    - If the entire supplied span (including connected previous cards) is under 10 minutes, return one provisional card covering exactly that span. Do not invent extra time to reach the minimum; later batches will extend it.
-    - Otherwise, the 10-minute minimum has one exception: the LAST card may be shorter when a clearly different activity started in the final minutes and is still going in the last screenshot (the next batch will extend it). Never output a short card anywhere else, and never output two cards under 10 minutes. The new activity must fill at least the last 3 minutes; a single different screen at the very end is a detail line of the current card.
-    - If the first minutes of the new window continue the last previous card's activity, those minutes extend that card instead of opening the new one.
-    - When the new window does not contain 10 minutes of a second activity, it belongs in one card: extend the last previous card when its activity continues, otherwise write one card for the window and record the shorter stretches as detail lines and distractions.
-    - A window made of many unrelated short visits is ONE card, titled as scattered (see TITLE GUIDELINES). Its category is Distraction when most minutes were feeds, videos, shopping or aimless tab-hopping, otherwise the category that holds the most minutes.
-    - Brief interruptions (<5 min) that don't change your focus = distractions within the card
-
-    WHEN TO SPLIT (new card):
-    - The user's GOAL changes, not just their tool/app
-    - You'd need "and" to connect two genuinely unrelated activities in the title
-
-    WHEN TO MERGE (same card):
-    - Consecutive activities serve the same concrete goal (e.g., reviewing mockups -> discussing those mockups -> iterating on those mockups = one design session). Sharing a broad project or event label alone is not enough.
-    - Switching apps/tools within the same task (Figma -> Meet -> Figma for one design review)
-    - Back-to-back games of the same game = one gaming session
-    - Debugging across IDE + Terminal + Browser = one debugging session
-
-    BIAS: Default to MERGING. Ask "would the user describe this as one sitting/session?" If yes, it's one card. Fewer rich cards are better than many granular ones.
-
-    BOUNDARY STRICTNESS:
-    - Split when two sustained activities have different goals, products, people, or domains and each lasts at least 10 minutes.
-    - Do not merge consumer browsing, shopping, media, or personal advice with product/build work unless they serve the same concrete goal.
-    - Do not create a separate card for a brief side quest under 10 minutes; merge it into the surrounding card as a distraction.
-    - Prefer concrete titles that name the actual artifact, product, person, company, place, or game. Avoid generic titles like "researching" or "working on".
-    - Do not claim intent or completion that is not visible in the screenshots.
-    - Every detailedSummary line must be grounded in what a screenshot shows.
+    Merge consecutive activities with the same label into one event, even if their purposes differ.
+    Preserve all concrete activities and their time bounds in the title, summary and detailedSummary.
+    Different labels, true gaps, privacy, recording pauses and the 4 AM boundary split events.
+    Each card has a positive duration of at most 60 minutes. Do not infer focus or inactivity from a label.
 
     CONTINUITY RULE:
     Never introduce gaps or overlaps. Adjacent cards should meet cleanly. Preserve any original gaps from the source timeline.
@@ -143,7 +116,7 @@ enum ClaudeTimelinePrompt {
     Don't use "and" to connect unrelated things. Pick the main activity for the title; the rest goes in the summary.
 
     Bad: "Fixed bug and replied to emails" -> Good: "Fixed pagination crash" (emails in summary)
-    Bad: "YouTube then coded" -> Good: "Built the settings modal" (YouTube is a distraction)
+    Describe both activities when they have the same label; split them when labels differ.
     Bad: "Read articles, watched TikTok, checked Discord" -> Good: "Scattered browsing" (it was scattered, just say that)
 
     "And" is okay when both parts serve the same goal:
@@ -215,14 +188,15 @@ enum ClaudeTimelinePrompt {
 
     DISTRACTIONS
 
-    A distraction is a brief (<5 min) unrelated interruption that doesn't change the card's main focus.
+    Retain each interruption and its supported time bounds. Separate it only if its label or a real evidence boundary differs.
+    Return distractions as an empty array for newly generated cards; preserve actual event boundaries.
     - Listing a distraction never replaces its detailedSummary line: the minute appears in both places.
     - Another task on the same project, another work task, or a tool used for the card's goal is not a distraction. Give it a detail line only.
     - When the card itself is scattered browsing or entertainment, leave distractions empty; the detail lines already tell the story.
 
     NOT distractions:
-    - A 24-minute League game (that's its own card)
-    - A 10-minute Twitter scroll (new card or merge thoughtfully)
+    - A 24-minute League game (a separate card only if its label or an evidence boundary differs)
+    - A short Twitter visit (preserve its own timed details)
     - Sub-tasks related to the main activity
 
     {{CATEGORIES}}
@@ -261,20 +235,20 @@ enum ClaudeTimelinePrompt {
     DECISION PROCESS
 
     Before finalizing a card, ask:
-    1. What's the one main thing in this card?
-    2. Can I title it without using "and" between unrelated things?
-    3. Are there any sustained (>10 min) activities that should be their own card?
+    1. Which concrete activities occurred in this card?
+    2. Does the title reflect all activities in the event?
+    3. Are touching activities with the same label combined while retaining their details?
     4. Are the "distractions" actually brief interruptions, or separate activities?
 
     INPUT/OUTPUT CONTRACT:
     Your output cards MUST cover the same total time range as the "Previous cards" plus the new time covered by the screenshots.
     - If Previous cards span 11:11 AM - 11:53 AM, your output must also cover 11:11 AM - 11:53 AM (you may restructure the cards, but don't drop time segments)
-    - If the screenshots extend beyond the previous cards' time range, create additional cards to cover that new time
+    - If screenshots extend the previous cards, extend the last card when the label and evidence are continuous and it remains within 60 minutes; otherwise create additional cards.
     - The only exception: if there's a genuine gap between previous cards (e.g., 11:27 AM to 11:33 AM with no activity), preserve that gap
     - Think of "Previous cards" as a DRAFT that you're revising/extending, not as locked history
     - Every previous card must appear in the output, either as it was or extended. Never drop one.
-    - A previous card shorter than 10 minutes was a provisional final card. Extend it with the new minutes when its activity continued. When it did not continue, fold it into the card before it or the card after it (keep its detail lines, and list it as a distraction there when it was off-topic), so that no card under 10 minutes is left between other cards.
-    - A card with more than five distractions is wrongly cut. When off-topic visits take up most of the new minutes, end the previous card where the focused work stopped and put the new minutes in their own card.
+    - Combine touching previous and new activities with the same label, preserving their facts and timing; split different labels and genuine gaps.
+    - Retain every interruption with its own supported time; split only for a different label or a real evidence boundary.
     - When you extend a previous card, keep its category unless most of its time now belongs to a different one.
     - Keep the detailedSummary lines of previous cards word for word; when you extend a card, add the new lines after them and update its endTime, title and summary to fit the whole card.
     - Previous cards describe time you cannot see. Do not describe an earlier event again as if it happened in the new window, and do not carry a detail from a previous line (a count, a score, a timestamp) into a new line unless a new screenshot shows it.

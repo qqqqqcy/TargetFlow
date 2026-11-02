@@ -1,6 +1,21 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Pinch to zoom the day timeline. Scroll with two fingers to move through time." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "双指捏合缩放日时间线，双指上下滚动浏览时间。"}}}},
+    "Zoom out day timeline" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "缩小日时间线"}}}},
+    "Zoom in day timeline" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "放大日时间线"}}}},
+    "Day timeline zoom" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "日时间线缩放比例"}}}},
+    "Reset day timeline zoom to 100%" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "将日时间线缩放重置为100%"}}}},
+    "Status: This retry failed" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "状态：本次重试失败"}}}},
+    "Status: Queue paused - earlier retry failed" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "状态：队列已暂停，前一项重试失败"}}}},
+    "Target Flow couldn't match these events to the recorded time range. You can retry this time." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "Target Flow 未能将这些事件与录屏时间范围对应。你可以点击重试。"}}}},
+    "This time couldn't be turned into events. You can retry this time." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "这段录屏暂时未能生成事件。你可以点击重试。"}}}},
+    "This time couldn't be turned into events. You can retry this time. Your recording is saved." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "这段录屏暂时未能生成事件。你可以点击重试，录屏已保存。"}}}},
+    "Your recording is saved." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "录屏已保存。"}}}},
+    "Inactivity duration" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "无活动时长"}}}},
+    "Mark inactivity after this long with no input and no meaningful screen changes. Separate from the card generation interval; applies to future assessments." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "持续无输入且屏幕无明显变化达到此时长后，标记为无活动。与卡片生成间隔独立，适用于之后的评估。"}}}},
+    "At least %lld minutes with no input and no meaningful visible screen change. This is a heuristic, not proof of intent." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "至少 %lld 分钟无输入且屏幕无明显变化。这是启发式判断，并不代表用户意图。"}}}},
+    "No input and no meaningful visible screen change for at least %lld minutes." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "至少 %lld 分钟无输入且屏幕无明显变化。"}}}},
     "Dismiss manually" : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "手动收起"}}}},
     "Stays expanded until you click Collapse or View Events & Goals." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "展开后持续显示，直到你点击“折叠”或“查看事件与目标”。"}}}},
     "The notch notification will stay expanded until you click “Collapse” or “View Events & Goals”." : {"localizations": {"zh-Hans": {"stringUnit": {"state": "translated", "value": "刘海通知将持续展开，直到你点击“折叠”或“查看事件与目标”。"}}}},
@@ -2412,6 +2427,36 @@
         }
       }
     },
+    "Updating goal assessments: %lld remaining": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在更新目标评估：剩余 %lld 项"
+          }
+        }
+      }
+    },
+    "Saved events may need assessment when goals or evaluation rules change. The count includes the event currently being processed.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标或评估规则变更后，已保存的事件可能需要评估。剩余数量包含正在处理的事件。"
+          }
+        }
+      }
+    },
+    "Sending goal reminder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在发送目标提醒"
+          }
+        }
+      }
+    },
     "Assessing new events": {
       "localizations": {
         "zh-Hans": {
@@ -2792,12 +2837,12 @@
         }
       }
     },
-    "New recordings are analyzed at this interval. The same event may extend an existing card, so card durations vary.": {
+    "New recordings are analyzed at this interval. Events are published after reaching this duration; continuous events can extend longer.": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每隔这段时间分析新记录；同一事件可能延长已有卡片，因此卡片时长不固定。"
+            "value": "每隔这段时间分析新记录；正式事件达到该时长后才会发布，连续事件可以继续延长。"
           }
         }
       }
@@ -3240,6 +3285,48 @@
             "value": "无法发送：请先请求通知权限，或在系统通知设置中允许通知。"
           }
         }
+      }
+    },
+    "Unmatched": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unmatched" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "未匹配事件" } }
+      }
+    },
+    "Privacy protected this period. Activity was not inferred.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Privacy protected this period. Activity was not inferred." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "此时段受隐私保护，未推断活动内容。" } }
+      }
+    },
+    "Activity evidence is unavailable for this period.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Activity evidence is unavailable for this period." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "此时段缺少可用的活动证据。" } }
+      }
+    },
+    "No input and no meaningful visible screen change were detected (heuristic).": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No input and no meaningful visible screen change were detected (heuristic)." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "检测到无输入且屏幕无明显变化（启发式判断）。" } }
+      }
+    },
+    "Return to an enabled goal, or take an intentional break.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Return to an enabled goal, or take an intentional break." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "回到已启用的目标，或有意识地休息片刻。" } }
+      }
+    },
+    "This older event contains mixed activity and needs separate periods; it cannot be treated as entirely focused.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This older event contains mixed activity and needs separate periods; it cannot be treated as entirely focused." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "此历史事件包含不同活动，需要分段，不能整段视为专注。" } }
+      }
+    },
+    "Review the mixed activity and return to an enabled goal.": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Review the mixed activity and return to an enabled goal." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "检查混合活动，并回到已启用的目标。" } }
       }
     },
     "Unknown status": {

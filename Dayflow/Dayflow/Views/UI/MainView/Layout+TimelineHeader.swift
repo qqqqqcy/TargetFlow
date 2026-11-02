@@ -81,13 +81,26 @@ private struct TimelineNavigationButton: View {
 extension MainView {
   // Optional controls appear according to the available header width.
   var timelineHeader: some View {
+    Group {
+      if timelineMode == .day {
+        DayTimelineHeaderLayout {
+          timelineHeaderNavigation
+          DayTimelineZoomControls(zoom: dayTimelineZoom)
+        }
+      } else {
+        timelineHeaderNavigation
+      }
+    }
+    .padding(.horizontal, 10)
+  }
+
+  private var timelineHeaderNavigation: some View {
     GeometryReader { geo in
       let visibility = computeHeaderVisibility(availableWidth: geo.size.width)
       timelineLeadingControls(visibility: visibility)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
     .frame(height: 36)
-    .padding(.horizontal, 10)
   }
 
   // Actual pixel width of the current date label text, measured via NSFont

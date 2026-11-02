@@ -13,7 +13,8 @@ extension StorageManager {
 
   /// Records one captured frame. `file_size` stays NULL until the segment is finalized.
   func saveScreenshot(
-    segmentPath: String, frameIndex: Int, capturedAt: Date, idleSecondsAtCapture: Int?
+    segmentPath: String, frameIndex: Int, capturedAt: Date, idleSecondsAtCapture: Int?,
+    isPrivacyRedacted: Bool = false
   ) -> Int64? {
     let timestamp = Int(capturedAt.timeIntervalSince1970)
 
@@ -21,9 +22,9 @@ extension StorageManager {
     try? timedWrite("saveScreenshot") { db in
       try db.execute(
         sql: """
-              INSERT INTO screenshots(captured_at, file_path, frame_index, idle_seconds_at_capture)
-              VALUES (?, ?, ?, ?)
-          """, arguments: [timestamp, segmentPath, frameIndex, idleSecondsAtCapture])
+              INSERT INTO screenshots(captured_at, file_path, frame_index, idle_seconds_at_capture, is_privacy_redacted)
+              VALUES (?, ?, ?, ?, ?)
+          """, arguments: [timestamp, segmentPath, frameIndex, idleSecondsAtCapture, isPrivacyRedacted])
       screenshotId = db.lastInsertedRowID
     }
     return screenshotId
@@ -95,7 +96,8 @@ extension StorageManager {
       fileSize: row["file_size"],
       idleSecondsAtCapture: row["idle_seconds_at_capture"],
       isDeleted: (row["is_deleted"] as? Int ?? 0) != 0,
-      frameIndex: row["frame_index"]
+      frameIndex: row["frame_index"],
+      isPrivacyRedacted: row["is_privacy_redacted"]
     )
   }
 

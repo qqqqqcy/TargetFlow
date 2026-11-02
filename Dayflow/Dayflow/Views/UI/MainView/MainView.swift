@@ -20,6 +20,7 @@ struct MainView: View {
   @State var selectedDate = timelineDisplayDate(from: Date())
   @State var cachedTimelineWeekRange: TimelineWeekRange = TimelineWeekRange.containing(
     timelineDisplayDate(from: Date()))
+  @StateObject var dayTimelineZoom = DayTimelineZoomState()
   @State var timelineMode: TimelineMode = .day
   @State var hideWeekCardsDuringModeSwitch = false
   @State var showDatePicker = false

@@ -7,19 +7,26 @@
 //
 
 import Foundation
+import CoreGraphics
 
 enum IdleBatchRules {
-  static let classifierVersion = "idle_v1"
-  static let minimumEligibleBatchDurationSeconds = 12 * 60
+  static let classifierVersion = "unchanged_input_inactive_v4"
+  static let historyCadenceAllowanceSeconds = 120
+  // 15-minute threshold + 2-minute cadence allowance + 15-minute batch at 1 Hz
+  // needs at most 1,921 frames, including both endpoints.
+  static let maximumComparedFrames = 2048
+
+  static func historyLookbackSeconds(thresholdSeconds: Int) -> Int {
+    thresholdSeconds + historyCadenceAllowanceSeconds
+  }
   static let requiredCoverageRatio = 0.95
-  static let requiredQualifiedIdleRatio = 0.90
   static let requiredIdleSampleAvailabilityRatio = 0.90
-  static let qualifyingIdleSecondsAtCapture = 60
   static let maxAllowedUncoveredGapSeconds = 30
   static let mergeGapSeconds = 5 * 60
 }
 
 struct IdleBatchAssessment {
+  let thresholdSeconds: Int
   let classifierVersion: String
   let coverageRatio: Double
   let coveredSeconds: Int
@@ -32,19 +39,57 @@ struct IdleBatchAssessment {
 }
 
 enum IdleBatchClassifier {
-  static func assess(_ screenshots: [Screenshot]) -> IdleBatchAssessment? {
+  static func assess(
+    _ screenshots: [Screenshot], history: [Screenshot] = [], evidenceSince: Int? = nil,
+    thresholdSeconds: Int = InactivityPreferences.thresholdSeconds,
+    pixels: (Screenshot) -> [UInt8]? = screenPixels
+  ) -> IdleBatchAssessment? {
     let ordered = screenshots.sorted { $0.capturedAt < $1.capturedAt }
-    guard let first = ordered.first, let last = ordered.last else { return nil }
+    guard let first = ordered.first, let last = ordered.last,
+      !ordered.contains(where: { $0.isPrivacyRedacted || $0.isDeleted }),
+      evidenceSince.map({ first.capturedAt >= $0 }) ?? true
+    else { return nil }
+
+    guard InactivityPreferences.thresholdOptions.contains(thresholdSeconds) else { return nil }
+    // A whole unchanged batch may qualify once the selected duration is reached
+    // at its end; earlier cards are retained and never relabeled retroactively.
+    let windowStart = last.capturedAt - thresholdSeconds
+    let preceding = history.filter {
+      $0.capturedAt <= first.capturedAt
+        && $0.capturedAt >= windowStart - IdleBatchRules.historyCadenceAllowanceSeconds
+    }
+      .filter { frame in
+        frame.id != first.id && (evidenceSince.map { frame.capturedAt >= $0 } ?? true)
+      }
+    let window = (preceding + ordered).sorted { $0.capturedAt < $1.capturedAt }
+    guard window.count <= IdleBatchRules.maximumComparedFrames, let baselineFrame = window.first,
+      baselineFrame.capturedAt <= windowStart,
+      !window.contains(where: { $0.isPrivacyRedacted || $0.isDeleted }),
+      let baseline = pixels(baselineFrame), !baseline.isEmpty
+    else { return nil }
+    let gaps = zip(window, window.dropFirst()).map { $1.capturedAt - $0.capturedAt }.filter { $0 > 0 }.sorted()
+    guard !gaps.isEmpty else { return nil }
+    // Lower quartile resists a few missing captures inflating the expected cadence.
+    let expectedCadence = gaps[gaps.count / 4]
+    let maximumGap = min(120, max(2, Int(Double(expectedCadence) * 1.5) + 1))
+    for (index, frame) in window.enumerated() {
+      guard let idle = frame.idleSecondsAtCapture,
+        idle >= frame.capturedAt - baselineFrame.capturedAt,
+        index == 0 || frame.capturedAt - window[index - 1].capturedAt <= maximumGap,
+        let sample = pixels(frame), isSimilar(baseline, sample)
+      else { return nil }
+    }
 
     let batchStartTs = first.capturedAt
     let batchEndTs = last.capturedAt
     let batchDurationSeconds = batchEndTs - batchStartTs
     guard
-      batchDurationSeconds >= IdleBatchRules.minimumEligibleBatchDurationSeconds
+      batchDurationSeconds > 0
     else { return nil }
 
     let idleSamples = ordered.compactMap { screenshot -> (capturedAt: Int, idleSeconds: Int)? in
-      guard let idleSeconds = screenshot.idleSecondsAtCapture, idleSeconds > 0 else { return nil }
+      // Zero at the first frame is valid evidence of the run's input onset.
+      guard let idleSeconds = screenshot.idleSecondsAtCapture, idleSeconds >= 0 else { return nil }
       return (capturedAt: screenshot.capturedAt, idleSeconds: idleSeconds)
     }
 
@@ -66,15 +111,13 @@ enum IdleBatchClassifier {
     let largestUncoveredGapSeconds = uncoveredSegments.map { max(0, $0.end - $0.start) }.max() ?? 0
     let coverageRatio = Double(coveredSeconds) / Double(batchDurationSeconds)
     let idleValues = idleSamples.map(\.idleSeconds)
-    let qualifiedIdleScreenshotCount = idleValues.filter {
-      $0 >= IdleBatchRules.qualifyingIdleSecondsAtCapture
-    }.count
-    let qualifiedIdleRatio = Double(qualifiedIdleScreenshotCount) / Double(ordered.count)
+    // Every frame already proves no input since the fixed baseline. Requiring a
+    // further share of samples to be idle for 60 seconds would delay a true
+    // five-minute run that begins immediately after the user's last input.
     let idleSampleAvailabilityRatio = Double(idleValues.count) / Double(ordered.count)
 
     guard
       coverageRatio >= IdleBatchRules.requiredCoverageRatio,
-      qualifiedIdleRatio >= IdleBatchRules.requiredQualifiedIdleRatio,
       idleSampleAvailabilityRatio >= IdleBatchRules.requiredIdleSampleAvailabilityRatio,
       largestUncoveredGapSeconds <= IdleBatchRules.maxAllowedUncoveredGapSeconds
     else {
@@ -84,6 +127,7 @@ enum IdleBatchClassifier {
     let averageIdleSeconds = Double(idleValues.reduce(0, +)) / Double(idleValues.count)
 
     return IdleBatchAssessment(
+      thresholdSeconds: thresholdSeconds,
       classifierVersion: IdleBatchRules.classifierVersion,
       coverageRatio: coverageRatio,
       coveredSeconds: coveredSeconds,
@@ -106,8 +150,9 @@ enum IdleBatchClassifier {
     formatter.locale = Locale(identifier: "en_US_POSIX")
     formatter.timeZone = TimeZone.current
 
-    let detailedSummary =
-      "Idle period. Target Flow skipped activity summarization for this block."
+    let minutes = (metadata.inactivityThresholdSeconds ?? InactivityPreferences.defaultThreshold) / 60
+    let detailedSummary = String(localized:
+      "At least \(minutes) minutes with no input and no meaningful visible screen change. This is a heuristic, not proof of intent.")
 
     return TimelineCardShell(
       startTimestamp: formatter.string(from: startDate),
@@ -115,12 +160,43 @@ enum IdleBatchClassifier {
       category: "Idle",
       subcategory: "",
       title: "Idle",
-      summary: "You were idle during this period.",
+      summary: String(localized: "No input and no meaningful visible screen change for at least \(minutes) minutes."),
       detailedSummary: detailedSummary,
       distractions: nil,
       appSites: nil,
-      idleMetadata: metadata
+      idleMetadata: metadata,
+      evidenceKind: .inputInactive
     )
+  }
+
+  static func isSimilar(_ baseline: [UInt8], _ sample: [UInt8]) -> Bool {
+    guard !baseline.isEmpty, baseline.count == sample.count else { return false }
+    var totalDifference = 0
+    var changed = 0
+    for (a, b) in zip(baseline, sample) {
+      let delta = abs(Int(a) - Int(b))
+      totalDifference += delta
+      if delta > 12 { changed += 1 }
+    }
+    return Double(totalDifference) / Double(baseline.count) <= 1.5
+      && Double(changed) / Double(baseline.count) <= 0.005
+  }
+
+  static func screenPixels(_ screenshot: Screenshot) -> [UInt8]? {
+    guard !screenshot.isPrivacyRedacted, !screenshot.isDeleted,
+      let image = FrameStore.shared.image(for: screenshot, maxPixelSize: 96)
+    else { return nil }
+    var bytes = [UInt8](repeating: 0, count: 96 * 54)
+    let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+      guard let context = CGContext(
+        data: buffer.baseAddress, width: 96, height: 54, bitsPerComponent: 8,
+        bytesPerRow: 96, space: CGColorSpaceCreateDeviceGray(), bitmapInfo: 0)
+      else { return false }
+      context.interpolationQuality = .low
+      context.draw(image, in: CGRect(x: 0, y: 0, width: 96, height: 54))
+      return true
+    }
+    return drawn ? bytes : nil
   }
 
   private static func mergeCoverageSegments(

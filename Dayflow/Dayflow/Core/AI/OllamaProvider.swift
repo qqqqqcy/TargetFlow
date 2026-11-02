@@ -92,133 +92,22 @@ final class OllamaProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let callStart = Date()
-    var logs: [String] = []
-
-    let sortedObservations = context.batchObservations.sorted { $0.startTs < $1.startTs }
-
-    guard let firstObservation = sortedObservations.first,
-      let lastObservation = sortedObservations.last
-    else {
-      throw NSError(
-        domain: "OllamaProvider",
-        code: 16,
-        userInfo: [
-          NSLocalizedDescriptionKey: "Cannot generate activity cards: no observations provided"
-        ]
-      )
-    }
-
-    // Generate initial activity card for these observations
-    let (titleSummary, firstLog) = try await generateTitleAndSummary(
-      observations: sortedObservations,
-      categories: context.categories,
-      batchId: batchId
-    )
-    logs.append(firstLog)
-
-    let normalizedCategory = normalizeCategory(
-      titleSummary.category, categories: context.categories)
-
-    let initialCard = ActivityCardData(
-      startTime: formatTimestampForPrompt(firstObservation.startTs),
-      endTime: formatTimestampForPrompt(lastObservation.endTs),
-      category: normalizedCategory,
-      subcategory: "",
-      title: titleSummary.title,
-      summary: titleSummary.summary,
-      detailedSummary: titleSummary.detailedSummary ?? "",
-      distractions: nil,
-      appSites: titleSummary.appSites
-    )
-
-    var allCards = context.existingCards
-
-    // Check if we should merge with the last existing card
-    if !allCards.isEmpty, let lastExistingCard = allCards.last {
-      // Hard cap: Don't even try to merge if the last card is already 25+ minutes
-      let lastCardDuration = calculateDurationInMinutes(
-        from: lastExistingCard.startTime, to: lastExistingCard.endTime)
-
-      if lastCardDuration >= 40 {
-        allCards.append(initialCard)
-      } else {
-        let gapMinutes = calculateDurationInMinutes(
-          from: lastExistingCard.endTime, to: initialCard.startTime)
-        if gapMinutes > 5 {
-          allCards.append(initialCard)
-        } else {
-          let candidateDuration = calculateDurationInMinutes(
-            from: lastExistingCard.startTime, to: initialCard.endTime)
-          if candidateDuration > 60 {
-            allCards.append(initialCard)
-          } else {
-            let (shouldMerge, mergeLog) = try await checkShouldMerge(
-              previousCard: lastExistingCard,
-              newCard: initialCard,
-              batchId: batchId
-            )
-            logs.append(mergeLog)
-
-            if shouldMerge {
-              let (mergedCard, mergeCreateLog) = try await mergeTwoCards(
-                previousCard: lastExistingCard,
-                newCard: initialCard,
-                batchId: batchId
-              )
-
-              let mergedDuration = calculateDurationInMinutes(
-                from: mergedCard.startTime, to: mergedCard.endTime)
-
-              if mergedDuration > 60 {
-                allCards.append(initialCard)
-              } else {
-                logs.append(mergeCreateLog)
-                // Replace the last card with the merged version
-                allCards[allCards.count - 1] = mergedCard
-              }
-            } else {
-              // Add as new card
-              allCards.append(initialCard)
-            }
-          }
-        }
-      }
-    } else {
-      // No existing cards, just add the initial card
-      allCards.append(initialCard)
-    }
-
-    let totalLatency = Date().timeIntervalSince(callStart)
-
-    let combinedLog = LLMCall(
-      timestamp: callStart,
-      latency: totalLatency,
-      input: "Two-pass activity card generation",
-      output: logs.joined(separator: "\n\n---\n\n")
-    )
-
-    return (allCards, combinedLog)
+    let prompt = CodexProvider().buildCardsPrompt(observations: observations, context: context)
+    let output = try await callTextAPI(prompt, operation: "generate_cards", expectJSON: true, batchId: batchId)
+    let clean = output.trimmingCharacters(in: .whitespacesAndNewlines)
+      .replacingOccurrences(of: "```json", with: "").replacingOccurrences(of: "```", with: "")
+    let decoded = try JSONDecoder().decode([ActivityCardData].self, from: Data(clean.utf8))
+    let cards = TimelineOutputPolicy().normalizeCards(decoded, descriptors: context.categories)
+    try ClaudeOutputValidator.validateActivityCards(cards, existingCards: context.existingCards,
+      observations: observations)
+    return (cards, LLMCall(timestamp: callStart, latency: Date().timeIntervalSince(callStart),
+      input: prompt, output: output))
   }
 
   private func normalizeCategory(_ raw: String, categories: [LLMCategoryDescriptor]) -> String {
-    let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !cleaned.isEmpty else { return categories.first?.name ?? "" }
-    let normalized = cleaned.lowercased()
-    if let match = categories.first(where: {
-      $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
-    }) {
-      return match.name
-    }
-    if let idle = categories.first(where: { $0.isIdle }) {
-      let idleLabels = [
-        "idle", "idle time", idle.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-      ]
-      if idleLabels.contains(normalized) {
-        return idle.name
-      }
-    }
-    return categories.first?.name ?? cleaned
+    return TimelineOutputPolicy().normalizeCategory(raw, descriptors: categories)
   }
 
   func parseJSONResponse<T: Codable>(_ type: T.Type, from data: Data) throws -> T {

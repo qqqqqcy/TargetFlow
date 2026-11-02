@@ -26,6 +26,8 @@ struct TimelineActivity: Identifiable {
   let appSites: AppSites?
   let isBackupGenerated: Bool?
 
+  var evidenceKind: ActivityEvidenceKind? = nil
+
   static func stableId(
     recordId: Int64?, batchId: Int64?, startTime: Date, endTime: Date, title: String,
     category: String, subcategory: String
@@ -64,7 +66,8 @@ struct TimelineActivity: Identifiable {
       videoSummaryURL: videoSummaryURL,
       screenshot: screenshot,
       appSites: appSites,
-      isBackupGenerated: isBackupGenerated
+      isBackupGenerated: isBackupGenerated,
+      evidenceKind: evidenceKind
     )
   }
 
@@ -84,7 +87,8 @@ struct TimelineActivity: Identifiable {
       videoSummaryURL: videoSummaryURL,
       screenshot: screenshot,
       appSites: appSites,
-      isBackupGenerated: isBackupGenerated
+      isBackupGenerated: isBackupGenerated,
+      evidenceKind: evidenceKind
     )
   }
 

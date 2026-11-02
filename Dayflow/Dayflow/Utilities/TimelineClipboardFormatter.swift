@@ -72,7 +72,7 @@ struct TimelineClipboardFormatter {
     var parts: [String] = []
     let category = card.category.trimmingCharacters(in: .whitespacesAndNewlines)
     if !category.isEmpty {
-      parts.append(category)
+      parts.append(TimelineEventDisplay.reservedCategory(category)?.name ?? category)
     }
     return parts
   }

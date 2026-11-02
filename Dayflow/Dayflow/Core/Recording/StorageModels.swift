@@ -53,6 +53,10 @@ struct Distraction: Codable, Sendable, Identifiable {
   }
 }
 
+enum ActivityEvidenceKind: String, Codable, Sendable {
+  case visible, privacyRedacted, inputInactive, unknown
+}
+
 struct TimelineCard: Codable, Sendable, Identifiable {
   var id = UUID()
   let recordId: Int64?
@@ -70,6 +74,10 @@ struct TimelineCard: Codable, Sendable, Identifiable {
   let otherVideoSummaryURLs: [String]?  // For merged cards, subsequent video URLs
   let appSites: AppSites?
   let isBackupGenerated: Bool?
+  let evidenceKind: ActivityEvidenceKind?
+  // Exact stored boundaries prevent minute-formatted labels from hiding gaps.
+  let startTs: Int?
+  let endTs: Int?
 
   init(
     id: UUID = UUID(),
@@ -87,7 +95,10 @@ struct TimelineCard: Codable, Sendable, Identifiable {
     videoSummaryURL: String?,
     otherVideoSummaryURLs: [String]?,
     appSites: AppSites?,
-    isBackupGenerated: Bool? = nil
+    isBackupGenerated: Bool? = nil,
+    evidenceKind: ActivityEvidenceKind? = nil,
+    startTs: Int? = nil,
+    endTs: Int? = nil
   ) {
     self.id = id
     self.recordId = recordId
@@ -105,6 +116,9 @@ struct TimelineCard: Codable, Sendable, Identifiable {
     self.otherVideoSummaryURLs = otherVideoSummaryURLs
     self.appSites = appSites
     self.isBackupGenerated = isBackupGenerated
+    self.evidenceKind = evidenceKind
+    self.startTs = startTs
+    self.endTs = endTs
   }
 }
 
@@ -152,6 +166,9 @@ struct TimelineCardShell: Sendable {
   let appSites: AppSites?
   let isBackupGenerated: Bool?
   let idleMetadata: IdleCardMetadata?
+  let evidenceKind: ActivityEvidenceKind?
+  let exactStartTs: Int?
+  let exactEndTs: Int?
   // No videoSummaryURL here, as it's added later
   // No batchId here, as it's passed as a separate parameter to the save function
 
@@ -166,8 +183,12 @@ struct TimelineCardShell: Sendable {
     distractions: [Distraction]?,
     appSites: AppSites?,
     isBackupGenerated: Bool? = nil,
-    idleMetadata: IdleCardMetadata? = nil
+    idleMetadata: IdleCardMetadata? = nil,
+    evidenceKind: ActivityEvidenceKind? = nil,
+    exactStartTs: Int? = nil, exactEndTs: Int? = nil
   ) {
+    self.exactStartTs = exactStartTs
+    self.exactEndTs = exactEndTs
     self.startTimestamp = startTimestamp
     self.endTimestamp = endTimestamp
     self.category = category
@@ -179,6 +200,7 @@ struct TimelineCardShell: Sendable {
     self.appSites = appSites
     self.isBackupGenerated = isBackupGenerated
     self.idleMetadata = idleMetadata
+    self.evidenceKind = evidenceKind
   }
 }
 
@@ -195,6 +217,7 @@ struct IdleCardMetadata: Codable, Sendable {
   let mergedWithPreviousIdle: Bool
   let mergeGapSeconds: Int?
   let skippedLLM: Bool
+  var inactivityThresholdSeconds: Int? = nil
 }
 
 // New metadata envelope to support multiple fields under one JSON column
@@ -203,6 +226,7 @@ struct TimelineMetadata: Codable {
   let appSites: AppSites?
   let isBackupGenerated: Bool?
   let idle: IdleCardMetadata?
+  var evidenceKind: ActivityEvidenceKind? = nil
 }
 
 // Extended TimelineCard with timestamp fields for internal use
@@ -220,4 +244,5 @@ struct TimelineCardWithTimestamps {
   let day: String
   let distractions: [Distraction]?
   let videoSummaryURL: String?
+  var evidenceKind: ActivityEvidenceKind? = nil
 }

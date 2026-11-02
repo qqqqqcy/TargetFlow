@@ -15,7 +15,9 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
   // Optional for backwards-compatible decoding of existing event definitions.
   var targetEnabled: Bool?
 
-  var isCurrentTarget: Bool { !isSystem && !isIdle && targetEnabled == true }
+  var isCurrentTarget: Bool {
+    !isSystem && !isIdle && !TimelineEventDisplay.isReserved(name) && targetEnabled == true
+  }
 
   init(
     id: UUID = UUID(),
@@ -41,6 +43,26 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.targetEnabled = targetEnabled
+  }
+}
+
+enum TimelineEventDisplay {
+  static let unmatched = "__unmatched__"
+  static let privacy = "__privacy__"
+
+  static func reservedCategory(_ raw: String) -> TimelineCategory? {
+    switch raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case unmatched, "idle", "idle time":
+      return TimelineCategory(name: String(localized: "Idle"), colorHex: "#A0AEC0", order: 0, isSystem: true, isIdle: true)
+    case privacy:
+      return TimelineCategory(name: String(localized: "Privacy"), colorHex: "#A0AEC0", order: 0, isSystem: true)
+    default: return nil
+    }
+  }
+
+  static func isReserved(_ raw: String) -> Bool {
+    let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return key == unmatched || key == privacy || key == "idle" || key == "idle time"
   }
 }
 
@@ -127,7 +149,7 @@ final class CategoryStore: ObservableObject {
 
   func addCategory(name: String, colorHex: String? = nil) {
     let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return }
+    guard !trimmed.isEmpty, !TimelineEventDisplay.isReserved(trimmed) else { return }
     let nextOrder = (categories.map { $0.order }.max() ?? -1) + 1
     let now = Date()
     let category = TimelineCategory(
@@ -153,6 +175,7 @@ final class CategoryStore: ObservableObject {
     guard let idx = categories.firstIndex(where: { $0.id == id }) else { return }
     var category = categories[idx]
     mutate(&category)
+    guard !TimelineEventDisplay.isReserved(category.name) else { return }
     category.updatedAt = Date()
     category.isNew = false
     categories[idx] = category
@@ -173,7 +196,7 @@ final class CategoryStore: ObservableObject {
 
   func renameCategory(id: UUID, to newName: String) {
     let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return }
+    guard !trimmed.isEmpty, !TimelineEventDisplay.isReserved(trimmed) else { return }
     updateCategory(id: id) { cat in
       cat.name = trimmed
     }
@@ -254,6 +277,7 @@ extension CategoryStore {
     let effective = categories.isEmpty ? CategoryPersistence.defaultCategories : categories
     return
       effective
+      .filter { $0.isIdle || !TimelineEventDisplay.isReserved($0.name) }
       .sorted { $0.order < $1.order }
       .map { category in
         LLMCategoryDescriptor(
@@ -262,7 +286,7 @@ extension CategoryStore {
           colorHex: category.colorHex,
           description: {
             if category.isIdle {
-              return "Use when the user is idle for more than half of this period."
+              return "Fallback for activities that match no configured event, including inactivity; preserve actual content."
             }
             let trimmed = category.details.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? nil : trimmed
@@ -340,7 +364,7 @@ enum CategoryPersistence {
         "#A0AEC0",
         true,
         true,
-        "For when the user is idle for most of the time."
+        "For activities that match no configured event, including inactivity."
       ),
     ]
     return base.enumerated().map { idx, entry in
@@ -369,7 +393,7 @@ enum CategoryPersistence {
     let idle = TimelineCategory(
       name: "Idle",
       colorHex: "#A0AEC0",
-      details: "Mark sessions where the user is idle for most of the time.",
+      details: "Fallback for activities that match no configured event, including inactivity.",
       order: order,
       isSystem: true,
       isIdle: true,

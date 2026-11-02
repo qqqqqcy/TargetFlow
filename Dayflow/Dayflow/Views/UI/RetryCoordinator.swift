@@ -26,9 +26,9 @@ final class RetryCoordinator: ObservableObject {
     case .running(let step):
       return "Status: Reprocessing - Step: \(stepLabel(step))\(dots)"
     case .failed:
-      return String(localized: "Status: Failed - retry stopped")
+      return String(localized: "Status: This retry failed")
     case .stopped:
-      return String(localized: "Status: Stopped - earlier batch failed")
+      return String(localized: "Status: Queue paused - earlier retry failed")
     case .done:
       return nil
     }
@@ -49,7 +49,7 @@ final class RetryCoordinator: ObservableObject {
     guard !groupStatuses.isEmpty else { return nil }
 
     if groupStatuses.contains(.failed) {
-      return String(localized: "Status: Failed - retry stopped")
+      return String(localized: "Status: This retry failed")
     }
 
     let queued = groupStatuses.compactMap { status -> (position: Int, total: Int)? in
@@ -67,7 +67,7 @@ final class RetryCoordinator: ObservableObject {
     }
 
     if groupStatuses.contains(.stopped) {
-      return String(localized: "Status: Stopped - earlier batch failed")
+      return String(localized: "Status: Queue paused - earlier retry failed")
     }
 
     return nil

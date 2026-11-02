@@ -96,7 +96,7 @@ extension OllamaProvider {
       var description =
         descriptor.description?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
       if descriptor.isIdle && description.isEmpty {
-        description = "Use when the user is idle for most of the period."
+        description = "Fallback for activities that match no configured event, including inactivity."
       }
       let dashDescription = description.isEmpty ? "" : " — \(description)"
       return "- \"\(descriptor.name)\"\(dashDescription)"
@@ -129,7 +129,7 @@ extension OllamaProvider {
       \(promptSections.detailedSummary)
 
       EVENT DEFINITIONS (secondary labels):
-      Choose the closest label after describing what happened:
+      Choose a label only for an actual matching event; otherwise return Idle:
       \(categoriesSection)
 
       APP SITES (Website Logos)
@@ -491,7 +491,8 @@ extension OllamaProvider {
           detailedSummary: merged.detailedSummary ?? [previousCard.detailedSummary, newCard.detailedSummary]
             .filter { !$0.isEmpty }.joined(separator: "\n"),
           distractions: previousCard.distractions,
-          appSites: previousCard.appSites ?? newCard.appSites
+          appSites: previousCard.appSites ?? newCard.appSites,
+          evidenceKind: previousCard.evidenceKind == newCard.evidenceKind ? previousCard.evidenceKind : .unknown
         )
 
         return (mergedCard, response)

@@ -182,18 +182,33 @@ struct SettingsStorageTabView: View {
       title: String(localized: "Event timeline"),
       subtitle: String(localized: "Shorter intervals provide faster updates and more frequent AI requests.")
     ) {
-      SettingsRow(
-        label: String(localized: "Card generation interval"),
-        subtitle: String(localized: "New recordings are analyzed at this interval. The same event may extend an existing card, so card durations vary."),
-        showsDivider: false
-      ) {
-        settingsMenu(
-          selected: AnalysisPreferences.label(for: viewModel.analysisInterval),
-          options: AnalysisPreferences.intervalOptions.map {
-            ($0, AnalysisPreferences.label(for: $0))
-          },
-          onSelect: viewModel.setAnalysisInterval
-        )
+      VStack(spacing: 0) {
+        SettingsRow(
+          label: String(localized: "Card generation interval"),
+          subtitle: String(localized: "New recordings are analyzed at this interval. Events are published after reaching this duration; continuous events can extend longer.")
+        ) {
+          settingsMenu(
+            selected: AnalysisPreferences.label(for: viewModel.analysisInterval),
+            options: AnalysisPreferences.intervalOptions.map {
+              ($0, AnalysisPreferences.label(for: $0))
+            },
+            onSelect: viewModel.setAnalysisInterval
+          )
+        }
+        SettingsRow(
+          label: String(localized: "Inactivity duration"),
+          subtitle: String(localized: "Mark inactivity after this long with no input and no meaningful screen changes. Separate from the card generation interval; applies to future assessments."),
+          showsDivider: false
+        ) {
+          settingsMenu(
+            selected: InactivityPreferences.label(for: viewModel.inactivityThreshold),
+            options: InactivityPreferences.thresholdOptions.map {
+              ($0, InactivityPreferences.label(for: $0))
+            },
+            onSelect: viewModel.setInactivityThreshold
+          )
+          .accessibilityIdentifier("settings.inactivityDuration")
+        }
       }
     }
   }

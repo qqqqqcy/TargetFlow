@@ -107,7 +107,8 @@ extension AgentCLISupporting {
           summary: item.summary,
           detailedSummary: item.detailedSummary ?? item.summary,
           distractions: item.distractions,
-          appSites: item.appSites
+          appSites: item.appSites,
+          evidenceKind: item.evidenceKind
         )
       }
       let filtered = cards.compactMap { $0 }
@@ -162,7 +163,8 @@ extension AgentCLISupporting {
               summary: item.summary,
               detailedSummary: item.detailedSummary ?? item.summary,
               distractions: item.distractions,
-              appSites: item.appSites
+              appSites: item.appSites,
+              evidenceKind: item.evidenceKind
             )
           }
           let filtered = cards.compactMap { $0 }

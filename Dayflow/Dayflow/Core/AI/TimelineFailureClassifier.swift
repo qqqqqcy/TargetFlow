@@ -27,9 +27,10 @@ enum TimelineFailureKind: String {
   case modelMisconfigured = "model_misconfigured"
   case notConfigured = "not_configured"
 
-  // Non-actionable: Dayflow retries these on its own.
+  // Non-actionable: eligible recent failures may be retried after a later success.
   case transient = "transient"
   case modelFlaky = "model_flaky"
+  case timelineMismatch = "timeline_mismatch"
   case unknown = "unknown"
 }
 
@@ -64,7 +65,7 @@ struct TimelineFailureClassification {
   /// someone who doesn't know what an API or JSON is.
   func cardMessage(fallbackProviderLabel: String?) -> String {
     let provider = resolvedProvider(fallbackProviderLabel)
-    let catchUp = "Target Flow will catch up automatically once that's done."
+    let catchUp = "You can retry this time once that's done."
 
     switch kind {
     case .dayflowProRequired:
@@ -98,7 +99,7 @@ struct TimelineFailureClassification {
 
     case .usageLimitHit:
       return
-        "You've used up your \(provider) plan's usage for now. Target Flow will catch up automatically once your limit resets."
+        "You've used up your \(provider) plan's usage for now. You can retry this time once your limit resets."
 
     case .outOfCredits:
       return
@@ -121,15 +122,18 @@ struct TimelineFailureClassification {
 
     case .transient:
       return
-        "Target Flow couldn't reach \(provider) because the connection dropped or its servers were busy. Target Flow will try again automatically."
+        "Target Flow couldn't reach \(provider) because the connection dropped or its servers were busy. You can retry this time."
 
     case .modelFlaky:
       return
-        "The AI's reply came back jumbled, so Target Flow couldn't turn it into cards. This usually sorts itself out, and Target Flow will try again automatically."
+        "The AI's reply came back jumbled, so Target Flow couldn't turn it into cards. You can retry this time."
+
+    case .timelineMismatch:
+      return String(localized: "Target Flow couldn't match these events to the recorded time range. You can retry this time.")
 
     case .unknown:
       return
-        "Something went wrong while turning this time into cards. Target Flow will try again automatically."
+        String(localized: "This time couldn't be turned into events. You can retry this time.")
     }
   }
 
@@ -285,7 +289,7 @@ struct TimelineFailureClassification {
         destination: .providers
       )
 
-    case .transient, .modelFlaky, .unknown:
+    case .transient, .modelFlaky, .timelineMismatch, .unknown:
       return nil
     }
   }
@@ -353,7 +357,24 @@ struct TimelineFailureClassification {
 }
 
 enum TimelineFailureClassifier {
+  /// Old persisted summaries promised a retry without knowing the current queue state.
+  /// Adapt them at display time, without modifying saved recordings or batch state.
+  static func displaySummary(_ stored: String) -> String {
+    if stored.hasPrefix("Failed to process") || stored.hasPrefix("Something went wrong while turning this time into cards.")
+      || stored.hasPrefix("This time couldn't be turned into cards yet.") {
+      return String(localized: "This time couldn't be turned into events. You can retry this time. Your recording is saved.")
+    }
+    return stored
+      .replacingOccurrences(of: "Target Flow will try again automatically.", with: "You can retry this time.")
+      .replacingOccurrences(of: "Target Flow will catch up automatically once that's done.", with: "You can retry this time once that's done.")
+      .replacingOccurrences(of: "Target Flow will catch up automatically once your limit resets.", with: "You can retry this time once your limit resets.")
+  }
   static func classify(_ error: Error) -> TimelineFailureClassification {
+    // Structural errors are typed before localization; translated descriptions
+    // and words inside a generated title must not be mistaken for account failures.
+    if error is ClaudeOutputValidationError {
+      return TimelineFailureClassification(kind: .timelineMismatch, providerName: nil)
+    }
     let lower = error.localizedDescription.lowercased()
     return TimelineFailureClassification(
       kind: kind(for: lower),

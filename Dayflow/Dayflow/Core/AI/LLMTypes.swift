@@ -11,6 +11,8 @@ struct ActivityGenerationContext {
   let currentTime: Date  // Current time to prevent future timestamps
   let categories: [LLMCategoryDescriptor]
   let hasPreviousCardWithinFiveMinutes: Bool
+  var hasContinuousCaptureBeforeBatch: Bool = false
+  var correctionCards: [ActivityCardData] = []
 }
 
 enum LLMProviderID: String, Codable, CaseIterable {
@@ -100,6 +102,7 @@ struct ActivityCardData: Codable {
   let detailedSummary: String
   let distractions: [Distraction]?
   let appSites: AppSites?
+  var evidenceKind: ActivityEvidenceKind? = nil
 }
 
 // Distraction is defined in StorageManager.swift

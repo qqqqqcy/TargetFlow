@@ -42,7 +42,7 @@ struct ClaudeOutputValidationOptions {
   let calendar: Calendar
 
   init(
-    minimumNonFinalCardDurationSeconds: Int = 10 * 60,
+    minimumNonFinalCardDurationSeconds: Int = 1,
     maximumCardDurationSeconds: Int = 60 * 60,
     sourceConnectionToleranceSeconds: Int = ClaudeTimelineTolerance.sourceConnectionSeconds,
     outputCoverageToleranceSeconds: Int = ClaudeTimelineTolerance.outputCoverageSeconds,

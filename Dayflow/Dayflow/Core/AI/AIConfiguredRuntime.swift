@@ -54,6 +54,7 @@ enum AIConfiguredProvider: @unchecked Sendable {
   }
 
   func transcribeScreenshots(_ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?) async throws -> (observations: [Observation], log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     switch self {
     case .codex(let provider): return try await provider.transcribeScreenshots(screenshots, batchStartTime: batchStartTime, batchId: batchId)
     case .claude(let provider): return try await provider.transcribeScreenshots(screenshots, batchStartTime: batchStartTime, batchId: batchId)
@@ -86,12 +87,25 @@ enum AIConfiguredProvider: @unchecked Sendable {
   }
 
   func generateTimeline(screenshots: [Screenshot], context: ActivityGenerationContext, batchId: Int64?) async throws -> (cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context)
+    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     switch self {
     case .codex(let provider): return try await provider.generateTimeline(screenshots: screenshots, context: context, batchId: batchId)
     case .claude(let provider): return try await provider.generateTimeline(screenshots: screenshots, context: context, batchId: batchId)
     case .hosted(let provider):
-      let result = try await provider.generateTimeline(screenshots: screenshots, context: context, batchId: batchId)
-      return (result.cards, result.observations, nil, result.log)
+      // The hosted timeline endpoint owns its prompt and cannot accept this correction.
+      guard context.correctionCards.isEmpty else { throw TimelineNaturalMergeError.multipleSameLabelCards }
+      let ordered = screenshots.sorted { $0.capturedAt < $1.capturedAt }
+      guard let first = ordered.first, let last = ordered.last else { throw ClaudeOutputValidationError.emptyCards }
+      let start = first.capturedAt / 60 * 60
+      let end = last.capturedAt / 60 * 60 + 60
+      let window = Observation(id: nil, batchId: batchId ?? -1, startTs: start, endTs: end,
+        observation: "", metadata: nil, llmModel: nil, createdAt: nil)
+      let plan = CodexProvider().makeClaudeCardGenerationPlan(observations: [window], context: context)
+      let result = try await provider.generateTimeline(screenshots: screenshots, context: plan.context, batchId: batchId)
+      let cards = TimelineOutputPolicy().normalizeCards(result.cards, descriptors: context.categories)
+      try ClaudeOutputValidator.validateActivityCards(cards, existingCards: plan.context.existingCards, observations: [window])
+      return (cards, result.observations, plan.rewriteSpan, result.log)
     case .compatible(let provider):
       return try await provider.generateTimeline(screenshots: screenshots, context: context, batchId: batchId)
     case .local, .gemini:
@@ -106,14 +120,16 @@ enum AIConfiguredProvider: @unchecked Sendable {
         categories: context.categories, hasPreviousCardWithinFiveMinutes: context.hasPreviousCardWithinFiveMinutes))
       let prompt = CodexProvider().buildTimelinePrompt(frames: frames,
         previousCards: plan.context.existingCards, categories: context.categories)
+        + (try TimelineEvidencePolicy.correctionInstruction(context.correctionCards))
       let started = Date()
       let output = try await imageText(prompt: prompt, imageURLs: frames.frames.map(\.url), feature: .timeline)
       let cleaned = output.trimmingCharacters(in: .whitespacesAndNewlines)
         .replacingOccurrences(of: "```json", with: "").replacingOccurrences(of: "```", with: "")
-      let cards = try JSONDecoder().decode([ActivityCardData].self, from: Data(cleaned.utf8))
+      let cards = TimelineOutputPolicy().normalizeCards(
+        try CodexProvider().parseCards(from: cleaned, stderr: ""), descriptors: context.categories)
       try ClaudeOutputValidator.validateActivityCards(cards, existingCards: plan.context.existingCards, observations: [window])
       return (cards, OneStepTimelineObservations.make(from: cards, windowStart: frames.windowStart,
-        windowEnd: frames.windowEnd, batchId: batchId, model: selection.modelID), nil,
+        windowEnd: frames.windowEnd, batchId: batchId, model: selection.modelID), plan.rewriteSpan,
         LLMCall(timestamp: started, latency: Date().timeIntervalSince(started), input: prompt, output: output))
     }
   }

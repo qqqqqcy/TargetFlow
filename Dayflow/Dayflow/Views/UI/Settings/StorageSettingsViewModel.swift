@@ -20,6 +20,7 @@ final class StorageSettingsViewModel: ObservableObject {
   @Published var captureHeight: Int = ScreenshotConfig.captureHeight
   @Published var captureInterval: TimeInterval = ScreenshotConfig.interval
   @Published var analysisInterval: TimeInterval = AnalysisPreferences.interval
+  @Published var inactivityThreshold: Int = InactivityPreferences.thresholdSeconds
   /// Measured from the last hour of finalized segments; nil until enough has been recorded.
   @Published var observedBytesPerHour: Int64?
 
@@ -104,6 +105,12 @@ final class StorageSettingsViewModel: ObservableObject {
     guard interval != captureInterval else { return }
     ScreenshotConfig.interval = interval
     captureInterval = interval
+  }
+
+  func setInactivityThreshold(_ seconds: Int) {
+    guard InactivityPreferences.thresholdOptions.contains(seconds) else { return }
+    InactivityPreferences.thresholdSeconds = seconds
+    inactivityThreshold = seconds
   }
 
   func setAnalysisInterval(_ interval: TimeInterval) {

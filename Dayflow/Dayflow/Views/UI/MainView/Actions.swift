@@ -9,14 +9,13 @@ extension MainView {
     // Optimistically update the selected activity so the UI reflects the change immediately.
     selectedActivity = activity.withCategory(newName)
 
-    // Ask the timeline list to refresh so other cards stay in sync.
-    refreshActivitiesTrigger &+= 1
-
     guard let recordId = activity.recordId else { return }
 
-    // Persist the change off the main actor to avoid blocking UI interactions.
+    // Regroup only after persistence, otherwise a reload can restore the old
+    // label and lose the optimistic edit of a non-leading group member.
     Task.detached(priority: .userInitiated) {
       StorageManager.shared.updateTimelineCardCategory(cardId: recordId, category: newName)
+      await MainActor.run { refreshActivitiesTrigger &+= 1 }
     }
   }
 
@@ -27,14 +26,11 @@ extension MainView {
     // Optimistically update the selected activity so the UI reflects the change immediately.
     selectedActivity = activity.withTitle(trimmed)
 
-    // Ask the timeline list to refresh so other cards stay in sync.
-    refreshActivitiesTrigger &+= 1
-
     guard let recordId = activity.recordId else { return }
 
-    // Persist the change off the main actor to avoid blocking UI interactions.
     Task.detached(priority: .userInitiated) {
       StorageManager.shared.updateTimelineCardTitle(cardId: recordId, title: trimmed)
+      await MainActor.run { refreshActivitiesTrigger &+= 1 }
     }
   }
 

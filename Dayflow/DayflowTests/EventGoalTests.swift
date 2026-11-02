@@ -103,7 +103,8 @@ final class EventGoalTests: XCTestCase {
     XCTAssertTrue(prompt.contains("EVENT-FIRST WRITING"))
     XCTAssertTrue(prompt.contains("Goal alignment is evaluated separately"))
     XCTAssertTrue(prompt.contains("修复 OAuth 回调"))
-    XCTAssertTrue(prompt.contains("Allowed values: [\"实现登录\"]"))
+    XCTAssertTrue(prompt.contains("Configured values: [\"实现登录\"]"))
+    XCTAssertTrue(prompt.contains("or Idle"))
     XCTAssertFalse(CodexTimelinePrompt.additionalRules.contains("the card is that work"))
   }
 }

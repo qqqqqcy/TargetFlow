@@ -1,3 +1,4 @@
+import CryptoKit
 import XCTest
 
 @testable import Dayflow
@@ -56,7 +57,7 @@ final class TargetEvaluationTests: XCTestCase {
       receivedPrompt = prompt
       return Self.focusedResponse
     }
-    store.synchronize(events: [Self.event("简历优化")])
+    store.synchronize(events: [Self.event("文档整理")])
     let boundary = Int(store.target!.startedAt.timeIntervalSince1970)
     fixture.storage.card = Self.card(start: boundary - 60)
     fixture.storage.observations = [
@@ -208,6 +209,7 @@ final class TargetEvaluationTests: XCTestCase {
     var output = Self.neutralResponse
     let store = TargetStore(
       defaults: fixture.defaults, storage: fixture.storage,
+      automaticReminders: AutomaticReminderState(isRecording: true),
       notify: { _, body, shouldSend in
         guard shouldSend() else { return false }
         XCTAssertFalse(body.isEmpty)
@@ -264,6 +266,210 @@ final class TargetEvaluationTests: XCTestCase {
     XCTAssertEqual(store.assessments[1]?.alignment, .focused)
   }
 
+  func testEvidenceFingerprintIgnoresLegacyGeneratedDistractionIDs() {
+    let first = Distraction(startTime: "10:02 AM", endTime: "10:04 AM", title: "Video", summary: "Unrelated")
+    let second = Distraction(startTime: first.startTime, endTime: first.endTime, title: first.title, summary: first.summary)
+    XCTAssertNotEqual(first.id, second.id)
+    XCTAssertEqual(TargetStore.fingerprint(Self.card(start: 100_000, distractions: [first])),
+      TargetStore.fingerprint(Self.card(start: 100_000, distractions: [second])))
+    let changed = Distraction(startTime: first.startTime, endTime: first.endTime, title: first.title, summary: "Different content")
+    XCTAssertNotEqual(TargetStore.fingerprint(Self.card(start: 100_000, distractions: [first])),
+      TargetStore.fingerprint(Self.card(start: 100_000, distractions: [changed])))
+  }
+
+  @MainActor
+  func testUnknownEvidenceNeverGeneratesOrReminds() async {
+    for kind in [ActivityEvidenceKind.unknown] {
+      let fixture = makeFixture()
+      defer { fixture.defaults.removePersistentDomain(forName: fixture.suite) }
+      fixture.defaults.set(true, forKey: TargetPreferences.alertsEnabledKey)
+      var calls = 0
+      var notifications = 0
+      let store = TargetStore(defaults: fixture.defaults, storage: fixture.storage,
+        automaticReminders: AutomaticReminderState(isRecording: true),
+        notify: { _, _, _ in notifications += 1; return true },
+        generate: { _ in calls += 1; return Self.focusedResponse })
+      store.synchronize(events: [Self.event("实现登录")])
+      fixture.storage.card = Self.card(evidence: kind)
+      store.enqueue(cardIDs: [1])
+      await store.waitForEvaluations()
+      store.enqueue(cardIDs: [1])
+      await store.waitForEvaluations()
+      XCTAssertEqual(calls, 0)
+      XCTAssertEqual(notifications, 0)
+      XCTAssertEqual(store.assessments[1]?.alignment, .neutral)
+      XCTAssertEqual(store.assessments[1]?.reminder, "")
+    }
+  }
+
+  @MainActor
+  func testPrivacyUsesOrdinaryEvaluationAndReminderDedupWithoutSendingLegacyContent() async throws {
+    for (response, expected) in [(Self.focusedResponse, TargetAlignment.focused),
+      (Self.neutralResponse, .neutral),
+      (#"{"alignment":"severe","reason":"Sustained interval with no evidenced goal progress","reminder":"Return to login"}"#, .severe)] {
+      let fixture = makeFixture()
+      defer { fixture.defaults.removePersistentDomain(forName: fixture.suite) }
+      fixture.defaults.set(true, forKey: TargetPreferences.alertsEnabledKey)
+      let event = Self.event("实现登录")
+      let now = Int(Date().timeIntervalSince1970)
+      fixture.defaults.set(try JSONEncoder().encode(FocusTarget(id: UUID(), text: event.name,
+        startedAt: Date(timeIntervalSince1970: Double(now - 1800)),
+        events: [FocusTargetEvent(id: event.id, name: event.name, details: "")])), forKey: "target.current")
+      var calls = 0
+      var notifications = 0
+      let store = TargetStore(defaults: fixture.defaults, storage: fixture.storage,
+        automaticReminders: AutomaticReminderState(isRecording: true),
+        notify: { _, _, allowed in if allowed() { notifications += 1; return true }; return false },
+        generate: { prompt in
+          calls += 1
+          XCTAssertTrue(prompt.contains("\"privacyProtected\":\"true\""))
+          XCTAssertTrue(prompt.contains("lack of evidenced goal progress"))
+          XCTAssertFalse(prompt.contains("SwiftUI 开发"))
+          XCTAssertFalse(prompt.contains("编写登录页"))
+          XCTAssertFalse(prompt.contains("LEGACY_HIDDEN_OBSERVATION"))
+          XCTAssertFalse(prompt.contains("LEGACY_HIDDEN_DISTRACTION"))
+          return response
+        })
+      store.synchronize(events: [event])
+      fixture.storage.card = Self.card(start: now - 600, category: "__privacy__", evidence: .privacyRedacted,
+        distractions: [Distraction(startTime: "10:00 AM", endTime: "10:05 AM",
+          title: "LEGACY_HIDDEN_DISTRACTION", summary: "Hidden")])
+      fixture.storage.observations = [Self.observation(start: now - 600, end: now - 300,
+        text: "LEGACY_HIDDEN_OBSERVATION")]
+      store.enqueue(cardIDs: [1])
+      await store.waitForEvaluations()
+      store.enqueue(cardIDs: [1])
+      await store.waitForEvaluations()
+      XCTAssertEqual(calls, 1)
+      XCTAssertEqual(store.assessments[1]?.alignment, expected)
+      XCTAssertEqual(fixture.storage.saved.first?.alignment, expected)
+      XCTAssertEqual(notifications, expected == .focused ? 0 : 1)
+      store.synchronize(events: [])
+      store.enqueue(cardIDs: [1])
+      await store.waitForEvaluations()
+      XCTAssertEqual(calls, 1)
+    }
+  }
+
+  @MainActor
+  func testOldBlanketNeutralPrivacyAssessmentIsReevaluated() async throws {
+    let fixture = makeFixture()
+    defer { fixture.defaults.removePersistentDomain(forName: fixture.suite) }
+    let event = Self.event("实现登录")
+    let now = Int(Date().timeIntervalSince1970)
+    let target = FocusTarget(id: UUID(), text: event.name,
+      startedAt: Date(timeIntervalSince1970: Double(now - 1800)),
+      events: [FocusTargetEvent(id: event.id, name: event.name, details: "")])
+    fixture.defaults.set(try JSONEncoder().encode(target), forKey: "target.current")
+    let card = Self.card(start: now - 600, category: "__privacy__", evidence: .privacyRedacted)
+    fixture.storage.card = card
+    // Persisted v4 fingerprint format from the previous blanket-neutral privacy policy.
+    let oldParts = ["target-evaluation-v4", String(card.startTs), String(card.endTs), card.category,
+      card.title, card.summary, card.detailedSummary, "privacyRedacted", "[]"]
+    let oldFingerprint = SHA256.hash(data: try JSONEncoder().encode(oldParts))
+      .map { String(format: "%02x", $0) }.joined()
+    fixture.storage.saved = [TargetAssessment(cardID: card.id, targetID: target.id,
+      targetText: target.text, cardTitle: card.title, fingerprint: oldFingerprint,
+      startTime: Date(timeIntervalSince1970: Double(card.startTs)),
+      endTime: Date(timeIntervalSince1970: Double(card.endTs)), alignment: .neutral,
+      reason: "Privacy protected this period", reminder: "")]
+    var calls = 0
+    let store = TargetStore(defaults: fixture.defaults, storage: fixture.storage, generate: { _ in
+      calls += 1
+      return #"{"alignment":"severe","reason":"Sustained interval without evidenced goal progress","reminder":"Return to login"}"#
+    })
+    store.enqueue(cardIDs: [card.id])
+    await store.waitForEvaluations()
+    XCTAssertEqual(calls, 1)
+    XCTAssertEqual(store.assessments[card.id]?.alignment, .severe)
+    XCTAssertNotEqual(store.assessments[card.id]?.fingerprint, oldFingerprint)
+  }
+
+  @MainActor
+  func testPrivacyGoalBoundaryAndSanitizedHistoricalShortIntervals() {
+    // Only boundaries from cards 27, 142, 146; no hidden source text/media is replayed.
+    for (id, seconds) in [(Int64(27), 60), (142, 60), (146, 60)] {
+      let card = Self.card(start: 100_000, id: id, category: "__privacy__", evidence: .privacyRedacted)
+      let target = FocusTarget(id: UUID(), text: "Implement login", startedAt: Date(timeIntervalSince1970: 100_300 - Double(seconds)))
+      let prompt = TargetStore.prompt(target: target, card: card, observations: [
+        Self.observation(start: 100_240, end: 100_300, text: "UNSAFE_OLD_TEXT")])
+      XCTAssertTrue(prompt.contains("\"durationMinutes\":\"1.0\""))
+      XCTAssertTrue(prompt.contains("brief switch or reasonable rest is neutral"))
+      XCTAssertFalse(prompt.contains("UNSAFE_OLD_TEXT"))
+      XCTAssertFalse(prompt.contains("SwiftUI 开发"))
+    }
+  }
+
+  @MainActor
+  func testEvidenceUnmatchedShortEventEvaluatedAfterFocusedEvent() async {
+    let fixture = makeFixture()
+    defer { fixture.defaults.removePersistentDomain(forName: fixture.suite) }
+    fixture.defaults.set(true, forKey: TargetPreferences.alertsEnabledKey)
+    var calls = 0
+    var notifications = 0
+    let event = Self.event("实现登录")
+    fixture.defaults.set(try! JSONEncoder().encode(FocusTarget(id: UUID(), text: "实现登录",
+      startedAt: Date().addingTimeInterval(-1800),
+      events: [FocusTargetEvent(id: event.id, name: event.name, details: event.details)])),
+      forKey: "target.current")
+    let store = TargetStore(defaults: fixture.defaults, storage: fixture.storage,
+      automaticReminders: AutomaticReminderState(isRecording: true),
+      notify: { _, _, allowed in if allowed() { notifications += 1; return true }; return false },
+      generate: { _ in
+        calls += 1
+        return calls == 1 ? Self.focusedResponse
+          : "{\"alignment\":\"severe\",\"reason\":\"Unrelated video\",\"reminder\":\"Return to login\"}"
+      })
+    store.synchronize(events: [event])
+    let start = Int(Date().timeIntervalSince1970) - 600
+    fixture.storage.card = Self.card(start: start)
+    store.enqueue(cardIDs: [1])
+    await store.waitForEvaluations()
+    fixture.storage.card = Self.card(start: start + 300, id: 2, category: "__unmatched__")
+    store.enqueue(cardIDs: [2])
+    await store.waitForEvaluations()
+    XCTAssertEqual(calls, 2)
+    XCTAssertEqual(store.assessments[1]?.alignment, .focused)
+    XCTAssertEqual(store.assessments[2]?.alignment, .severe)
+    XCTAssertEqual(notifications, 1)
+  }
+
+  @MainActor
+  func testEvidenceLegacyMixedCardCannotReceiveBlanketFocusedResult() async {
+    let fixture = makeFixture()
+    defer { fixture.defaults.removePersistentDomain(forName: fixture.suite) }
+    var prompt = ""
+    let store = TargetStore(defaults: fixture.defaults, storage: fixture.storage) {
+      prompt = $0
+      return Self.focusedResponse
+    }
+    store.synchronize(events: [Self.event("实现登录")])
+    fixture.storage.card = Self.card(distractions: [Distraction(
+      startTime: "10:02 AM", endTime: "10:05 AM", title: "Off-topic", summary: "Video")])
+    store.enqueue(cardIDs: [1])
+    await store.waitForEvaluations()
+    XCTAssertTrue(prompt.contains("Off-topic"))
+    XCTAssertEqual(store.assessments[1]?.alignment, .neutral)
+    XCTAssertEqual(store.assessments[1]?.reason, String(localized: "This older event contains mixed activity and needs separate periods; it cannot be treated as entirely focused."))
+  }
+
+  @MainActor
+  func testEvidenceConfirmedInactivityIsDeterministicDistracted() async {
+    let fixture = makeFixture()
+    defer { fixture.defaults.removePersistentDomain(forName: fixture.suite) }
+    var calls = 0
+    let store = TargetStore(defaults: fixture.defaults, storage: fixture.storage) { _ in
+      calls += 1
+      return Self.focusedResponse
+    }
+    store.synchronize(events: [Self.event("实现登录")])
+    fixture.storage.card = Self.card(evidence: .inputInactive)
+    store.enqueue(cardIDs: [1])
+    await store.waitForEvaluations()
+    XCTAssertEqual(calls, 0)
+    XCTAssertEqual(store.assessments[1]?.alignment, .severe)
+  }
+
   @MainActor
   private func makeFixture() -> (
     defaults: UserDefaults, suite: String, storage: TargetMemoryStorage
@@ -291,13 +497,16 @@ final class TargetEvaluationTests: XCTestCase {
       observation: text, metadata: nil, llmModel: nil, createdAt: nil)
   }
 
-  private static func card(start: Int? = nil) -> TimelineCardWithTimestamps {
+  private static func card(
+    start: Int? = nil, id: Int64 = 1, category: String = "Work",
+    evidence: ActivityEvidenceKind? = nil, distractions: [Distraction]? = nil
+  ) -> TimelineCardWithTimestamps {
     let now = start ?? (Int(Date().timeIntervalSince1970) + 2)
     return TimelineCardWithTimestamps(
-      id: 1, startTimestamp: "10:00 AM", endTimestamp: "10:05 AM",
-      startTs: now, endTs: now + 300, category: "Work", subcategory: "",
+      id: id, startTimestamp: "10:00 AM", endTimestamp: "10:05 AM",
+      startTs: now, endTs: now + 300, category: category, subcategory: "",
       title: "实现登录", summary: "编写登录页", detailedSummary: "SwiftUI 开发",
-      day: "2026-10-26", distractions: nil, videoSummaryURL: nil)
+      day: "2026-10-26", distractions: distractions, videoSummaryURL: nil, evidenceKind: evidence)
   }
 }
 

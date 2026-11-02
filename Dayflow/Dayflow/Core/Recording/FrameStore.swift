@@ -45,7 +45,10 @@ final class FrameStore: @unchecked Sendable {
 
   /// Encodes one frame and records it in the database. Returns the new screenshot id.
   @discardableResult
-  func append(_ image: CGImage, capturedAt: Date, idleSecondsAtCapture: Int?) -> Int64? {
+  func append(
+    _ image: CGImage, capturedAt: Date, idleSecondsAtCapture: Int?,
+    isPrivacyRedacted: Bool = false
+  ) -> Int64? {
     writeQueue.sync {
       if let current = writer, current.needsRotation(forWidth: image.width, height: image.height) {
         finishWriterLocked()
@@ -75,7 +78,8 @@ final class FrameStore: @unchecked Sendable {
         segmentPath: current.url.path,
         frameIndex: frameIndex,
         capturedAt: capturedAt,
-        idleSecondsAtCapture: idleSecondsAtCapture
+        idleSecondsAtCapture: idleSecondsAtCapture,
+        isPrivacyRedacted: isPrivacyRedacted
       )
     }
   }

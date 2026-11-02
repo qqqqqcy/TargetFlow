@@ -203,6 +203,7 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
   func transcribeScreenshots(_ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?)
     async throws -> (observations: [Observation], log: LLMCall)
   {
+    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     let requestId = UUID().uuidString
     let startedAt = Date()
     let normalizedEndpoint = resolvedEndpointString()
@@ -380,6 +381,8 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
   func generateTimeline(
     screenshots: [Screenshot], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], observations: [Observation], log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context)
+    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     let requestId = UUID().uuidString
     let startedAt = Date()
     let normalizedEndpoint = resolvedEndpointString()
@@ -547,7 +550,14 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
         input: decoded.log.input,
         output: decoded.log.output
       )
-      return (decoded.cards, observations, log)
+      let cards = normalizeCards(decoded.cards, descriptors: context.categories)
+      let start = sortedScreenshots.first!.capturedAt / 60 * 60
+      let end = sortedScreenshots.last!.capturedAt / 60 * 60 + 60
+      let window = Observation(id: nil, batchId: batchId ?? -1, startTs: start, endTs: end,
+        observation: "", metadata: nil, llmModel: decoded.model, createdAt: nil)
+      try ClaudeOutputValidator.validateActivityCards(cards, existingCards: context.existingCards,
+        observations: [window])
+      return (cards, observations, log)
     } catch {
       let nsError = error as NSError
       var failureProps = baseProps
@@ -571,6 +581,7 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     // The hosted card endpoint owns its prompt server-side. Use its text endpoint when
     // custom instructions are enabled so those preferences actually reach generation.
     let overrides = ActivityCardPromptPreferences.load()
@@ -714,7 +725,10 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
         input: decoded.log.input,
         output: decoded.log.output
       )
-      return (decoded.cards, log)
+      let cards = normalizeCards(decoded.cards, descriptors: context.categories)
+      try ClaudeOutputValidator.validateActivityCards(cards, existingCards: context.existingCards,
+        observations: observations)
+      return (cards, log)
     } catch {
       let nsError = error as NSError
       var failureProps = baseProps

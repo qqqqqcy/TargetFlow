@@ -89,6 +89,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
   @MainActor
   init(autoStart: Bool = true) {
     super.init()
+    _ = TimelineCaptureBoundaries.shared
     dbg("init – autoStart = \(autoStart)")
     guard !AppStoragePaths.isIsolated else { return }
 
@@ -234,6 +235,7 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
   }
 
   func stop() {
+    TimelineCaptureBoundaries.shared.recordStop()
     q.async { [weak self] in
       guard let self else { return }
       self.stopCaptureTimer()
@@ -509,22 +511,22 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
 
     do {
       let captureSize = scaledCaptureSize(for: display)
-      if let blockedApplication = await MainActor.run(body: {
-        RecordingPrivacyPreferences.frontmostBlockedApplication()
+      if await MainActor.run(body: {
+        RecordingPrivacyPreferences.frontmostBlockedApplication() != nil
       }) {
         guard
           let placeholder = await MainActor.run(body: {
             RecordingPrivacyPlaceholder.image(
               width: captureSize.width,
-              height: captureSize.height,
-              applicationName: blockedApplication.name
+              height: captureSize.height
             )
           })
         else {
           throw ScreenRecorderError.imageConversionFailed
         }
         try appendFrame(
-          placeholder, capturedAt: captureTime, idleSecondsAtCapture: idleSecondsAtCapture)
+          placeholder, capturedAt: captureTime, idleSecondsAtCapture: idleSecondsAtCapture,
+          isPrivacyRedacted: true)
         dbg("🔒 Screenshot redacted for blocked foreground application")
         return .succeeded
       }
@@ -582,13 +584,17 @@ final class ScreenRecorder: NSObject, @unchecked Sendable {
 
   /// Re-checks state right before writing so a capture that was in flight during
   /// `stop()` does not reopen a segment that would then sit open through sleep.
-  private func appendFrame(_ image: CGImage, capturedAt: Date, idleSecondsAtCapture: Int?) throws {
+  private func appendFrame(
+    _ image: CGImage, capturedAt: Date, idleSecondsAtCapture: Int?,
+    isPrivacyRedacted: Bool = false
+  ) throws {
     guard state == .capturing else {
       dbg("frame dropped - recorder stopped mid-capture")
       return
     }
     let screenshotId = FrameStore.shared.append(
-      image, capturedAt: capturedAt, idleSecondsAtCapture: idleSecondsAtCapture)
+      image, capturedAt: capturedAt, idleSecondsAtCapture: idleSecondsAtCapture,
+      isPrivacyRedacted: isPrivacyRedacted)
     guard screenshotId != nil else {
       throw ScreenRecorderError.imageConversionFailed
     }

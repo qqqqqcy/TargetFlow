@@ -20,8 +20,8 @@ private struct CanvasConfig {
 private struct CanvasPositionedActivity: Identifiable {
   let id: String
   let activity: TimelineActivity
-  let yPosition: CGFloat
-  let height: CGFloat
+  // Time coordinates let async loads use the current density without DB reads on zoom.
+  let startMinutes: Double
   let durationMinutes: Double
   let title: String
   let timeLabel: String
@@ -43,7 +43,8 @@ struct CanvasTimelineDataView: View {
   @Binding var hasAnyActivities: Bool
   @Binding var refreshTrigger: Int
   let contentLeadingInset: CGFloat
-  let hourHeight: CGFloat
+  @ObservedObject var zoom: DayTimelineZoomState
+  private var hourHeight: CGFloat { DayTimelineZoom.hourHeight(for: zoom.percent) }
   let cardTextFontSize: CGFloat
   let cardTextFontWeight: Font.Weight
   let timeLabelFontSize: CGFloat
@@ -71,6 +72,9 @@ struct CanvasTimelineDataView: View {
   // date navigation within a mounted view doesn't re-hide content.
   @State private var hasPerformedInitialScroll: Bool = false
   @State private var loadTask: Task<Void, Never>?
+  @State private var loadRevision = 0
+  @State private var scrollTask: Task<Void, Never>?
+  @State private var scrollRequest: DayTimelineScrollRequest?
   // Staggered entrance animation state (Emil Kowalski principle: sequential reveal)
   @State private var cardEntranceProgress: [String: Bool] = [:]
   // Plain reference box: mutating it never invalidates body, so hover
@@ -81,10 +85,6 @@ struct CanvasTimelineDataView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var retryCoordinator: RetryCoordinator
 
-  private var pixelsPerMinute: CGFloat {
-    hourHeight / 60
-  }
-
   private var timelineHeight: CGFloat {
     CGFloat(CanvasConfig.endHour - CanvasConfig.startHour) * hourHeight
   }
@@ -93,29 +93,15 @@ struct CanvasTimelineDataView: View {
     RecordingControl.currentMode(appState: appState, pauseManager: pauseManager)
   }
 
-  // Which hour-marker id the Day view should scroll to land "now" ~25% down
-  // from the viewport top — i.e. 2 hours before the current clock hour. Used
-  // by every scroll-to-now trigger (idle reset, initial load, onAppear,
-  // date-change-back-to-today). Having one source of truth avoids drift
-  // between triggers and keeps the body's inline closures tiny (fixes a
-  // Swift type-checker timeout that appeared when each closure inlined its
-  // own copy of this calculation).
-  private func nowCenteredTargetHourIndex() -> Int {
-    let currentHour = Calendar.current.component(.hour, from: Date())
-    let hoursSince4AM = currentHour >= 4 ? currentHour - 4 : (24 - 4) + currentHour
-    return max(0, hoursSince4AM - 2)
-  }
-
-  private func scrollToNowCenteredHour(with proxy: ScrollViewProxy, animated: Bool = false) {
-    let targetIndex = nowCenteredTargetHourIndex()
-    let action = {
-      proxy.scrollTo("hour-\(targetIndex)", anchor: UnitPoint(x: 0, y: 0.25))
-    }
-    if animated {
-      withAnimation(.easeInOut(duration: 0.35)) { action() }
-    } else {
-      action()
-    }
+  // Locate the current minute, rather than a fixed number of hours above it:
+  // two hours no longer fit in the viewport when a short event is magnified.
+  private func scrollToNowCenteredHour() {
+    timelinePerfLog("dayCanvas.scrollToNow tick=\(scrollToNowTick) hours=\(timelineMinutes(for: Date()) / 60)")
+    scrollRequest = DayTimelineScrollRequest(
+      hours: CGFloat(timelineMinutes(for: Date()) / 60), viewportFraction: 0.5)
+    // A parent scroll tick can cancel the delayed initial scroll. Any replacement
+    // scroll must also reveal the canvas, or its content stays transparent.
+    revealInitialScroll()
   }
 
   // `body` is split into two chained computed properties for the same reason
@@ -131,8 +117,10 @@ struct CanvasTimelineDataView: View {
       .onDisappear(perform: performDayTimelineOnDisappear)
       .onChange(of: selectedDate) { loadActivities() }
       .onChange(of: refreshTrigger) { loadActivities() }
+      .onReceive(NotificationCenter.default.publisher(for: .timelineCardsDidCommit).receive(on: DispatchQueue.main)) { _ in
+        loadActivities(animate: false)
+      }
       .onChange(of: appState.isRecording) { loadActivities(animate: false) }
-      .onChange(of: hourHeight) { loadActivities(animate: false) }
       .onReceive(
         NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
       ) { _ in
@@ -141,35 +129,39 @@ struct CanvasTimelineDataView: View {
 
   }
 
-  // Inner ScrollViewReader + scroll-trigger handlers. Held in its own `some
+  // Native scroll container + scroll-trigger handlers. Held in its own `some
   // View` property so the outer chain above sees a single opaque type.
   // Visibility is gated on `hasPerformedInitialScroll` so the "starts at 8 AM
   // then flashes to 10 AM" flicker can't happen — the ScrollView stays
   // invisible until the first auto-scroll lands, then fades in.
   private var dayTimelineScrollContainer: some View {
-    ScrollViewReader { proxy in
-      ScrollView(.vertical, showsIndicators: false) {
-        timelineScrollContent()
-      }
+    DayTimelineCanvasScrollView(
+      zoom: zoom,
+      navigationToken: "\(selectedDate.timeIntervalSinceReferenceDate)-\(scrollToNowTick)",
+      scrollRequest: scrollRequest
+    ) {
+      timelineScrollContent()
+    }
       .background(Color.clear)
       .opacity(hasPerformedInitialScroll ? 1 : 0)
       .onChange(of: scrollToNowTick) {
-        scrollToNowCenteredHour(with: proxy)
+        scrollTask?.cancel()
+        scrollToNowCenteredHour()
+      }
+      .onChange(of: hourHeight) {
+        // A user zoom supersedes pending initial/date auto-scrolls.
+        scrollTask?.cancel()
+        didInitialScrollInView = true
+        revealInitialScroll()
       }
       .onChange(of: positionedActivities.count) {
         guard !didInitialScrollInView, timelineIsToday(selectedDate) else { return }
         didInitialScrollInView = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-          scrollToNowCenteredHour(with: proxy)
-          revealInitialScroll()
-        }
+        scheduleScrollToNow(delay: 0.1)
       }
       .onAppear {
         if timelineIsToday(selectedDate) {
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            scrollToNowCenteredHour(with: proxy)
-            revealInitialScroll()
-          }
+          scheduleScrollToNow(delay: 0.05)
         } else {
           // Past day: nothing to auto-scroll to. Reveal immediately so the
           // user sees the day's content as soon as it loads rather than
@@ -178,12 +170,22 @@ struct CanvasTimelineDataView: View {
         }
       }
       .onChange(of: selectedDate) { _, newDate in
-        guard timelineIsToday(newDate) else { return }
-        didInitialScrollInView = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-          scrollToNowCenteredHour(with: proxy, animated: true)
+        scrollTask?.cancel()
+        guard timelineIsToday(newDate) else {
+          revealInitialScroll()
+          return
         }
+        didInitialScrollInView = false
+        scheduleScrollToNow(delay: 0.1)
       }
+  }
+
+  private func scheduleScrollToNow(delay: Double) {
+    scrollTask?.cancel()
+    scrollTask = Task { @MainActor in
+      try? await Task.sleep(for: .seconds(delay))
+      guard !Task.isCancelled else { return }
+      scrollToNowCenteredHour()
     }
   }
 
@@ -203,6 +205,8 @@ struct CanvasTimelineDataView: View {
 
   private func performDayTimelineOnDisappear() {
     stopRefreshTimer()
+    scrollTask?.cancel()
+    scrollTask = nil
     loadTask?.cancel()
     loadTask = nil
   }
@@ -302,19 +306,22 @@ struct CanvasTimelineDataView: View {
           }
           .pointingHandCursor(enabled: selectedCardId != nil || selectedActivity != nil)
         ForEach(Array(positionedActivities.enumerated()), id: \.element.id) { index, item in
+          let height = DayTimelineZoom.cardHeight(
+            minutes: item.durationMinutes, hourHeight: hourHeight)
+          let yPosition = DayTimelineZoom.y(minutes: item.startMinutes, hourHeight: hourHeight) + 1
           let isVisible = cardEntranceProgress[item.id] ?? false
           CanvasActivityCard(
             title: item.title,
             time: item.timeLabel,
-            height: item.height,
+            height: height,
             durationMinutes: item.durationMinutes,
             style: style(for: item.categoryName),
-            isSelected: selectedCardId == item.id,
+            isSelected: selectedActivity.map { item.activity.id == $0.id } ?? false,
             isSystemCategory: item.categoryName.trimmingCharacters(in: .whitespacesAndNewlines)
               .caseInsensitiveCompare("System") == .orderedSame,
             isBackupGenerated: item.activity.isBackupGenerated == true,
             onTap: {
-              if selectedCardId == item.id {
+              if let selectedActivity, item.activity.id == selectedActivity.id {
                 clearSelection()
               } else {
                 selectedCardId = item.id
@@ -339,8 +346,8 @@ struct CanvasTimelineDataView: View {
             hoverScale: cardHoverScale,
             pressedScale: cardPressedScale
           )
-          .frame(width: geo.size.width, height: item.height)
-          .position(x: geo.size.width / 2, y: item.yPosition + (item.height / 2))
+          .frame(width: geo.size.width, height: height)
+          .position(x: geo.size.width / 2, y: yPosition + (height / 2))
           .opacity(mutedCategoryKeys.contains(categoryFilterKey(item.categoryName)) ? 0.25 : 1)
           .animation(.easeOut(duration: 0.15), value: mutedCategoryKeys)
           // Staggered entrance animation (Emil Kowalski: sequential reveal creates polish)
@@ -570,6 +577,9 @@ struct CanvasTimelineDataView: View {
   private func loadActivities(animate: Bool = true, deferWhileHovering: Bool = false) {
     // Cancel any in-flight database read to prevent query pileup
     loadTask?.cancel()
+    loadRevision += 1
+    let requestedRevision = loadRevision
+    timelinePerfLog("dayCanvas.load.begin revision=\(requestedRevision) animate=\(animate)")
 
     loadTask = Task.detached(priority: .userInitiated) {
       let calendar = Calendar.current
@@ -602,11 +612,8 @@ struct CanvasTimelineDataView: View {
       )
 
       let positioned = segments.map { seg -> CanvasPositionedActivity in
-        let y = self.calculateYPosition(for: seg.start)
-        // Card spacing: -2 total (1px top + 1px bottom)
+        let startMinutes = self.timelineMinutes(for: seg.start)
         let durationMinutes = max(0, seg.end.timeIntervalSince(seg.start) / 60)
-        let rawHeight = CGFloat(durationMinutes) * pixelsPerMinute
-        let height = max(10, rawHeight - 2)
         // Raw values for pattern matching, normalized for network fetch
         let primaryRaw = seg.activity.appSites?.primary
         let secondaryRaw = seg.activity.appSites?.secondary
@@ -615,11 +622,10 @@ struct CanvasTimelineDataView: View {
 
         return CanvasPositionedActivity(
           id: seg.activity.id,
-          activity: seg.activity,
-          yPosition: y + 1,  // 1px top spacing
-          height: height,
+          activity: seg.selectionActivity,
+          startMinutes: startMinutes,
           durationMinutes: durationMinutes,
-          title: seg.activity.title,
+          title: seg.displayTitle,
           timeLabel: self.formatRange(start: seg.start, end: seg.end),
           categoryName: seg.activity.category,
           faviconPrimaryRaw: primaryRaw,
@@ -647,6 +653,12 @@ struct CanvasTimelineDataView: View {
       }
 
       await MainActor.run {
+        guard !Task.isCancelled, self.loadRevision == requestedRevision,
+          DateFormatter.yyyyMMdd.string(from: timelineDisplayDate(from: self.selectedDate, now: Date())) == dayString else {
+          timelinePerfLog("dayCanvas.load.discard revision=\(requestedRevision) current=\(self.loadRevision)")
+          return
+        }
+        timelinePerfLog("dayCanvas.load.commit revision=\(requestedRevision) cards=\(positioned.count) day=\(dayString)")
         if deferWhileHovering && self.cardsHover.isHovering {
           self.cardsHover.pendingRefresh = true
           return
@@ -659,15 +671,18 @@ struct CanvasTimelineDataView: View {
         self.positionedActivities = positioned
         self.recordingProjection = recordingProjection
         self.hasAnyActivities = !positioned.isEmpty
-        if let selectedActivity,
-          !positioned.contains(where: { $0.activity.id == selectedActivity.id })
-        {
-          clearSelection()
+        if let selectedActivity {
+          self.selectedActivity = TimelineActivityLoader.restoredSelection(
+            selectedActivity, in: positioned.map(\.activity))
+          self.selectedCardId = positioned.first(where: {
+            $0.activity.id == selectedActivity.id
+          })?.id
         }
 
         if animate {
           // Trigger staggered entrance animation after a brief layout delay
           DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            guard self.loadRevision == requestedRevision else { return }
             for activity in positioned {
               self.cardEntranceProgress[activity.id] = true
             }
@@ -692,8 +707,7 @@ struct CanvasTimelineDataView: View {
     -> CGFloat
   {
     let durationMinutes = max(0, projection.end.timeIntervalSince(projection.start) / 60)
-    let rawHeight = CGFloat(durationMinutes) * pixelsPerMinute
-    return max(10, rawHeight - 2)
+    return DayTimelineZoom.cardHeight(minutes: durationMinutes, hourHeight: hourHeight)
   }
 
   private func startRefreshTimer() {
@@ -709,6 +723,10 @@ struct CanvasTimelineDataView: View {
   }
 
   private func calculateYPosition(for time: Date) -> CGFloat {
+    DayTimelineZoom.y(minutes: timelineMinutes(for: time), hourHeight: hourHeight)
+  }
+
+  private func timelineMinutes(for time: Date) -> Double {
     let calendar = Calendar.current
     let hour = calendar.component(.hour, from: time)
     let minute = calendar.component(.minute, from: time)
@@ -721,7 +739,7 @@ struct CanvasTimelineDataView: View {
     }
 
     let totalMinutes = hoursSince4AM * 60 + minute
-    return CGFloat(totalMinutes) * pixelsPerMinute
+    return Double(totalMinutes)
   }
 
   private func formatHour(_ hour: Int) -> String {
@@ -744,16 +762,14 @@ struct CanvasTimelineDataView: View {
     let matched = categories.first {
       $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
     }
-    let fallback = categories.first ?? CategoryPersistence.defaultCategories.first!
-    let category = matched ?? fallback
-
-    let baseNSColor = NSColor(hex: category.colorHex) ?? NSColor(hex: "#4F80EB") ?? .systemBlue
+    let category = TimelineEventDisplay.reservedCategory(rawCategory) ?? matched
+    let baseNSColor = NSColor(hex: category?.colorHex ?? "#A0AEC0") ?? .systemGray
 
     return CanvasActivityCardStyle(
       text: theme.cardTitle,
       time: theme.cardTime,
       accent: Color(nsColor: baseNSColor),
-      isIdle: category.isIdle
+      isIdle: category?.isIdle ?? false
     )
   }
 }
@@ -802,6 +818,7 @@ extension CanvasTimelineDataView {
 
 #Preview("Canvas Timeline Data View") {
   struct PreviewWrapper: View {
+    @StateObject private var zoom = DayTimelineZoomState()
     @State private var date = Date()
     @State private var selected: TimelineActivity? = nil
     @State private var tick: Int = 0
@@ -814,7 +831,7 @@ extension CanvasTimelineDataView {
         hasAnyActivities: .constant(true),
         refreshTrigger: $refresh,
         contentLeadingInset: 0,
-        hourHeight: TimelineScale.hourHeight,
+        zoom: zoom,
         cardTextFontSize: TimelineTypography.cardTextFontSize,
         cardTextFontWeight: TimelineTypography.cardTextFontWeight,
         timeLabelFontSize: TimelineTypography.timeLabelFontSize,

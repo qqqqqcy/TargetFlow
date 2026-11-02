@@ -40,12 +40,12 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
       context: context
     )
 
-    XCTAssertTrue(plan.requiresSingleCard)
+    XCTAssertFalse(plan.requiresSingleCard)
     XCTAssertEqual(plan.observations.map(\.batchId), [2])
     XCTAssertTrue(plan.context.existingCards.isEmpty)
   }
 
-  func testFreshSegmentPromptRequiresExactlyOneProvisionalCard() {
+  func testFreshSegmentPromptCombinesSameLabelAndPreservesBoundaries() {
     let currentObservation = observation(
       batchId: 2,
       start: 4_000,
@@ -63,9 +63,9 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
       context: context
     )
 
-    XCTAssertTrue(prompt.contains("FRESH SEGMENT MODE — EXACTLY ONE CARD"))
-    XCTAssertTrue(prompt.contains("later sliding-window passes may split it"))
-    XCTAssertFalse(prompt.contains("WHEN TO SPLIT (new card)"))
+    XCTAssertTrue(prompt.contains("Merge adjacent activities"))
+    XCTAssertTrue(prompt.contains("even when their purposes differ"))
+    XCTAssertFalse(prompt.contains("EXACTLY ONE CARD"))
   }
 
   func testFreshSegmentAfterGapRewritesOnlyCurrentBatch() {
@@ -343,7 +343,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("connected rewrite boundary") ?? false)
+    XCTAssertTrue(result.error?.contains("source boundary") ?? false)
   }
 
   func testOngoingSegmentWalksBackwardAcrossContiguousCards() {
@@ -397,7 +397,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
       let plan = provider.makeClaudeCardGenerationPlan(
         observations: observations, context: context)
 
-      XCTAssertEqual(plan.requiresSingleCard, testCase.startsFresh, "\(testCase)")
+      XCTAssertFalse(plan.requiresSingleCard, "\(testCase)")
       XCTAssertEqual(plan.context.existingCards.count, testCase.startsFresh ? 0 : 1)
     }
   }
@@ -422,7 +422,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
       context: context
     )
 
-    XCTAssertTrue(plan.requiresSingleCard)
+    XCTAssertFalse(plan.requiresSingleCard)
     XCTAssertTrue(plan.context.existingCards.isEmpty)
   }
 
@@ -469,7 +469,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
   }
 
-  func testOngoingPromptMakesTenMinuteFloorOverrideSplitting() {
+  func testOngoingPromptPreservesShortPurposesWithoutBorrowingTime() {
     let currentObservation = observation(
       batchId: 2,
       start: 4_000,
@@ -487,23 +487,12 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
       context: context
     )
 
-    XCTAssertTrue(
-      prompt.contains("Each card must be 10–60 minutes")
-    )
-    XCTAssertTrue(prompt.contains("Absorb interruptions under five minutes"))
-    XCTAssertTrue(
-      prompt.contains(
-        "a distinct 5–9-minute episode may borrow the minimum neighboring minutes to reach ten"
-      )
-    )
-    XCTAssertTrue(
-      prompt.contains(
-        "if the neighboring cards remain at least ten"
-      )
-    )
+    XCTAssertTrue(prompt.contains("Each card has positive"))
+    XCTAssertTrue(prompt.contains("genuine gaps"))
+    XCTAssertFalse(prompt.contains("Each card must be 10"))
   }
 
-  func testClaudePolicyRejectsEveryShortCardIncludingFinalCard() {
+  func testClaudePolicyAllowsShortFirstMiddleAndFinalEvents() {
     let result = provider.validateClaudeCardPolicy(
       [
         card(start: "9:00 AM", end: "9:08 AM", title: "Short first"),
@@ -516,13 +505,11 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
       allowsSingleShortCard: false
     )
 
-    XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("Card 1") ?? false)
-    XCTAssertTrue(result.error?.contains("Card 3") ?? false)
-    XCTAssertTrue(result.error?.contains("including the final card") ?? false)
+    XCTAssertTrue(result.isValid)
+    XCTAssertNil(result.error)
   }
 
-  func testClaudePolicyAllowsOneShortCardOnlyWhenWholeSpanIsShort() {
+  func testClaudePolicyAllowsShortEventRegardlessOfWholeSpanFlag() {
     let shortCard = card(start: "9:00 AM", end: "9:07 AM", title: "Short supplied span")
 
     XCTAssertTrue(
@@ -534,7 +521,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
         allowsSingleShortCard: true
       ).isValid
     )
-    XCTAssertFalse(
+    XCTAssertTrue(
       provider.validateClaudeCardPolicy(
         [shortCard],
         requiresSingleCard: false,
@@ -803,7 +790,7 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
   }
 
-  func testFreshSegmentPolicyRejectsMultipleCardsAndWrongBounds() {
+  func testFreshSegmentPolicyRejectsWrongBoundsWithoutRequiringOneCard() {
     let result = provider.validateClaudeCardPolicy(
       [
         card(start: "9:01 AM", end: "9:11 AM", title: "First"),
@@ -816,18 +803,19 @@ final class ClaudeActivityCardBoundaryTests: XCTestCase {
     )
 
     XCTAssertFalse(result.isValid)
-    XCTAssertTrue(result.error?.contains("exactly one card") ?? false)
+    XCTAssertTrue(result.error?.contains("source boundary") ?? false)
   }
 
-  func testCorrectionPromptRepeatsFreshAndFinalCardRules() {
+  func testCorrectionPromptPreservesShortEventsAndForbidsBorrowing() {
     let prompt = provider.buildCardsCorrectionPrompt(
       validationError: "Two short cards",
       requiresSingleCard: true
     )
 
-    XCTAssertTrue(prompt.contains("including the final card"))
-    XCTAssertTrue(prompt.contains("Return exactly ONE card"))
-    XCTAssertTrue(prompt.contains("duration rule overrides semantic purity"))
+    XCTAssertTrue(prompt.contains("no minimum event length"))
+    XCTAssertTrue(prompt.contains("short first, middle and final activities"))
+    XCTAssertTrue(prompt.contains("Merge touching activities with the same label"))
+    XCTAssertFalse(prompt.contains("duration rule overrides semantic purity"))
   }
 
   private func generationContext(

@@ -18,6 +18,10 @@ struct TimelineDisplaySegment {
     return activities.count
   }
 
+  var displayTitle: String { activity.title }
+
+  var selectionActivity: TimelineActivity { activity }
+
   var batchIds: [Int64] {
     var seen = Set<Int64>()
     return activities.compactMap(\.batchId).filter { seen.insert($0).inserted }
@@ -144,6 +148,11 @@ enum TimelineActivityLoader {
           calendar.date(byAdding: .day, value: 1, to: adjustedEndDate) ?? adjustedEndDate
       }
 
+      if let startTs = card.startTs, let endTs = card.endTs, endTs > startTs {
+        adjustedStartDate = Date(timeIntervalSince1970: Double(startTs))
+        adjustedEndDate = Date(timeIntervalSince1970: Double(endTs))
+      }
+
       let baseId = TimelineActivity.stableId(
         recordId: card.recordId,
         batchId: card.batchId,
@@ -174,7 +183,8 @@ enum TimelineActivityLoader {
           videoSummaryURL: card.videoSummaryURL,
           screenshot: nil,
           appSites: card.appSites,
-          isBackupGenerated: card.isBackupGenerated
+          isBackupGenerated: card.isBackupGenerated,
+          evidenceKind: card.evidenceKind
         )
       )
     }
@@ -280,6 +290,12 @@ enum TimelineActivityLoader {
     }
 
     return segments
+  }
+
+  static func restoredSelection(
+    _ selected: TimelineActivity, in displayedActivities: [TimelineActivity]
+  ) -> TimelineActivity? {
+    displayedActivities.first(where: { $0.id == selected.id })
   }
 
   static func recordingProjectionWindow(

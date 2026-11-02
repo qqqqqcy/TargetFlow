@@ -17,13 +17,27 @@ final class AnalysisManager: ObservableObject {
   /// Provider processing time is not included.
   @Published private(set) var nextCardAnalysisDate: Date?
 
-  private init() {
-    store = StorageManager.shared
-    llmService = LLMService.shared
+  init(
+    store: any StorageManaging = StorageManager.shared,
+    llmService: any LLMServicing = LLMService.shared,
+    evidenceCaptureStartTs: Int = Int(Date().timeIntervalSince1970) + 1,
+    idlePixels: @escaping (Screenshot) -> [UInt8]? = IdleBatchClassifier.screenPixels,
+    evaluate: @escaping @MainActor ([Int64]) -> Void = { TargetStore.shared.enqueue(cardIDs: $0) }
+  ) {
+    self.store = store
+    self.llmService = llmService
+    self.evidenceCaptureStartTs = evidenceCaptureStartTs
+    self.idlePixels = idlePixels
+    self.evaluate = evaluate
   }
 
+  private let idlePixels: (Screenshot) -> [UInt8]?
+  private let evaluate: @MainActor ([Int64]) -> Void
   private let store: any StorageManaging
   private let llmService: any LLMServicing
+  // Migrated screenshots default to false for privacy, so only captures made by this
+  // running version provide reliable negative privacy provenance for this shortcut.
+  private let evidenceCaptureStartTs: Int
 
   // Video Processing Constants - removed old summary generation
 
@@ -42,6 +56,9 @@ final class AnalysisManager: ObservableObject {
   private var automaticRetryCounts: [Int64: Int] = [:]
   private var isCatchingUpFailedBatches = false
   private var isManualRetryRunning = false
+  private var attemptedPendingRevisions = Set<String>()
+  private var automaticBatchQueue: [Int64] = []
+  private var automaticBatchRunning = false
 
   // Batches the LLM is working on right now. The saved "processing" status
   // can't answer that: it is left behind when the app quits mid-run.
@@ -104,8 +121,7 @@ final class AnalysisManager: ObservableObject {
         return
       }
 
-      // Reset batch state and clear observations
-      self.store.deleteObservations(forBatchIds: [batchId])
+      // Observations remain until the replacement transaction commits.
       let resetBatchIds = Set(self.store.resetBatchStatuses(forBatchIds: [batchId]))
       guard resetBatchIds.contains(batchId) else {
         DispatchQueue.main.async {
@@ -231,15 +247,53 @@ final class AnalysisManager: ObservableObject {
     isProcessing = true
     defer { isProcessing = false }
 
+    publishPendingAfterSettingChange()
     // 1. Gather unprocessed screenshots
     let screenshots = fetchUnprocessedScreenshots()
     // 2. Build logical batches (duration based on provider config)
     let batches = createScreenshotBatches(from: screenshots)
     // 3. Persist batch rows & join table
     let batchIDs = batches.compactMap(saveScreenshotBatch)
-    // 4. Fire LLM for each batch
-    for id in batchIDs { queueLLMRequest(batchId: id) }
+    // Process new batches in capture order so a short suffix can be continued.
+    automaticBatchQueue.append(contentsOf: batchIDs)
+    runNextAutomaticBatch()
     updateNextCardAnalysisDate()
+  }
+
+  private func runNextAutomaticBatch() {
+    guard !automaticBatchRunning, !automaticBatchQueue.isEmpty else { return }
+    automaticBatchRunning = true
+    let id = automaticBatchQueue.removeFirst()
+    queueLLMRequest(batchId: id) { [weak self] _ in
+      guard let self else { return }
+      self.queue.async {
+        self.automaticBatchRunning = false
+        self.publishPendingAfterSettingChange()
+        self.runNextAutomaticBatch()
+      }
+    }
+  }
+
+  private func publishPendingAfterSettingChange() {
+    let minimum = Int(AnalysisPreferences.interval)
+    let eligible = StorageManager.shared.pendingTimelineEvidence().filter {
+      $0.endTs - $0.startTs >= minimum && $0.id != nil
+    }
+    let keys = Set(eligible.compactMap { $0.id.map { "\($0):\(minimum)" } })
+    attemptedPendingRevisions.formIntersection(keys)
+    for pending in eligible {
+      guard let id = pending.id else { continue }
+      let key = "\(id):\(minimum)"
+      guard attemptedPendingRevisions.insert(key).inserted else { continue }
+      Task {
+        do {
+          let ids = try await LLMService.publishEligiblePending(pending)
+          await MainActor.run { self.evaluate(ids) }
+        } catch {
+          print("Pending event could not be published: \(error.localizedDescription)")
+        }
+      }
+    }
   }
 
   private func updateNextCardAnalysisDate() {
@@ -295,23 +349,61 @@ final class AnalysisManager: ObservableObject {
     let minimumDurationSeconds = ScreenshotBatcher.minimumDuration
 
     if totalDurationSeconds < minimumDurationSeconds {
-      print(
-        "Batch \(batchId) duration (\(totalDurationSeconds)s) is less than \(minimumDurationSeconds)s. Marking as 'skipped_short'."
-      )
-      self.updateBatchStatus(batchId: batchId, status: "skipped_short")
-      completion?(.success(()))
+      if screenshotsInBatch.contains(where: \.isPrivacyRedacted) {
+        // A sealed short fragment cannot support a visible model request, but
+        // protected captures still need a separate local pending record.
+        setBatchInFlight(batchId, true)
+        updateBatchStatus(batchId: batchId, status: "processing")
+        Task {
+          do {
+            try await LLMService.saveShortPrivacyEvidence(batchId: batchId, screenshots: screenshotsInBatch)
+            self.setBatchInFlight(batchId, false)
+            self.queue.async {
+              self.updateBatchStatus(batchId: batchId, status: "skipped_short")
+              self.publishPendingAfterSettingChange()
+              completion?(.success(()))
+            }
+          } catch {
+            self.setBatchInFlight(batchId, false)
+            self.markBatchFailed(batchId: batchId, reason: error.localizedDescription)
+            completion?(.failure(error))
+          }
+        }
+      } else {
+        print("Batch \(batchId) is a sealed short fragment; retaining raw evidence without a model request.")
+        updateBatchStatus(batchId: batchId, status: "skipped_short")
+        completion?(.success(()))
+      }
       return
     }
 
-    if let idleAssessment = IdleBatchClassifier.assess(screenshotsInBatch) {
-      let didPersistIdleCard = handleIdleBatch(
-        batchId: batchId,
-        screenshots: screenshotsInBatch,
-        assessment: idleAssessment
-      )
-      if didPersistIdleCard {
-        completion?(.success(()))
-        return
+    let inactivityThreshold = InactivityPreferences.thresholdSeconds
+    let historyStart = (screenshotsInBatch.first?.capturedAt ?? 0)
+      - IdleBatchRules.historyLookbackSeconds(thresholdSeconds: inactivityThreshold)
+    let history = store.fetchScreenshotsInTimeRange(
+      startTs: max(historyStart, evidenceCaptureStartTs),
+      endTs: screenshotsInBatch.first?.capturedAt ?? historyStart)
+    if let idleAssessment = IdleBatchClassifier.assess(
+      screenshotsInBatch, history: history, evidenceSince: evidenceCaptureStartTs,
+      thresholdSeconds: inactivityThreshold, pixels: idlePixels)
+    {
+      for attempt in 0..<3 {
+        do {
+          let didPersistIdleCard = try handleIdleBatch(
+            batchId: batchId, screenshots: screenshotsInBatch, assessment: idleAssessment,
+            assessmentHistory: history)
+          if didPersistIdleCard {
+            completion?(.success(()))
+            return
+          }
+          break
+        } catch TimelineCardReplacementError.minimumDurationChanged where attempt < 2 {
+          continue
+        } catch {
+          markBatchFailed(batchId: batchId, reason: error.localizedDescription)
+          completion?(.failure(error))
+          return
+        }
       }
 
       print("Idle shortcut fallback for batch \(batchId); continuing with normal LLM processing.")
@@ -362,11 +454,11 @@ final class AnalysisManager: ObservableObject {
         // Mark batch as completed immediately
         self.updateBatchStatus(batchId: batchId, status: "completed")
         Task { @MainActor in
-          TargetStore.shared.enqueue(cardIDs: cardIds)
+          self.evaluate(cardIds)
         }
 
         completion?(.success(()))
-        self.catchUpFailedBatchesAfterSuccess()
+        if processedResult.providerWasUsed { self.catchUpFailedBatchesAfterSuccess() }
 
       case .failure(let err):
         print(
@@ -376,6 +468,9 @@ final class AnalysisManager: ObservableObject {
         // Finish performance transaction - LLM processing failed
 
         self.markBatchFailed(batchId: batchId, reason: err.localizedDescription)
+        if (err as? TimelineCardReplacementError) != .sourceEvidenceChanged {
+          self.queue.async { self.publishPendingAfterSettingChange() }
+        }
         completion?(.failure(err))
       }
     }
@@ -398,8 +493,26 @@ final class AnalysisManager: ObservableObject {
 
   private func createScreenshotBatches(from screenshots: [Screenshot]) -> [ScreenshotBatch] {
     let config = llmService.batchingConfig
+    let first = screenshots.min { $0.capturedAt < $1.capturedAt }
+    var continuingFrom: Int?
+    if let first {
+      let history = store.fetchScreenshotsInTimeRange(startTs: first.capturedAt - 720, endTs: first.capturedAt - 1)
+      if let previous = history.last,
+        TimelineEvidencePolicy.captureContinues(history: history, next: first,
+          recordedContinuity: TimelineCaptureBoundaries.shared.continuity(from: previous.capturedAt, to: first.capturedAt),
+          privacy: first.isPrivacyRedacted),
+        let pending = StorageManager.shared.pendingTimelineEvidence().last(where: {
+          ($0.card.evidenceKind == .privacyRedacted) == first.isPrivacyRedacted
+            && $0.endTs == previous.capturedAt && $0.lastScreenshotId == previous.id
+            && Date(timeIntervalSince1970: Double($0.startTs)).getDayInfoFor4AMBoundary().dayString
+              == first.capturedDate.getDayInfoFor4AMBoundary().dayString
+        }) {
+        continuingFrom = pending.startTs
+      }
+    }
     return ScreenshotBatcher.batches(
-      from: screenshots, targetDuration: config.targetDuration, maxGap: config.maxGap)
+      from: screenshots, targetDuration: config.targetDuration, maxGap: config.maxGap,
+      continuingFrom: continuingFrom)
 
   }
 
@@ -412,8 +525,9 @@ final class AnalysisManager: ObservableObject {
   private func handleIdleBatch(
     batchId: Int64,
     screenshots: [Screenshot],
-    assessment: IdleBatchAssessment
-  ) -> Bool {
+    assessment: IdleBatchAssessment,
+    assessmentHistory: [Screenshot]
+  ) throws -> Bool {
     let ordered = screenshots.sorted { $0.capturedAt < $1.capturedAt }
     guard let first = ordered.first, let last = ordered.last else {
       return false
@@ -421,18 +535,32 @@ final class AnalysisManager: ObservableObject {
 
     let batchStart = first.capturedDate
 
-    // Card times are whole minutes, matching the "h:mm a" strings shown on the card.
+    // Keep capture boundaries exact; clock labels are formatted separately.
     let previousCard = store.fetchTimelineCardEndingLast(
       startingBefore: batchStart, excludingBatchId: batchId)
-    let mergeCandidate = previousCard.flatMap { idleMergeCandidate($0, batchStart: batchStart) }
+    let cardEndTs = last.capturedAt
+    let history = store.fetchScreenshotsInTimeRange(
+      startTs: max(first.capturedAt - 720, evidenceCaptureStartTs), endTs: first.capturedAt - 1)
+    let mergeCandidate = previousCard.flatMap { card in
+      Self.canExtendIdle(card, first: first, history: history, endTs: cardEndTs) ? card : nil
+    }
+    let continuous = history.last.map { previous in
+      TimelineEvidencePolicy.captureContinues(history: history, next: first,
+        recordedContinuity: TimelineCaptureBoundaries.shared.continuity(from: previous.capturedAt, to: first.capturedAt))
+    } ?? false
+    let pending = continuous ? StorageManager.shared.pendingTimelineEvidence().last { item in
+      item.card.evidenceKind == .inputInactive && item.endTs == history.last?.capturedAt
+        && item.lastScreenshotId == history.last?.id
+        && Date(timeIntervalSince1970: Double(item.startTs)).getDayInfoFor4AMBoundary().dayString
+          == first.capturedDate.getDayInfoFor4AMBoundary().dayString
+        && cardEndTs - item.startTs <= 3600
+    } : nil
     let mergeGapSeconds = mergeCandidate.map { max(0, first.capturedAt - $0.endTs) }
-    let cardEndTs = flooredToMinute(last.capturedAt)
-    // A new idle card starts where the previous card ends, so a real activity card keeps
-    // the minute they would otherwise share.
-    let cardStartTs =
-      mergeCandidate?.startTs
-      ?? max(flooredToMinute(first.capturedAt), previousCard?.endTs ?? 0)
-    guard cardEndTs > cardStartTs else {
+    let cardStartTs = min(pending?.startTs ?? first.capturedAt,
+      mergeCandidate?.startTs ?? first.capturedAt)
+    guard cardEndTs > cardStartTs, cardEndTs - cardStartTs <= 3600,
+      Date(timeIntervalSince1970: Double(cardStartTs)).getDayInfoFor4AMBoundary().dayString
+        == Date(timeIntervalSince1970: Double(cardEndTs - 1)).getDayInfoFor4AMBoundary().dayString else {
       return false
     }
     let cardStart = Date(timeIntervalSince1970: TimeInterval(cardStartTs))
@@ -449,7 +577,8 @@ final class AnalysisManager: ObservableObject {
       maxIdleSecondsAtCapture: assessment.maxIdleSecondsAtCapture,
       mergedWithPreviousIdle: mergeCandidate != nil,
       mergeGapSeconds: mergeGapSeconds,
-      skippedLLM: true
+      skippedLLM: true,
+      inactivityThresholdSeconds: assessment.thresholdSeconds
     )
 
     let idleCard = IdleBatchClassifier.makeIdleCard(
@@ -457,18 +586,41 @@ final class AnalysisManager: ObservableObject {
       to: Date(timeIntervalSince1970: TimeInterval(cardEndTs)),
       metadata: idleMetadata
     )
-    // Only this batch's own earlier cards are removed; other batches' cards are never touched.
-    let (savedCardId, deletedVideoPaths) = store.saveIdleBatchCard(
-      idleCard,
-      startTs: cardStartTs,
-      endTs: cardEndTs,
-      batchId: batchId,
-      extendingCardId: mergeCandidate?.id
-    )
-
-    guard let savedCardId else {
-      return false
+    let sourceFrames = store.fetchScreenshotsInTimeRange(startTs: cardStartTs, endTs: cardEndTs)
+    guard let firstSource = sourceFrames.first, let lastSource = sourceFrames.last else { return false }
+    let requiredSources = Array(Set((screenshots + assessmentHistory + sourceFrames).map(\.id)
+      + (pending?.sourceScreenshotIds ?? [])))
+    let oldPending = StorageManager.shared.pendingTimelineEvidence().filter { $0.batchId == batchId }
+    let consumedIds = Array(Set(oldPending.compactMap(\.id) + [pending?.id].compactMap { $0 }))
+    let cardData = ActivityCardData(startTime: idleCard.startTimestamp, endTime: idleCard.endTimestamp,
+      category: idleCard.category, subcategory: idleCard.subcategory, title: idleCard.title,
+      summary: idleCard.summary, detailedSummary: idleCard.detailedSummary,
+      distractions: nil, appSites: nil, evidenceKind: .inputInactive)
+    if cardEndTs - cardStartTs < Int(AnalysisPreferences.interval) {
+      let candidate = PendingTimelineEvidence(id: nil, batchId: batchId, startTs: cardStartTs,
+        endTs: cardEndTs, card: cardData, firstScreenshotId: firstSource.id, lastScreenshotId: lastSource.id,
+      sourceScreenshotIds: Array(Set(requiredSources + (pending?.sourceScreenshotIds ?? []))))
+      _ = try StorageManager.shared.replaceTimelineCardGroups([], batchId: batchId,
+        keepingNewerBatchesCardsStartingAfter: batchStart,
+        pendingToSave: [candidate], pendingToDelete: consumedIds, markBatchAnalyzed: true,
+        replacementObservations: [], requiredScreenshotIds: requiredSources,
+        requiredPendingIds: [pending?.id].compactMap { $0 })
+      StorageManager.shared.updateBatch(batchId, status: "analyzed", reason: "idle_pending")
+      return true
     }
+    let shell = TimelineCardShell(startTimestamp: idleCard.startTimestamp, endTimestamp: idleCard.endTimestamp,
+      category: idleCard.category, subcategory: idleCard.subcategory, title: idleCard.title,
+      summary: idleCard.summary, detailedSummary: idleCard.detailedSummary, distractions: nil, appSites: nil,
+      idleMetadata: idleMetadata, evidenceKind: .inputInactive, exactStartTs: cardStartTs, exactEndTs: cardEndTs)
+    let saved = try StorageManager.shared.replaceTimelineCardGroups([
+      TimelineCardReplacementGroup(from: Date(timeIntervalSince1970: Double(cardStartTs)),
+        to: Date(timeIntervalSince1970: Double(cardEndTs)), cards: [shell])],
+      batchId: batchId, keepingNewerBatchesCardsStartingAfter: batchStart,
+      pendingToDelete: consumedIds, enforceMinimum: true, markBatchAnalyzed: true,
+      replacementObservations: [], requiredScreenshotIds: requiredSources,
+      requiredPendingIds: [pending?.id].compactMap { $0 })
+    guard let savedCardId = saved.insertedIds.first else { return false }
+    let deletedVideoPaths = saved.deletedVideoPaths
 
     for path in deletedVideoPaths {
       let url = URL(fileURLWithPath: path)
@@ -476,7 +628,7 @@ final class AnalysisManager: ObservableObject {
     }
 
     Task { @MainActor in
-      TargetStore.shared.enqueue(cardIDs: [savedCardId])
+      self.evaluate([savedCardId])
     }
     StorageManager.shared.updateBatch(batchId, status: "analyzed", reason: "idle_shortcut_applied")
     StorageManager.shared.checkpoint(mode: .passive)
@@ -484,31 +636,22 @@ final class AnalysisManager: ObservableObject {
     return true
   }
 
-  /// The previous card, if it's an idle card this batch should extend instead of adding a new one.
-  /// The gap can be negative when the previous card's end was rounded up past the batch start.
-  private func idleMergeCandidate(_ previousCard: TimelineCardWithTimestamps, batchStart: Date)
-    -> TimelineCardWithTimestamps?
-  {
-    let batchDay = batchStart.getDayInfoFor4AMBoundary().dayString
-    let gapSeconds = Int(batchStart.timeIntervalSince1970) - previousCard.endTs
-    guard
-      gapSeconds < IdleBatchRules.mergeGapSeconds,
-      previousCard.day == batchDay,
-      normalizedIdleValue(previousCard.category) == "idle",
-      normalizedIdleValue(previousCard.title) == "idle"
-    else {
-      return nil
-    }
-
-    return previousCard
+  /// Extend only the same proven evidence type and a supported capture chain.
+  static func canExtendIdle(_ previous: TimelineCardWithTimestamps, first: Screenshot,
+    history: [Screenshot], endTs: Int) -> Bool {
+    let firstMinute = first.capturedAt - first.capturedAt % 60
+    let day = first.capturedDate.getDayInfoFor4AMBoundary().dayString
+    let normalizedCategory = previous.category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    let normalizedTitle = previous.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return (previous.endTs == firstMinute || previous.endTs == history.last?.capturedAt) && previous.day == day
+      && previous.evidenceKind == .inputInactive && normalizedCategory == "idle" && normalizedTitle == "idle"
+      && endTs > previous.endTs && endTs - previous.startTs <= 3600
+      && Date(timeIntervalSince1970: Double(endTs - 1)).getDayInfoFor4AMBoundary().dayString == day
+      && TimelineEvidencePolicy.captureContinues(history: history, next: first,
+        recordedContinuity: history.last.flatMap {
+          TimelineCaptureBoundaries.shared.continuity(from: $0.capturedAt, to: first.capturedAt)
+        })
   }
 
-  private func flooredToMinute(_ timestamp: Int) -> Int {
-    timestamp - timestamp % 60
-  }
-
-  private func normalizedIdleValue(_ value: String) -> String {
-    value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-  }
 
 }

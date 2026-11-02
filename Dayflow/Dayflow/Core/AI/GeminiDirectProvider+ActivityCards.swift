@@ -4,6 +4,7 @@ extension GeminiDirectProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let callStart = Date()
 
     // Convert observations to human-readable format for the prompt
@@ -37,25 +38,21 @@ extension GeminiDirectProvider {
 
       ## Card Structure
 
-      Each card covers one cohesive chunk of activity, roughly 15–60 minutes.
+      Each card covers one concrete activity with positive duration, at most 60 minutes.
 
-      - Minimum 10 minutes per card. If something would be shorter, fold it into the neighboring card that makes the most sense.
+      - Preserve different purposes as separate cards even when only one or a few minutes.
+      - Never fold unrelated events into a neighbor or borrow its time.
       - Maximum 60 minutes. If a card runs longer, split it where the focus naturally shifts.
       - No gaps or overlaps between cards. If there's a real gap in the source data, preserve it. Otherwise, cards should meet cleanly.
 
       **When to start a new card:**
       1. What's the main thing happening right now?
       2. Does the next chunk of activity continue that same thing? → Keep extending.
-      3. Is there a brief unrelated detour (<5 min)? → Log it as a distraction, keep the card going.
-      4. Has the focus genuinely shifted for 10+ minutes? → New card.
+      3. Is there an unrelated detour? → Preserve it as a separate event with supported time bounds.
+      4. Has the immediate purpose changed? → New card, regardless of duration.
 
       **When to merge with a previous card:**
-      1. Is the previous card's main activity the same as what's happening now? (same PR, same feature, same codebase, same article) → Merge.
-      2. Did the person just take a 2–5 minute break (X, messages, YouTube) and come back to the same thing? → That's a distraction, not a new card. Merge.
-      3. Are two adjacent cards both "scrolling X with occasional work check-ins"? → Merge. The vibe didn't change.
-      4. Only start a new card if the CORE INTENT changed for 10+ minutes.
-
-      DEFAULT TO MERGING. Two 15-minute cards about the same work stream should almost never exist. If you're unsure whether to merge or split, merge.
+      Merge only when the same concrete purpose continues. Shared labels, projects and focus states do not justify merging. A break or unrelated visit remains its own event even when followed by a return.
 
       ---
 
@@ -81,7 +78,7 @@ extension GeminiDirectProvider {
 
       ## Distractions
 
-      A distraction is a brief (<5 min) unrelated interruption inside a card. Checking X for 2 minutes while debugging is a distraction. Spending 15 minutes on X is not a distraction — it's either part of the card's theme or it's a new card.
+      Unrelated interruptions are separate events with their own supported bounds. Return distractions as an empty array for newly generated cards.
 
       Don't label related sub-tasks as distractions. Googling an error message while debugging isn't a distraction, it's part of debugging.
 
@@ -212,7 +209,7 @@ extension GeminiDirectProvider {
             DURATION ERROR:
             \(durationError!)
 
-            REMINDER: All cards except the last one must be at least 10 minutes long. Please merge short activities into longer, more meaningful cards that tell a coherent story.
+            REMINDER: Cards have positive duration and are at most 60 minutes; preserve distinct short events and never merge unrelated purposes.
             """)
         }
 
@@ -602,6 +599,7 @@ extension GeminiDirectProvider {
       let detailedSummary: String
       let distractions: [GeminiDistraction]?
       let appSites: AppSites?
+      let evidenceKind: ActivityEvidenceKind?
 
       // Make distractions optional with default nil
       init(from decoder: Decoder) throws {
@@ -616,6 +614,7 @@ extension GeminiDirectProvider {
         distractions = try container.decodeIfPresent(
           [GeminiDistraction].self, forKey: .distractions)
         appSites = try container.decodeIfPresent(AppSites.self, forKey: .appSites)
+        evidenceKind = try container.decodeIfPresent(ActivityEvidenceKind.self, forKey: .evidenceKind)
       }
     }
 
@@ -655,7 +654,8 @@ extension GeminiDirectProvider {
             summary: d.summary
           )
         },
-        appSites: geminiCard.appSites
+        appSites: geminiCard.appSites,
+        evidenceKind: geminiCard.evidenceKind
       )
     }
   }
@@ -696,7 +696,7 @@ extension GeminiDirectProvider {
     var merged: [TimeRange] = []
 
     for range in sorted {
-      if merged.isEmpty || range.start > merged.last!.end + 1 {
+      if merged.isEmpty || range.start > merged.last!.end {
         // No overlap - add as new range
         merged.append(range)
       } else {
@@ -745,8 +745,16 @@ extension GeminiDirectProvider {
       outputRanges.append(TimeRange(start: startMin, end: endMin))
     }
 
-    // Check coverage with 3-minute flexibility
-    let flexibility = 3.0  // minutes
+    for pair in zip(mergedInputRanges, mergedInputRanges.dropFirst()) {
+      if outputRanges.contains(where: { $0.start < pair.0.end && $0.end > pair.1.start }) {
+        return (false, "A card covers a genuine gap in the supplied history.")
+      }
+    }
+    let ordered = outputRanges.sorted { $0.start < $1.start }
+    if zip(ordered, ordered.dropFirst()).contains(where: { $0.0.end > $0.1.start }) {
+      return (false, "Activity cards overlap.")
+    }
+    let flexibility = 0.99  // Never omit a whole supported minute.
     var uncoveredSegments: [(start: Double, end: Double)] = []
 
     for inputRange in mergedInputRanges {
@@ -872,7 +880,7 @@ extension GeminiDirectProvider {
       }
 
       // Check if card is too short (except for last card)
-      if durationMinutes < 10 && index < cards.count - 1 {
+      if durationMinutes <= 0 || durationMinutes > 60 {
         return (
           false,
           "Card \(index + 1) '\(card.title)' is only \(String(format: "%.1f", durationMinutes)) minutes long"

@@ -115,7 +115,7 @@ final class CodexClaudeProviderTests: XCTestCase {
     XCTAssertEqual(configuration.reasoningEffort, "low")
   }
 
-  func testLegacyCardCoverageAllowsBridgingExistingGaps() {
+  func testLegacyCardCoverageRejectsBridgingExistingGaps() {
     let existingCards = [
       card(start: "9:00 AM", end: "9:15 AM", title: "Before gap"),
       card(start: "9:25 AM", end: "9:40 AM", title: "After gap"),
@@ -129,37 +129,36 @@ final class CodexClaudeProviderTests: XCTestCase {
       newCards: generatedCards
     )
 
-    XCTAssertTrue(result.isValid)
+    XCTAssertFalse(result.isValid)
   }
 
-  func testLegacyCardCoverageAllowsThreeMinutesOfBoundaryDrift() {
+  func testLegacyCardCoverageRejectsMissingWholeMinutes() {
     let existingCards = [card(start: "9:00 AM", end: "9:30 AM", title: "Existing")]
 
     XCTAssertTrue(
       claudeProvider.validateTimeCoverage(
         existingCards: existingCards,
-        newCards: [card(start: "9:03 AM", end: "9:30 AM", title: "Within tolerance")]
+        newCards: [card(start: "9:00 AM", end: "9:30 AM", title: "Complete coverage")]
       ).isValid
     )
     XCTAssertFalse(
       claudeProvider.validateTimeCoverage(
         existingCards: existingCards,
-        newCards: [card(start: "9:04 AM", end: "9:30 AM", title: "Outside tolerance")]
+        newCards: [card(start: "9:01 AM", end: "9:30 AM", title: "Missing minute")]
       ).isValid
     )
   }
 
-  func testLegacyCardDurationOnlyRejectsShortNonFinalCards() {
+  func testLegacyCardDurationAllowsShortNonFinalCardsAndRejectsNonpositiveDuration() {
     XCTAssertTrue(
       claudeProvider.validateTimeline([
-        card(start: "9:00 AM", end: "10:30 AM", title: "Long card"),
-        card(start: "10:30 AM", end: "10:35 AM", title: "Short final card"),
+        card(start: "9:00 AM", end: "9:05 AM", title: "Short non-final card"),
+        card(start: "9:05 AM", end: "9:20 AM", title: "Final card"),
       ]).isValid
     )
     XCTAssertFalse(
       claudeProvider.validateTimeline([
-        card(start: "9:00 AM", end: "9:05 AM", title: "Short non-final card"),
-        card(start: "9:05 AM", end: "9:20 AM", title: "Final card"),
+        card(start: "9:00 AM", end: "9:00 AM", title: "Empty card")
       ]).isValid
     )
   }

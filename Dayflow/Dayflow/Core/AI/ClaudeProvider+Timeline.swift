@@ -22,6 +22,7 @@ extension ClaudeProvider {
   ) async throws -> (
     cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall
   ) {
+    try TimelineEvidencePolicy.requireVisibleContext(context)
     guard !screenshots.isEmpty else {
       throw NSError(
         domain: "ClaudeProvider", code: -96,
@@ -69,7 +70,7 @@ extension ClaudeProvider {
         frames: frames,
         previousCards: previousCards,
         categories: context.categories
-      )
+      ) + (try TimelineEvidencePolicy.correctionInstruction(context.correctionCards))
 
       let profile = ClaudeCLIExecutionProfile.oneStepTimeline
         .allowingReadDirectory(at: frames.directory.path)
@@ -239,7 +240,7 @@ extension ClaudeProvider {
     Requirements:
     - Return the FULL corrected JSON array, not a diff.
     - The cards together must cover the previous cards' time and the new window, \(windowStart) to \(windowEnd), with no gaps and no overlaps, and must not extend past \(windowEnd).
-    - Every card except the last must be 10 to 60 minutes long. Fold a shorter stretch into the neighbouring card and keep its detail lines.
+    - Every card has positive duration and is at most 60 minutes long. Preserve distinct short events; never fold unrelated stretches into neighboring cards.
     - Keep the detailedSummary lines that were correct; only change what the issues require.
     - Do not reread files or use tools. Output JSON only, with no code fences or extra text.
     """

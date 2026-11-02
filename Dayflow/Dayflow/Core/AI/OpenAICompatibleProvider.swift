@@ -95,6 +95,7 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
   func transcribeScreenshots(
     _ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?
   ) async throws -> (observations: [Observation], log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     let sorted = screenshots.sorted { $0.capturedAt < $1.capturedAt }
     guard let first = sorted.first, let last = sorted.last else {
       throw invalidOutput("No screenshots to transcribe.")
@@ -155,6 +156,7 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
   func generateTimeline(
     screenshots: [Screenshot], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context)
     let frames = try await OneStepTimelineFrames.write(screenshots, maxHeight: 1080,
       directoryPrefix: "TargetFlow-api-timeline")
     defer { frames.cleanup() }
@@ -165,6 +167,7 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
       categories: context.categories, hasPreviousCardWithinFiveMinutes: context.hasPreviousCardWithinFiveMinutes))
     let prompt = CodexProvider().buildTimelinePrompt(frames: frames,
       previousCards: plan.context.existingCards, categories: context.categories)
+        + (try TimelineEvidencePolicy.correctionInstruction(context.correctionCards))
     let images: [MessageContent] = try frames.frames.map { frame in
       .init(type: "image_url", text: nil,
         image_url: .init(url: "data:image/jpeg;base64,\(try Data(contentsOf: frame.url).base64EncodedString())"))
@@ -181,12 +184,13 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
     let observations = OneStepTimelineObservations.make(from: cards,
       windowStart: frames.windowStart, windowEnd: frames.windowEnd,
       batchId: batchId, model: configuration.modelID)
-    return (cards, observations, nil, log)
+    return (cards, observations, plan.rewriteSpan, log)
   }
 
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let prompt = buildCardsPrompt(observations: observations, context: context)
     return try await generate(prompt: prompt, operation: "generate_cards", batchId: batchId) {
       output in

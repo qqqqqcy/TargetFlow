@@ -21,6 +21,7 @@ struct AgentCLICardsEnvelope: Codable {
     let detailedSummary: String?
     let distractions: [Distraction]?
     let appSites: AppSites?
+    var evidenceKind: ActivityEvidenceKind? = nil
 
     var normalizedStart: String? { start ?? startTime }
     var normalizedEnd: String? { end ?? endTime }

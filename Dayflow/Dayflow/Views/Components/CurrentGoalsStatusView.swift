@@ -42,8 +42,18 @@ struct CurrentGoalsStatusView: View {
         }
         Spacer(minLength: 8)
         if store.isEvaluating {
-          ProgressView().controlSize(.small)
-            .help(String(localized: "Assessing new events"))
+          HStack(spacing: 6) {
+            ProgressView().controlSize(.small)
+            Text(
+              store.isSendingReminder
+                ? String(localized: "Sending goal reminder")
+                : String(localized: "Updating goal assessments: \(store.remainingEvaluationCount) remaining")
+            )
+            .font(.system(size: 11))
+            .foregroundStyle(theme.textSecondary)
+          }
+          .accessibilityElement(children: .combine)
+          .help(String(localized: "Saved events may need assessment when goals or evaluation rules change. The count includes the event currently being processed."))
         }
         Button(action: onManageEvents) {
           Label(String(localized: "Events & Goals"), systemImage: "slider.horizontal.3")

@@ -42,6 +42,7 @@ extension ClaudeProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], rewriteSpan: Range<Int>?, log: LLMCall) {
+    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let callStart = Date()
     let generationPlan = makeClaudeCardGenerationPlan(
       observations: observations,
@@ -290,7 +291,7 @@ extension TimelineOutputSupporting {
     return ClaudeCardGenerationPlan(
       observations: currentObservations,
       context: freshContext,
-      requiresSingleCard: true,
+      requiresSingleCard: false,
       allowsSingleShortCard: allowsSingleShortCard,
       expectedStartTime: firstStart.map { formatTimestampForPrompt($0) },
       expectedEndTime: lastEnd.map { formatTimestampForPrompt($0) },
@@ -309,35 +310,15 @@ extension ClaudeProvider {
   ) -> (isValid: Bool, error: String?) {
     var issues: [String] = []
 
-    if requiresSingleCard, let expectedStartTime, let expectedEndTime {
-      if cards.count != 1 {
-        issues.append(
-          "Fresh segment must contain exactly one card; received \(cards.count)."
-        )
-      } else if let card = cards.first {
-        if timeToMinutes(card.startTime) != timeToMinutes(expectedStartTime)
-          || timeToMinutes(card.endTime) != timeToMinutes(expectedEndTime)
-        {
-          issues.append(
-            "Fresh segment card must cover \(expectedStartTime) - \(expectedEndTime)."
-          )
-        }
-      }
-    } else if !requiresSingleCard {
-      if let expectedStartTime, let firstCard = cards.first,
-        timeToMinutes(firstCard.startTime) != timeToMinutes(expectedStartTime)
-      {
-        issues.append(
-          "Cards must begin at the connected rewrite boundary, \(expectedStartTime)."
-        )
-      }
-      if let expectedEndTime, let lastCard = cards.last,
-        timeToMinutes(lastCard.endTime) != timeToMinutes(expectedEndTime)
-      {
-        issues.append(
-          "Cards must cover new observations through \(expectedEndTime)."
-        )
-      }
+    if let expectedStartTime, let firstCard = cards.first,
+      timeToMinutes(firstCard.startTime) != timeToMinutes(expectedStartTime)
+    {
+      issues.append("Cards must begin at the source boundary, \(expectedStartTime).")
+    }
+    if let expectedEndTime, let lastCard = cards.last,
+      timeToMinutes(lastCard.endTime) != timeToMinutes(expectedEndTime)
+    {
+      issues.append("Cards must cover observations through \(expectedEndTime).")
     }
 
     var previousStartMinutes: Double?
@@ -353,7 +334,6 @@ extension ClaudeProvider {
       var endMinutes = timeToMinutes(card.endTime)
       if endMinutes < startMinutes { endMinutes += 24 * 60 }
       let duration = endMinutes - startMinutes
-      let isAllowedShortSpan = allowsSingleShortCard && cards.count == 1
 
       if let previousEndMinutes, startMinutes < previousEndMinutes {
         issues.append(
@@ -361,11 +341,11 @@ extension ClaudeProvider {
         )
       }
 
-      if duration < 10, !isAllowedShortSpan {
+      if duration <= 0 {
         issues.append(
           String(
             format:
-              "Card %d '%@' is only %.1f minutes long; every card, including the final card, must be at least 10 minutes.",
+              "Card %d '%@' must have positive duration; got %.1f minutes.",
             index + 1,
             card.title,
             duration

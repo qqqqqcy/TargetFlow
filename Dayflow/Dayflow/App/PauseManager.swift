@@ -78,9 +78,11 @@ final class PauseManager: ObservableObject {
   }
 
   private var timer: Timer?
+  private let appState: AppState
 
-  private init() {
-    registerForWakeNotification()
+  init(appState: AppState? = nil, observeWake: Bool = true) {
+    self.appState = appState ?? .shared
+    if observeWake { registerForWakeNotification() }
   }
 
   // MARK: - Public API
@@ -107,7 +109,7 @@ final class PauseManager: ObservableObject {
     }
 
     // Stop recording
-    AppState.shared.setRecording(
+    appState.setRecording(
       false,
       persistPreference: duration == .indefinite
     )
@@ -118,7 +120,7 @@ final class PauseManager: ObservableObject {
     clearPauseState()
 
     // Start recording
-    AppState.shared.setRecording(true)
+    appState.setRecording(true)
   }
 
   // MARK: - Timer Management
@@ -152,7 +154,7 @@ final class PauseManager: ObservableObject {
     checkAndResumeIfExpired()
   }
 
-  private func checkAndResumeIfExpired() {
+  func checkAndResumeIfExpired() {
     guard let end = pauseEndTime else { return }
 
     if Date() >= end {

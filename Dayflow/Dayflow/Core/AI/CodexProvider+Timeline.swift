@@ -22,6 +22,7 @@ extension CodexProvider {
   ) async throws -> (
     cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall
   ) {
+    try TimelineEvidencePolicy.requireVisibleContext(context)
     guard !screenshots.isEmpty else {
       throw NSError(
         domain: "ChatCLI", code: -96,
@@ -66,6 +67,7 @@ extension CodexProvider {
       let previousCards = plan.context.existingCards
       let basePrompt = buildTimelinePrompt(
         frames: frames, previousCards: previousCards, categories: context.categories)
+        + (try TimelineEvidencePolicy.correctionInstruction(context.correctionCards))
       let imagePaths = frames.frames.map(\.url.path)
       var currentPrompt = basePrompt
       var lastError: Error?
@@ -101,8 +103,8 @@ extension CodexProvider {
               + "\n\nThe cards together must cover the previous cards' time and the new window, "
               + formatTimestampForPrompt(frames.windowStart) + " to "
               + formatTimestampForPrompt(frames.windowEnd)
-              + ", with no gaps and no overlaps. Every card except the last must be 10 to 60 "
-              + "minutes long. Return JSON only."
+              + ", with no gaps and no overlaps. Every card has positive duration and is at most 60 "
+              + "minutes long; keep distinct short events separate. Return JSON only."
             print("[ChatCLI] generate_timeline validation failed (attempt \(attempt)): \(detail)")
             continue
           }

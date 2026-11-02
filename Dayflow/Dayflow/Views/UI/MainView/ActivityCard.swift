@@ -348,17 +348,10 @@ struct ActivityCard: View {
     }
   }
 
-  /// Failed cards saved before the failure rework carry raw error text
-  /// ("Failed to process 15 minutes… An unexpected error occurred."), so they
-  /// get a plain sentence instead. Newer failed cards are already plain.
+  /// Older saved failures may contain raw errors or unconditional retry promises.
   private func summaryText(for activity: TimelineActivity) -> String {
-    guard isFailedCard(activity), activity.summary.hasPrefix("Failed to process") else {
-      return activity.summary
-    }
-    return String(
-      localized:
-        "This time couldn't be turned into cards yet. Target Flow will try again automatically. Your recording is saved."
-    )
+    guard isFailedCard(activity) else { return activity.summary }
+    return TimelineFailureClassifier.displaySummary(activity.summary)
   }
 
   private func renderMarkdownText(_ content: String) -> Text {
@@ -405,12 +398,15 @@ struct ActivityCard: View {
     }
 
     let category =
-      matched
+      TimelineEventDisplay.reservedCategory(raw)
+      ?? matched
       ?? CategoryPersistence.defaultCategories.first {
         $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
       }
 
-    guard let resolvedCategory = category else { return nil }
+    guard let resolvedCategory = category else {
+      return (name: String(localized: "Idle"), indicator: Color.gray)
+    }
 
     let nsColor = NSColor(hex: resolvedCategory.colorHex) ?? NSColor(hex: "#4F80EB") ?? .systemBlue
     return (name: resolvedCategory.name, indicator: Color(nsColor: nsColor))
@@ -649,7 +645,7 @@ private enum ActivityCardTimelapseError: LocalizedError {
   }
 }
 
-private actor ActivityCardTimelapseGenerator {
+actor ActivityCardTimelapseGenerator {
   static let shared = ActivityCardTimelapseGenerator()
 
   private let storage: any StorageManaging
@@ -666,7 +662,7 @@ private actor ActivityCardTimelapseGenerator {
     }
 
     let screenshots = storage.fetchScreenshotsInTimeRange(
-      startTs: timelineCard.startTs, endTs: timelineCard.endTs)
+      startTs: timelineCard.startTs, endTs: timelineCard.endTs - 1)
     guard !screenshots.isEmpty else {
       throw ActivityCardTimelapseError.noScreenshots
     }

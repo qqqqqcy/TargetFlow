@@ -53,7 +53,7 @@ struct CanvasActivityCard: View {
   }
 
   private var isCompactCard: Bool {
-    durationMinutes < Double(compactDurationThreshold)
+    durationMinutes < Double(compactDurationThreshold) || height < 32
   }
 
   private var verticalPadding: CGFloat {
@@ -97,7 +97,7 @@ struct CanvasActivityCard: View {
       }
     }) {
       HStack(alignment: .top, spacing: isFailedCard ? 10 : iconTextSpacing) {
-        if durationMinutes >= 10 {
+        if height >= 16 {
           if isFailedCard {
             VStack(alignment: .leading, spacing: 4) {
               HStack(alignment: .top, spacing: 8) {
@@ -235,6 +235,8 @@ struct CanvasActivityCard: View {
         y: 2
       )
     }
+    .accessibilityLabel(Text("\(displayTitle), \(time)"))
+    .help("\(displayTitle) · \(time)")
     .buttonStyle(CanvasCardButtonStyle(pressedScale: pressedScale))
     .pointingHandCursor()
     .hoverScaleEffect(scale: hoverScale)

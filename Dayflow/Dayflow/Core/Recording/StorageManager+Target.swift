@@ -34,17 +34,43 @@ extension StorageManager: TargetStorage {
   {
     let json = String(decoding: try JSONEncoder().encode(assessment), as: UTF8.self)
     return try timedWrite("saveTargetAssessment") { db in
-      // Cards may be removed or extended while the AI request is running.
-      try db.execute(
+      // The assessment depends on both content and structured evidence. Compare inside
+      // the same write transaction so an old model response cannot overwrite newer data.
+      guard let row = try Row.fetchOne(
+        db,
         sql: """
-          INSERT OR REPLACE INTO target_assessments (card_id, assessment_json)
-          SELECT id, ? FROM timeline_cards
-          WHERE id = ? AND is_deleted = 0 AND start_ts = ? AND end_ts = ?
+          SELECT metadata FROM timeline_cards
+          WHERE id = ? AND is_deleted = 0 AND start_ts = ? AND end_ts = ? AND category = ?
             AND title = ? AND COALESCE(summary, '') = ? AND COALESCE(detailed_summary, '') = ?
           """,
-        arguments: [
-          json, card.id, card.startTs, card.endTs, card.title, card.summary, card.detailedSummary,
-        ])
+        arguments: [card.id, card.startTs, card.endTs, card.category, card.title,
+                    card.summary, card.detailedSummary]
+      ) else { return false }
+      var evidence: ActivityEvidenceKind?
+      var distractions: [Distraction]?
+      if let raw: String = row["metadata"] {
+        let data = Data(raw.utf8)
+        let decoder = JSONDecoder()
+        if let metadata = try? decoder.decode(TimelineMetadata.self, from: data) {
+          evidence = metadata.evidenceKind
+          distractions = metadata.distractions
+        } else if let legacy = try? decoder.decode([Distraction].self, from: data) {
+          distractions = legacy
+        } else {
+          // Malformed or unknown metadata cannot safely be matched to an old response.
+          return false
+        }
+      }
+      func semanticDistractions(_ values: [Distraction]?) -> [[String?]]? {
+        values?.map { [$0.startTime, $0.endTime, $0.title, $0.summary] }
+      }
+      // Legacy JSON may omit distraction IDs, which are regenerated on every decode.
+      guard evidence == card.evidenceKind,
+        semanticDistractions(distractions) == semanticDistractions(card.distractions)
+      else { return false }
+      try db.execute(
+        sql: "INSERT OR REPLACE INTO target_assessments (card_id, assessment_json) VALUES (?, ?)",
+        arguments: [card.id, json])
       return db.changesCount > 0
     }
   }

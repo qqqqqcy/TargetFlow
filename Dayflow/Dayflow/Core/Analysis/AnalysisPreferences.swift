@@ -7,8 +7,8 @@ enum AnalysisPreferences {
   static let defaultInterval: TimeInterval = 300
 
   static var interval: TimeInterval {
-    get { interval(in: .standard) }
-    set { setInterval(newValue, in: .standard) }
+    get { interval(in: AppStoragePaths.defaults) }
+    set { setInterval(newValue, in: AppStoragePaths.defaults) }
   }
 
   static func interval(in defaults: UserDefaults) -> TimeInterval {

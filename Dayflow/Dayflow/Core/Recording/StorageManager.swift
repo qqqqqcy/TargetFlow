@@ -268,6 +268,12 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
     startBackupScheduler()
   }
 
+  /// Backups made before privacy markers existed contain ordinary unmarked rows.
+  static func migrateScreenshotPrivacyColumn(in db: Database) throws {
+    guard try !db.columns(in: "screenshots").contains(where: { $0.name == "is_privacy_redacted" }) else { return }
+    try db.execute(sql: "ALTER TABLE screenshots ADD COLUMN is_privacy_redacted INTEGER NOT NULL DEFAULT 0")
+  }
+
   // TEMPORARY DEBUG: Timing helpers for database operations
   func timedWrite<T>(_ label: String, _ block: (Database) throws -> T) throws -> T {
     let callStart = CFAbsoluteTimeGetCurrent()
@@ -459,6 +465,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
                   file_path TEXT NOT NULL,
                   file_size INTEGER,
                   idle_seconds_at_capture INTEGER,
+                  is_privacy_redacted INTEGER NOT NULL DEFAULT 0,
                   frame_index INTEGER,
                   is_deleted INTEGER DEFAULT 0,
                   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -472,6 +479,43 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
                   PRIMARY KEY (batch_id, screenshot_id)
               );
               CREATE INDEX IF NOT EXISTS idx_batch_screenshots_screenshot ON batch_screenshots(screenshot_id);
+
+              -- Unpublished evidence is never read as a timeline event.
+              CREATE TABLE IF NOT EXISTS pending_timeline_evidence (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  batch_id INTEGER NOT NULL REFERENCES analysis_batches(id) ON DELETE CASCADE,
+                  start_ts INTEGER NOT NULL,
+                  end_ts INTEGER NOT NULL,
+                  card_json TEXT NOT NULL,
+                  first_screenshot_id INTEGER NOT NULL REFERENCES screenshots(id) ON DELETE CASCADE,
+                  last_screenshot_id INTEGER NOT NULL REFERENCES screenshots(id) ON DELETE CASCADE,
+                  CHECK(end_ts >= start_ts)
+              );
+              CREATE INDEX IF NOT EXISTS idx_pending_timeline_end ON pending_timeline_evidence(end_ts);
+              CREATE TABLE IF NOT EXISTS pending_timeline_sources (
+                  pending_id INTEGER NOT NULL REFERENCES pending_timeline_evidence(id) ON DELETE CASCADE,
+                  screenshot_id INTEGER NOT NULL REFERENCES screenshots(id) ON DELETE CASCADE,
+                  PRIMARY KEY(pending_id, screenshot_id)
+              );
+              CREATE INDEX IF NOT EXISTS idx_pending_source_screenshot ON pending_timeline_sources(screenshot_id);
+              DROP TRIGGER IF EXISTS invalidate_pending_on_screenshot_delete;
+              CREATE TRIGGER invalidate_pending_on_screenshot_delete
+              AFTER UPDATE OF is_deleted ON screenshots WHEN NEW.is_deleted = 1 AND COALESCE(OLD.is_deleted, 0) = 0
+              BEGIN
+                DELETE FROM pending_timeline_evidence
+                WHERE id IN (SELECT pending_id FROM pending_timeline_sources WHERE screenshot_id = OLD.id)
+                  OR (OLD.captured_at BETWEEN start_ts AND end_ts
+                    AND NOT EXISTS (SELECT 1 FROM pending_timeline_sources WHERE pending_id = pending_timeline_evidence.id));
+              END;
+              DROP TRIGGER IF EXISTS invalidate_pending_on_screenshot_removal;
+              CREATE TRIGGER invalidate_pending_on_screenshot_removal
+              BEFORE DELETE ON screenshots
+              BEGIN
+                DELETE FROM pending_timeline_evidence
+                WHERE id IN (SELECT pending_id FROM pending_timeline_sources WHERE screenshot_id = OLD.id)
+                  OR (OLD.captured_at BETWEEN start_ts AND end_ts
+                    AND NOT EXISTS (SELECT 1 FROM pending_timeline_sources WHERE pending_id = pending_timeline_evidence.id));
+              END;
           """)
 
       // Day goals: user-defined focus/distraction targets and category assignments per timeline day
@@ -588,6 +632,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
             """)
         print("✅ Added idle_seconds_at_capture column to screenshots")
       }
+      try Self.migrateScreenshotPrivacyColumn(in: db)
       if !screenshotColumns.contains("frame_index") {
         try db.execute(
           sql: """
