@@ -53,7 +53,7 @@ struct WeekRecordingStatusCard: View {
       HStack(spacing: 6) {
         TimelineThinkingSpinner(config: spinnerConfig, visualScale: 0.4)
         if !compact {
-          Text("Next card...")
+          NextCardGenerationStatusText()
             .font(.custom("Figtree", size: 10).weight(.semibold))
             .foregroundColor(.white)
             .lineLimit(1)

@@ -7,7 +7,6 @@ extension CodexProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     enum CardParseError: LocalizedError {
       case empty
       case decodeFailure

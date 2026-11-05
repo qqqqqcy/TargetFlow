@@ -74,72 +74,76 @@ final class ActivityBoundaryTests: XCTestCase {
     XCTAssertEqual(output[0].distractions?.count, 1)
   }
 
-  func testPrivacyRunsBypassProviderAndCannotBridgePriorCards() async throws {
+  func testVisibleBlackVisibleUsesOneRequestAndContinuousPriorContext() async throws {
     var calls: [[Int64]] = []
     let shots = [shot(0), shot(1), shot(2, privateFrame: true), shot(3, privateFrame: true), shot(4), shot(5)]
     let output = try await TimelineEvidencePolicy.generate(screenshots: shots,
       context: { var value = context([card("8:59 AM", "9:00 AM", "Earlier A")]); value.hasContinuousCaptureBeforeBatch = true; return value }(), batchId: 42) { frames, ctx, _ in
       calls.append(frames.map(\.id))
-      XCTAssertFalse(frames.contains(where: \.isPrivacyRedacted))
-      XCTAssertFalse(ctx.existingCards.contains(where: TimelineEvidencePolicy.containsLegacyPrivacyMarker))
-      if calls.count == 1 {
-        return self.result([self.card("8:59 AM", "9:02 AM", "A")])
-      }
-      XCTAssertTrue(ctx.existingCards.isEmpty)
-      return self.result([self.card("9:04 AM", "9:06 AM", "B")])
+      XCTAssertEqual(frames.filter(\.isPrivacyRedacted).map(\.id), [120, 180])
+      XCTAssertEqual(ctx.existingCards.map(\.title), ["Earlier A"])
+      XCTAssertTrue(ctx.hasContinuousCaptureBeforeBatch)
+      return self.result([self.card("8:59 AM", "9:06 AM", "Continued work with a redacted interval")])
     }
-    XCTAssertEqual(calls, [[0, 60], [240, 300]])
+    XCTAssertEqual(calls, [[0, 60, 120, 180, 240, 300]])
+    XCTAssertEqual(output.cards.count, 1)
     XCTAssertTrue(output.cards[0].detailedSummary.contains("Earlier A"))
-    XCTAssertTrue(output.cards[0].title.contains("A"))
-    XCTAssertEqual(output.cards[1].title, "Privacy protected")
-    XCTAssertEqual(output.cards[2].title, "B")
-    XCTAssertEqual(output.cards.map(\.evidenceKind), [.visible, .privacyRedacted, .visible])
-    XCTAssertEqual(output.cards[1].category, "__privacy__")
-    XCTAssertNil(output.cards[1].appSites)
-    XCTAssertEqual(output.cards[1].detailedSummary, "")
+    XCTAssertEqual(output.cards[0].title, "Continued work with a redacted interval")
+    XCTAssertEqual(output.cards[0].evidenceKind, .visible)
     XCTAssertEqual(output.rewriteSpan, (anchor - 60)..<(anchor + 360))
-    XCTAssertFalse(output.observations.contains { $0.startTs < anchor + 240 && $0.endTs > anchor + 120 })
   }
 
-  func testFullyPrivateBatchNeverCallsProvider() async throws {
+  func testBlackOnlyBatchCallsProviderWithoutInferringHiddenContent() async throws {
+    var calls = 0
     let output = try await TimelineEvidencePolicy.generate(
       screenshots: [shot(0, privateFrame: true), shot(1, privateFrame: true)],
-      context: context(), batchId: nil) { _, _, _ in
-        XCTFail("Private pixels must not leave local processing")
-        return self.result([])
+      context: context(), batchId: nil) { frames, _, _ in
+        calls += 1
+        XCTAssertEqual(frames.count, 2)
+        XCTAssertTrue(frames.allSatisfy(\.isPrivacyRedacted))
+        return self.result([self.card("9:00 AM", "9:02 AM", "Black frames; activity unavailable")])
       }
+    XCTAssertEqual(calls, 1)
     XCTAssertEqual(output.cards.count, 1)
-    XCTAssertEqual(output.cards[0].evidenceKind, .privacyRedacted)
-    XCTAssertTrue(output.observations.isEmpty)
+    XCTAssertEqual(output.cards[0].title, "Black frames; activity unavailable")
+    XCTAssertEqual(output.cards[0].evidenceKind, .visible)
   }
 
-  func testAnyPrivateCaptureProtectsWholeMinuteAndGapsRemain() {
+  func testRedactionDoesNotPartitionMinutesButCaptureGapsRemain() {
     let spans = TimelineEvidencePolicy.partition([
       shot(0), shot(0, privateFrame: true, seconds: 40), shot(1), shot(5)])
-    XCTAssertEqual(spans.map(\.kind), [.privacyRedacted, .visible, .visible])
-    XCTAssertEqual(spans.map(\.startTs), [anchor, anchor + 60, anchor + 300])
-    XCTAssertEqual(spans.map(\.endTs), [anchor + 60, anchor + 120, anchor + 360])
+    XCTAssertEqual(spans.map(\.kind), [.visible, .visible])
+    XCTAssertEqual(spans.map(\.startTs), [anchor, anchor + 300])
+    XCTAssertEqual(spans.map(\.endTs), [anchor + 120, anchor + 360])
+    XCTAssertEqual(spans[0].screenshots.map(\.id), [0, 40, 60])
   }
 
-  func testProviderCannotCrossTypedPrivacyBarrier() async throws {
+  func testBlackFrameProviderFailurePropagatesWithoutLocalCard() async throws {
+    let failure = NSError(domain: "SyntheticProvider", code: 503)
+    var calls = 0
     do {
       _ = try await TimelineEvidencePolicy.generate(screenshots: [shot(0), shot(1, privateFrame: true)],
-        context: context(), batchId: nil) { _, _, _ in
-          self.result([self.card("9:00 AM", "9:02 AM", "Forged work")])
+        context: context(), batchId: nil) { frames, _, _ in
+          calls += 1
+          XCTAssertEqual(frames.count, 2)
+          throw failure
         }
-      XCTFail("Provider extended work across withheld evidence")
-    } catch { XCTAssertNotNil(error as? ClaudeOutputValidationError) }
+      XCTFail("Provider failure must propagate")
+    } catch {
+      XCTAssertEqual((error as NSError).domain, failure.domain)
+      XCTAssertEqual((error as NSError).code, failure.code)
+    }
+    XCTAssertEqual(calls, 1)
   }
 
-  func testProviderProvenanceCannotForgeInactivityAndLocalPrivacySurvives() async throws {
-    let nested = Distraction(startTime: "9:01 AM", endTime: "9:02 AM",
-      title: "privacy placeholder", summary: "隐私设置遮挡 secret app name")
-    let output = try await TimelineEvidencePolicy.generate(screenshots: [shot(0), shot(1), shot(2)],
+  func testProviderRedactionProseDoesNotCreateLocalPrivacyStatus() async throws {
+    let output = try await TimelineEvidencePolicy.generate(screenshots: [shot(0), shot(1, privateFrame: true), shot(2)],
       context: context(), batchId: nil) { _, _, _ in
-        self.result([self.card("9:00 AM", "9:03 AM", "A", distractions: [nested], evidence: .inputInactive)])
+        self.result([self.card("9:00 AM", "9:03 AM", "Content hidden by privacy settings", evidence: .inputInactive)])
       }
-    XCTAssertEqual(output.cards.map(\.evidenceKind), [.visible, .privacyRedacted, .visible])
-    XCTAssertFalse(String(decoding: try JSONEncoder().encode(output.cards), as: UTF8.self).contains("secret app"))
+    XCTAssertEqual(output.cards.count, 1)
+    XCTAssertEqual(output.cards[0].evidenceKind, .visible)
+    XCTAssertEqual(output.cards[0].title, "Content hidden by privacy settings")
   }
 
   func testLegacyAndEnvelopeParsingPreserveOptionalMetadata() throws {
@@ -155,33 +159,6 @@ final class ActivityBoundaryTests: XCTestCase {
     XCTAssertNil(try JSONDecoder().decode([ActivityCardData].self, from: Data(old.utf8))[0].evidenceKind)
   }
 
-  func testEveryProviderRejectsPrivateFramesAndLegacyProtectedContextBeforeTransport() async throws {
-    let configuration = OpenAICompatibleRuntimeConfiguration(
-      configuration: .init(preset: .custom, baseURL: "https://example.invalid/v1", modelID: "synthetic"), bearerToken: nil)
-    let providers: [AIConfiguredProvider] = [.codex(CodexProvider()), .claude(ClaudeProvider()),
-      .gemini(GeminiDirectProvider(apiKey: "synthetic")),
-      .compatible(OpenAICompatibleProvider(configuration: configuration)),
-      .local(OllamaProvider(openAICompatible: configuration)),
-      .hosted(DayflowBackendProvider(token: "synthetic", endpoint: "https://example.invalid"))]
-    for provider in providers {
-      do {
-        _ = try await provider.generateTimeline(screenshots: [shot(0, privateFrame: true)],
-          context: context(), batchId: nil)
-        XCTFail("Private timeline reached transport")
-      } catch { XCTAssertEqual((error as NSError).domain, "TimelineEvidence") }
-      do {
-        _ = try await provider.transcribeScreenshots([shot(0, privateFrame: true)],
-          batchStartTime: Date(timeIntervalSince1970: Double(anchor)), batchId: nil)
-        XCTFail("Private transcription reached transport")
-      } catch { XCTAssertEqual((error as NSError).domain, "TimelineEvidence") }
-      do {
-        _ = try await provider.generateActivityCards(observations: [],
-          context: context([card("9:00 AM", "9:01 AM", "Protected", evidence: .privacyRedacted)]), batchId: nil)
-        XCTFail("Protected legacy context reached transport")
-      } catch { XCTAssertEqual((error as NSError).domain, "TimelineEvidence") }
-    }
-  }
-
   func testReplacementGroupsDoNotDeleteUnobservedGap() async throws {
     let output = try await TimelineEvidencePolicy.generate(screenshots: [shot(0), shot(2)],
       context: context(), batchId: nil) { frames, _, _ in
@@ -193,14 +170,19 @@ final class ActivityBoundaryTests: XCTestCase {
     XCTAssertEqual(groups.map(\.range), [anchor..<(anchor + 60), (anchor + 120)..<(anchor + 180)])
   }
 
-  func testLeadingPrivateMinutePreservesPreviousVisiblePrefix() async throws {
+  func testLeadingBlackFrameRewritesContinuousLegacyPrivacyContext() async throws {
+    var ctx = context([card("8:57 AM", "9:00 AM", "Earlier work", evidence: .privacyRedacted)])
+    ctx.hasContinuousCaptureBeforeBatch = true
     let output = try await TimelineEvidencePolicy.generate(screenshots: [shot(0, privateFrame: true)],
-      context: context([card("8:57 AM", "9:01 AM", "Earlier work")]), batchId: nil) { _, _, _ in
-        XCTFail("No visible input")
-        return self.result([])
+      context: ctx, batchId: nil) { frames, context, _ in
+        XCTAssertTrue(frames[0].isPrivacyRedacted)
+        XCTAssertEqual(context.existingCards.map(\.title), ["Earlier work"])
+        XCTAssertEqual(context.existingCards.first?.evidenceKind, .privacyRedacted)
+        return self.result([self.card("8:57 AM", "9:01 AM", "Continued context with redaction")])
       }
-    XCTAssertEqual(output.cards.map(\.endTime), ["9:00 AM", "9:01 AM"])
-    XCTAssertEqual(output.cards.map(\.title), ["Earlier work", "Privacy protected"])
+    XCTAssertEqual(output.cards.map(\.endTime), ["9:01 AM"])
+    XCTAssertEqual(output.cards.map(\.title), ["Continued context with redaction"])
+    XCTAssertTrue(output.cards[0].detailedSummary.contains("Earlier work"))
   }
 
   func testGenerationAndRepairPromptsPreserveShortPurposes() {

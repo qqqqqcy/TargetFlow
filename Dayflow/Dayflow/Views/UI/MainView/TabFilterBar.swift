@@ -3,7 +3,7 @@ import SwiftUI
 /// Normalizes a category name so chips and timeline cards match regardless of
 /// case or stray whitespace.
 func categoryFilterKey(_ name: String) -> String {
-  name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+  TimelineEventDisplay.canonicalCategoryKey(name)
 }
 
 struct TabFilterBar: View {
@@ -102,7 +102,7 @@ struct TabFilterBar: View {
             .foregroundColor(theme.chipText.opacity(0.7))
         }
 
-        Text(category.name)
+        Text(category.displayName)
           .font(Font.system(size: 13).weight(.medium))
           .foregroundColor(theme.chipText)
           .lineLimit(1)

@@ -51,6 +51,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       Self.allowTermination = true
       NSApp.setActivationPolicy(.regular)
       AppState.shared.isRecording = false
+      if RecordingReplay.isRequested {
+        RecordingReplay.shared.startIfRequested()
+      }
       return
     }
     Self.allowTermination = false

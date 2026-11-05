@@ -75,6 +75,7 @@ struct CanvasTimelineDataView: View {
   @State private var loadRevision = 0
   @State private var scrollTask: Task<Void, Never>?
   @State private var scrollRequest: DayTimelineScrollRequest?
+  @State private var requestedReplayDate: Date?
   // Staggered entrance animation state (Emil Kowalski principle: sequential reveal)
   @State private var cardEntranceProgress: [String: Bool] = [:]
   // Plain reference box: mutating it never invalidates body, so hover
@@ -97,8 +98,9 @@ struct CanvasTimelineDataView: View {
   // two hours no longer fit in the viewport when a short event is magnified.
   private func scrollToNowCenteredHour() {
     timelinePerfLog("dayCanvas.scrollToNow tick=\(scrollToNowTick) hours=\(timelineMinutes(for: Date()) / 60)")
+    let focus = replayFocusDate(for: selectedDate) ?? Date()
     scrollRequest = DayTimelineScrollRequest(
-      hours: CGFloat(timelineMinutes(for: Date()) / 60), viewportFraction: 0.5)
+      hours: CGFloat(timelineMinutes(for: focus) / 60), viewportFraction: 0.5)
     // A parent scroll tick can cancel the delayed initial scroll. Any replacement
     // scroll must also reveal the canvas, or its content stays transparent.
     revealInitialScroll()
@@ -117,6 +119,13 @@ struct CanvasTimelineDataView: View {
       .onDisappear(perform: performDayTimelineOnDisappear)
       .onChange(of: selectedDate) { loadActivities() }
       .onChange(of: refreshTrigger) { loadActivities() }
+      .onReceive(NotificationCenter.default.publisher(for: .recordingReplayShowDate)) { notification in
+        guard RecordingReplayPreview.isEnabled,
+          let date = notification.object as? Date ?? notification.userInfo?["date"] as? Date
+        else { return }
+        requestedReplayDate = date
+        scheduleReplayFocus(date)
+      }
       .onReceive(NotificationCenter.default.publisher(for: .timelineCardsDidCommit).receive(on: DispatchQueue.main)) { _ in
         loadActivities(animate: false)
       }
@@ -160,7 +169,9 @@ struct CanvasTimelineDataView: View {
         scheduleScrollToNow(delay: 0.1)
       }
       .onAppear {
-        if timelineIsToday(selectedDate) {
+        if let date = replayFocusDate(for: selectedDate) {
+          scheduleReplayFocus(date)
+        } else if timelineIsToday(selectedDate) {
           scheduleScrollToNow(delay: 0.05)
         } else {
           // Past day: nothing to auto-scroll to. Reveal immediately so the
@@ -171,6 +182,10 @@ struct CanvasTimelineDataView: View {
       }
       .onChange(of: selectedDate) { _, newDate in
         scrollTask?.cancel()
+        if let date = replayFocusDate(for: newDate) {
+          scheduleReplayFocus(date)
+          return
+        }
         guard timelineIsToday(newDate) else {
           revealInitialScroll()
           return
@@ -178,6 +193,31 @@ struct CanvasTimelineDataView: View {
         didInitialScrollInView = false
         scheduleScrollToNow(delay: 0.1)
       }
+  }
+
+  private func replayFocusDate(for day: Date) -> Date? {
+    guard RecordingReplayPreview.isEnabled else { return nil }
+    if let requestedReplayDate,
+      Calendar.current.isDate(timelineDisplayDate(from: requestedReplayDate), inSameDayAs: day) {
+      return requestedReplayDate
+    }
+    return RecordingReplayPreview.windows.first(where: {
+      Calendar.current.isDate(timelineDisplayDate(from: $0.start), inSameDayAs: day)
+    })?.start
+  }
+
+  private func scheduleReplayFocus(_ date: Date) {
+    scrollTask?.cancel()
+    scrollTask = Task { @MainActor in
+      // Date navigation and mounting the day canvas settle before applying its native scroll.
+      try? await Task.sleep(for: .milliseconds(150))
+      guard !Task.isCancelled,
+        Calendar.current.isDate(timelineDisplayDate(from: date), inSameDayAs: selectedDate)
+      else { return }
+      scrollRequest = DayTimelineScrollRequest(
+        hours: CGFloat(timelineMinutes(for: date) / 60), viewportFraction: 0.25)
+      revealInitialScroll()
+    }
   }
 
   private func scheduleScrollToNow(delay: Double) {
@@ -382,7 +422,7 @@ struct CanvasTimelineDataView: View {
 
   @ViewBuilder
   private var currentTimeIndicator: some View {
-    if timelineIsToday(selectedDate), let projection = recordingProjection {
+    if !RecordingReplayPreview.isEnabled, timelineIsToday(selectedDate), let projection = recordingProjection {
       switch recordingControlMode {
       case .active:
         let projectionHeight = recordingProjectionHeight(for: projection)
@@ -852,30 +892,6 @@ extension CanvasTimelineDataView {
     }
   }
   return PreviewWrapper()
-}
-
-private struct NextCardGenerationStatusText: View {
-  @ObservedObject private var analysisManager = AnalysisManager.shared
-
-  var body: some View {
-    TimelineView(.periodic(from: .now, by: 1)) { context in
-      if let deadline = analysisManager.nextCardAnalysisDate {
-        let seconds = max(0, Int(ceil(deadline.timeIntervalSince(context.date))))
-        if seconds > 0 {
-          (Text("Generating your next card")
-            + Text(" · ")
-            + Text("\(seconds / 60) min \(seconds % 60) sec remaining"))
-            .monospacedDigit()
-        } else {
-          Text("Generating your next card") + Text(" · ") + Text("Analyzing…")
-        }
-      } else {
-        Text("Generating your next card")
-      }
-    }
-    .help(
-      "Countdown until enough recording data is collected. AI analysis may take additional time.")
-  }
 }
 
 // Only touched on the main thread (onHover and MainActor.run in loadActivities).

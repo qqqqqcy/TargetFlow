@@ -25,6 +25,10 @@ struct ColorOrganizerRoot: View {
   @State private var editingCategoryID: UUID?
   @State private var draftName: String = ""
   @State private var draftDetails: String = ""
+  @State private var newCategoryDraft: TimelineCategory?
+  @State private var draftTargetEnabled: Bool = false
+  @State private var draftEventEnabled: Bool = true
+  @State private var showNameValidation = false
   @State private var numPoints: Int = 3
   @State private var normalizedRadius: Double = 0.7
   @State private var currentAngle: Double = -Double.pi / 2
@@ -47,6 +51,10 @@ struct ColorOrganizerRoot: View {
 
   private var categories: [TimelineCategory] {
     categoryStore.editableCategories
+  }
+
+  private var editorCategories: [TimelineCategory] {
+    categories + (newCategoryDraft.map { [$0] } ?? [])
   }
 
   private var spectrumColors: [String] {
@@ -94,7 +102,7 @@ struct ColorOrganizerRoot: View {
           Spacer(minLength: 0)
           if presentationStyle == .sheet {
             Button {
-              commitPendingEditsIfNeeded()
+              guard commitPendingEditsIfNeeded() else { return }
               categoryStore.persist()
               onDismiss?()
             } label: {
@@ -315,7 +323,7 @@ struct ColorOrganizerRoot: View {
   }
 
   private var canAddMoreCategories: Bool {
-    categories.count < 20
+    categories.count < 20 && newCategoryDraft == nil
   }
 
   private var addCategoryButton: some View {
@@ -400,11 +408,11 @@ struct ColorOrganizerRoot: View {
       if stage == .details {
         if presentationStyle == .sheet {
           SettingsSecondaryButton(title: String(localized: "Adjust colors")) {
-            commitPendingEditsIfNeeded()
+            guard commitPendingEditsIfNeeded() else { return }
             withAnimation(.easeInOut(duration: 0.25)) { stage = .colors }
           }
           SettingsPrimaryButton(title: completionButtonTitle ?? String(localized: "Done")) {
-            commitPendingEditsIfNeeded()
+            guard commitPendingEditsIfNeeded() else { return }
             categoryStore.persist()
             onDismiss?()
           }
@@ -413,7 +421,7 @@ struct ColorOrganizerRoot: View {
             title: String(localized: "Next"), systemImage: "chevron.right",
             isDisabled: categories.isEmpty
           ) {
-            commitPendingEditsIfNeeded()
+            guard commitPendingEditsIfNeeded() else { return }
             categoryStore.persist()
             withAnimation(.easeInOut(duration: 0.25)) {
               stage = .colors
@@ -445,6 +453,11 @@ struct ColorOrganizerRoot: View {
 
     return ScrollViewReader { proxy in
       VStack(alignment: .leading, spacing: 24) {
+        if showNameValidation {
+          Text("Enter a specific event name before saving.")
+            .font(.system(size: 12))
+            .foregroundStyle(theme.textSecondary)
+        }
         ZStack(alignment: .top) {
           RoundedRectangle(cornerRadius: 16)
             .fill(
@@ -461,10 +474,10 @@ struct ColorOrganizerRoot: View {
 
           ScrollView(showsIndicators: false) {
             VStack(spacing: 8) {
-              if categories.isEmpty {
+              if editorCategories.isEmpty {
                 emptyState
               } else {
-                ForEach(categories) { category in
+                ForEach(editorCategories) { category in
                   EditableCategoryCard(
                     category: category,
                     isEditing: editingCategoryID == category.id,
@@ -472,6 +485,10 @@ struct ColorOrganizerRoot: View {
                       ? $draftName : .constant(category.name),
                     draftDetails: editingCategoryID == category.id
                       ? $draftDetails : .constant(category.details),
+                    targetEnabledOverride: category.id == newCategoryDraft?.id
+                      ? $draftTargetEnabled : nil,
+                    eventEnabledOverride: category.id == newCategoryDraft?.id
+                      ? $draftEventEnabled : nil,
                     onStartEdit: { startEditing(category) },
                     onSave: { saveEdits(for: category) },
                     onDelete: { deleteCategory(category) }
@@ -533,7 +550,7 @@ struct ColorOrganizerRoot: View {
   }
 
   private func createNewCategory() {
-    guard canAddMoreCategories else { return }
+    guard canAddMoreCategories, commitPendingEditsIfNeeded() else { return }
 
     withAnimation(.easeInOut(duration: 0.25)) {
       if stage != .details {
@@ -542,33 +559,24 @@ struct ColorOrganizerRoot: View {
 
       showFirstTimeHints = false
 
-      let baseName = String(localized: "New event")
-      var candidate = baseName
-      var suffix = 2
-      let existingNames = Set(categories.map { $0.name.lowercased() })
-      while existingNames.contains(candidate.lowercased()) {
-        candidate = "\(baseName) \(suffix)"
-        suffix += 1
-      }
+      let draft = TimelineCategory(
+        name: "", colorHex: "#6A7EFF", order: categories.count, isNew: true)
+      newCategoryDraft = draft
+      editingCategoryID = draft.id
+      draftName = ""
+      draftDetails = ""
+      draftTargetEnabled = false
+      draftEventEnabled = true
 
-      categoryStore.addCategory(name: candidate)
-
-      let editable = categoryStore.editableCategories
-      if let newlyCreated = editable.last {
-        editingCategoryID = newlyCreated.id
-        draftName = newlyCreated.name
-        draftDetails = newlyCreated.details
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-          pendingScrollTarget = newlyCreated.id
-        }
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        pendingScrollTarget = draft.id
       }
     }
   }
 
   private func startEditing(_ category: TimelineCategory) {
     if editingCategoryID != nil && editingCategoryID != category.id {
-      commitPendingEditsIfNeeded()
+      guard commitPendingEditsIfNeeded() else { return }
     }
     withAnimation(.easeInOut(duration: 0.2)) {
       editingCategoryID = category.id
@@ -577,25 +585,41 @@ struct ColorOrganizerRoot: View {
     }
   }
 
-  private func saveEdits(for category: TimelineCategory) {
+  @discardableResult
+  private func saveEdits(for category: TimelineCategory) -> Bool {
     let trimmedName = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
-    let didRename = !trimmedName.isEmpty && trimmedName != category.name
-    if didRename {
-      categoryStore.renameCategory(id: category.id, to: trimmedName)
-
+    guard !trimmedName.isEmpty,
+      !TimelineEventDisplay.isPlaceholderName(trimmedName),
+      !TimelineEventDisplay.isReserved(trimmedName)
+    else {
+      showNameValidation = true
+      return false
     }
-    categoryStore.updateDetails(draftDetails, for: category.id)
+
+    if category.id == newCategoryDraft?.id {
+      guard categoryStore.addCategory(
+        name: trimmedName, details: draftDetails, targetEnabled: draftTargetEnabled,
+        eventEnabled: draftEventEnabled
+      ) != nil else { return false }
+    } else {
+      categoryStore.updateCategory(id: category.id) {
+        $0.name = trimmedName
+        $0.details = draftDetails
+      }
+    }
     endEditing()
+    return true
   }
 
   private func deleteCategory(_ category: TimelineCategory) {
     withAnimation(.easeInOut(duration: 0.2)) {
+      let isDraft = category.id == newCategoryDraft?.id
       if editingCategoryID == category.id {
         endEditing()
       }
-
-      categoryStore.removeCategory(id: category.id)
-
+      if !isDraft {
+        categoryStore.removeCategory(id: category.id)
+      }
     }
   }
 
@@ -616,17 +640,30 @@ struct ColorOrganizerRoot: View {
     currentAngle = newAngle
   }
 
-  private func commitPendingEditsIfNeeded() {
+  @discardableResult
+  private func commitPendingEditsIfNeeded() -> Bool {
     guard let editingID = editingCategoryID,
-      let category = categories.first(where: { $0.id == editingID })
-    else { return }
-    saveEdits(for: category)
+      let category = editorCategories.first(where: { $0.id == editingID })
+    else { return true }
+    if category.id == newCategoryDraft?.id,
+      draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      draftDetails.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      !draftTargetEnabled
+    {
+      endEditing()
+      return true
+    }
+    return saveEdits(for: category)
   }
 
   private func endEditing() {
     editingCategoryID = nil
+    newCategoryDraft = nil
     draftName = ""
     draftDetails = ""
+    draftTargetEnabled = false
+    draftEventEnabled = true
+    showNameValidation = false
   }
 }
 

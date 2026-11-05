@@ -54,7 +54,6 @@ enum AIConfiguredProvider: @unchecked Sendable {
   }
 
   func transcribeScreenshots(_ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?) async throws -> (observations: [Observation], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     switch self {
     case .codex(let provider): return try await provider.transcribeScreenshots(screenshots, batchStartTime: batchStartTime, batchId: batchId)
     case .claude(let provider): return try await provider.transcribeScreenshots(screenshots, batchStartTime: batchStartTime, batchId: batchId)
@@ -87,8 +86,6 @@ enum AIConfiguredProvider: @unchecked Sendable {
   }
 
   func generateTimeline(screenshots: [Screenshot], context: ActivityGenerationContext, batchId: Int64?) async throws -> (cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context)
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     switch self {
     case .codex(let provider): return try await provider.generateTimeline(screenshots: screenshots, context: context, batchId: batchId)
     case .claude(let provider): return try await provider.generateTimeline(screenshots: screenshots, context: context, batchId: batchId)

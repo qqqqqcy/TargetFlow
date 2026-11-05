@@ -11,15 +11,14 @@ struct CategoryPickerOverlay: View {
   var onDismiss: () -> Void
 
   private var orderedCategories: [TimelineCategory] {
-    let trimmedCurrent = currentCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
-      .lowercased()
-    let sorted = categories.sorted { lhs, rhs in
+    let trimmedCurrent = TimelineEventDisplay.canonicalCategoryKey(currentCategoryName)
+    let sorted = categories.filter(\.isClassificationCandidate).sorted { lhs, rhs in
       lhs.order < rhs.order
     }
 
     guard
       let index = sorted.firstIndex(where: {
-        $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == trimmedCurrent
+        TimelineEventDisplay.canonicalCategoryKey($0.name) == trimmedCurrent
       })
     else {
       return sorted
@@ -135,10 +134,8 @@ struct CategoryPickerOverlay: View {
   }
 
   private func isSelected(_ category: TimelineCategory) -> Bool {
-    let trimmedCurrent = currentCategoryName.trimmingCharacters(in: .whitespacesAndNewlines)
-      .lowercased()
-    return category.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-      == trimmedCurrent
+    TimelineEventDisplay.canonicalCategoryKey(category.name)
+      == TimelineEventDisplay.canonicalCategoryKey(currentCategoryName)
   }
 }
 
@@ -172,7 +169,7 @@ private struct CategoryPickerPill: View {
         .fill(categoryColor)
         .frame(width: 10, height: 10)
 
-      Text(category.name)
+      Text(category.displayName)
         .font(
           Font.system(size: 13)
             .weight(.medium)

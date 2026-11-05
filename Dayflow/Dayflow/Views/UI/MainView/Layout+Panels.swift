@@ -123,7 +123,9 @@ extension MainView {
             .foregroundStyle(theme.textSecondary)
         }
         Spacer()
-        PausePillView()
+        if !RecordingReplayPreview.isEnabled {
+          PausePillView()
+        }
       }
 
       CurrentGoalsStatusView(onManageEvents: { showCategoryEditor = true })
@@ -198,7 +200,10 @@ extension MainView {
 
   private func categoryFilters(isVertical: Bool) -> some View {
     TabFilterBar(
-      categories: categoryStore.editableCategories,
+      // Filters describe recorded history, not candidates for new classifications.
+      categories: categoryStore.editableCategories.filter {
+        !TimelineEventDisplay.isPlaceholderName($0.name)
+      },
       idleCategory: categoryStore.idleCategory,
       mutedCategoryKeys: $mutedCategoryKeys,
       onMoveCategory: { id, targetID in

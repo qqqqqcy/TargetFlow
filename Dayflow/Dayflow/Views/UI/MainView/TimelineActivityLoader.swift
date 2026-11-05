@@ -73,12 +73,20 @@ enum TimelineActivityLoader {
   }
 
   static func shouldDisplay(_ card: TimelineCard, storageManager: StorageManaging) -> Bool {
-    guard card.title == "Processing failed" else { return true }
+    guard card.title == "Processing failed", card.category == "System" else { return true }
     return isRetryableFailedCard(card, storageManager: storageManager)
   }
 
   static func isRetryableFailedCard(_ card: TimelineCard, storageManager: StorageManaging) -> Bool {
-    guard card.title == "Processing failed", let batchId = card.batchId else { return false }
+    guard card.title == "Processing failed", card.category == "System",
+      let batchId = card.batchId else { return false }
+    // Older builds could leave an error placeholder when successful output was
+    // retained as short pending evidence. It must not look failed or be retried
+    // again just because its source recording is still present.
+    let status = storageManager.allBatches().first { $0.id == batchId }?.status
+    if let status, ["completed", "analyzed", "skipped_short", "failed_empty"].contains(status) {
+      return false
+    }
     return hasRetrySourceScreenshots(for: batchId, storageManager: storageManager)
   }
 

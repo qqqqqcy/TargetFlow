@@ -12,7 +12,12 @@ struct AppRootView: View {
   var body: some View {
     Group {
       if didOnboard {
-        MainView()
+        VStack(spacing: 0) {
+          if RecordingReplayPreview.isEnabled {
+            RecordingReplayBanner()
+          }
+          MainView()
+        }
       } else {
         OnboardingFlow()
       }
@@ -60,7 +65,7 @@ struct DayflowApp: App {
   }
 
   var body: some Scene {
-    Window("Target Flow", id: "main") {
+    Window(RecordingReplayPreview.isEnabled ? "Target Flow · 回放预览" : "Target Flow", id: "main") {
       AppRootView()
         .environmentObject(categoryStore)
         .background {

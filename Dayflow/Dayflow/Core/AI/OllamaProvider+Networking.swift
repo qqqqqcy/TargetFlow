@@ -48,6 +48,24 @@ extension OllamaProvider {
     }
   }
 
+  /// An invalid HTTP envelope is a service/protocol failure, not malformed
+  /// assistant JSON. Keep it distinct so batch queues do not flood the service
+  /// with correction prompts for a response that never contained model output.
+  struct ChatResponseDecodingError: LocalizedError {
+    let underlyingError: Error
+    var errorDescription: String? { "The API response did not contain a valid chat completion." }
+  }
+
+  static func decodeChatResponse(_ data: Data) throws -> ChatResponse {
+    do {
+      let response = try JSONDecoder().decode(ChatResponse.self, from: data)
+      guard !response.choices.isEmpty else {
+        throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Missing chat choice"))
+      }
+      return response
+    } catch { throw ChatResponseDecodingError(underlyingError: error) }
+  }
+
   static func modelFeature(for operation: String) -> ModelFeature {
     switch operation {
     case "describe_frame", "transcribe_screenshots", "segment_video_activity": return .transcription
@@ -84,7 +102,7 @@ extension OllamaProvider {
   func makeChatURLRequest(
     _ request: ChatRequest,
     url: URL? = nil,
-    timeoutInterval: TimeInterval = 60.0
+    timeoutInterval: TimeInterval = 180.0
   ) throws -> URLRequest {
     guard let resolvedURL = url ?? LocalEndpointUtilities.chatCompletionsURL(baseURL: endpoint)
     else {
@@ -206,16 +224,19 @@ extension OllamaProvider {
             errorMessage: errorBody
           )
           didLogFailureThisAttempt = true
-          throw NSError(
-            domain: "OllamaProvider", code: 4,
-            userInfo: [
-              NSLocalizedDescriptionKey:
-                "Ollama API request failed with status \(httpResponse.statusCode): \(errorBody)"
-            ])
+          var errorInfo: [String: Any] = [
+            NSLocalizedDescriptionKey:
+              "Ollama API request failed with status \(httpResponse.statusCode): \(errorBody)",
+            TimelineRetryPolicy.httpStatusKey: httpResponse.statusCode,
+          ]
+          if let delay = TimelineRetryPolicy.retryAfter(httpResponse.value(forHTTPHeaderField: "Retry-After")) {
+            errorInfo[TimelineRetryPolicy.retryAfterKey] = delay
+          }
+          throw NSError(domain: "OllamaProvider", code: 4, userInfo: errorInfo)
         }
 
         do {
-          let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
+          let chatResponse = try Self.decodeChatResponse(data)
           if let reported = chatResponse.model {
             print("[\(localEngine)] response model: \(reported) (requested: \(request.model))")
           }

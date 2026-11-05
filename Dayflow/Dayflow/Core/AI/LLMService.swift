@@ -9,7 +9,7 @@ import Foundation
 import GRDB
 import SwiftUI
 
-private final class TimelineCardGenerationGate: @unchecked Sendable {
+private final class TimelineCommitGate: @unchecked Sendable {
   private let lock = NSLock()
   private var isHeld = false
   private var waiters: [CheckedContinuation<Void, Never>] = []
@@ -77,108 +77,77 @@ final class LLMService: LLMServicing {
     self.beforeTimelineCommit = beforeTimelineCommit
   }
 
-  private static let timelineCardGenerationGate = TimelineCardGenerationGate()
+  private static let timelineCommitGate = TimelineCommitGate()
+  private static let batchClaimLock = NSLock()
+  private static var claimedBatches = Set<Int64>()
 
   /// Publish already generated facts after a settings decrease; serialization and the
   /// conditional pending deletion make this safe against a concurrent batch rewrite.
   static func publishEligiblePending(_ pending: PendingTimelineEvidence, beforeCommit: (() -> Void)? = nil) async throws -> [Int64] {
-    await timelineCardGenerationGate.acquire()
-    defer { timelineCardGenerationGate.release() }
+    await timelineCommitGate.acquire()
+    defer { timelineCommitGate.release() }
     guard let id = pending.id, pending.endTs - pending.startTs >= Int(AnalysisPreferences.interval),
       pending.endTs - pending.startTs <= 3600,
       StorageManager.shared.pendingTimelineEvidence().contains(where: { $0.id == id })
     else { return [] }
-    let sourceIds = StorageManager.shared.fetchScreenshotsInTimeRange(
-      startTs: pending.startTs, endTs: pending.endTs).map(\.id)
+    let expectedTimeline = try StorageManager.shared.captureTimelineRewriteSnapshot(
+      from: pending.startTs, to: pending.endTs + 1)
+    guard let current = StorageManager.shared.pendingTimelineEvidence().first(where: { $0.id == id }) else { return [] }
+    func facts(_ value: PendingTimelineEvidence) -> [String] {
+      let card = value.card
+      return [String(value.batchId), String(value.startTs), String(value.endTs),
+        String(value.firstScreenshotId), String(value.lastScreenshotId),
+        card.startTime, card.endTime, card.category, card.subcategory, card.title,
+        card.summary, card.detailedSummary, card.evidenceKind?.rawValue ?? "",
+        card.appSites?.primary ?? "", card.appSites?.secondary ?? "",
+        TargetStore.distractionJSON(card.distractions)]
+    }
+    guard facts(current) == facts(pending),
+      Set(current.sourceScreenshotIds) == Set(pending.sourceScreenshotIds) else {
+      throw TimelineCardReplacementError.timelineChanged
+    }
+    let recordedSourceIDs = Set(pending.sourceScreenshotIds)
+    let sources = StorageManager.shared.fetchScreenshotsInTimeRange(
+      startTs: pending.startTs, endTs: pending.endTs).filter {
+        recordedSourceIDs.isEmpty || recordedSourceIDs.contains($0.id)
+      }
+    // Older pending records may predate capture-run planning. A settings change
+    // must not publish a card across a stop or an unproven file transition.
+    guard sources.first?.id == pending.firstScreenshotId,
+      sources.last?.id == pending.lastScreenshotId,
+      TimelineEvidencePolicy.captureRuns(sources, recordedContinuity: {
+        TimelineCaptureBoundaries.shared.continuity(from: $0, to: $1)
+      }).count == 1 else { return [] }
+    let sourceIds = sources.map(\.id)
+    beforeCommit?()
+    let categoryPolicy = TimelineCategoryWritePolicy.current()
+    let history = StorageManager.shared.fetchTimelineCardsByTimeRange(
+      from: Date(timeIntervalSince1970: Double(pending.startTs)),
+      to: Date(timeIntervalSince1970: Double(pending.endTs)))
+    // A stored pending fact is unpublished input, not permission to rewrite a
+    // disabled event's published history when the duration setting changes.
+    guard !history.contains(where: {
+      categoryPolicy.isDisabled($0.category)
+        && ($0.startTs ?? Int.max) < pending.endTs
+        && ($0.endTs ?? Int.min) > pending.startTs
+    }) else { return [] }
     let card = pending.card
     let policy = TimelineOutputPolicy()
     let shell = TimelineCardShell(startTimestamp: policy.formatTimestampForPrompt(pending.startTs),
       endTimestamp: policy.formatTimestampForPrompt(pending.endTs / 60 * 60 + 60),
-      category: card.category, subcategory: card.subcategory, title: card.title, summary: card.summary,
+      category: card.category == "System" ? "System"
+        : policy.normalizeCategory(card.category, descriptors: categoryPolicy.descriptors),
+      subcategory: card.subcategory, title: card.title, summary: card.summary,
       detailedSummary: card.detailedSummary, distractions: card.distractions, appSites: card.appSites,
       evidenceKind: card.evidenceKind, exactStartTs: pending.startTs, exactEndTs: pending.endTs)
-    beforeCommit?()
     let result = try StorageManager.shared.replaceTimelineCardGroups([
       TimelineCardReplacementGroup(from: Date(timeIntervalSince1970: Double(pending.startTs)),
         to: Date(timeIntervalSince1970: Double(pending.endTs)), cards: [shell])],
       batchId: pending.batchId, keepingNewerBatchesCardsStartingAfter: Date(timeIntervalSince1970: Double(pending.startTs)),
       pendingToDelete: [id], enforceMinimum: true,
-      requiredScreenshotIds: sourceIds + pending.sourceScreenshotIds, requiredPendingIds: [id])
+      requiredScreenshotIds: sourceIds + pending.sourceScreenshotIds, requiredPendingIds: [id],
+      expectedTimeline: expectedTimeline)
     return result.insertedIds
-  }
-
-  private static func localPrivacyPending(batchId: Int64, screenshots: [Screenshot])
-    -> (records: [PendingTimelineEvidence], consumed: [Int64], sources: [Int64], cards: [Int64]) {
-    var failurePrivacy: [PendingTimelineEvidence] = []
-    var consumedPrivacy: [Int64] = []
-    var requiredSources = Set(screenshots.map(\.id))
-    var requiredCards: [Int64] = []
-    let oldPending = StorageManager.shared.pendingTimelineEvidence()
-    for span in TimelineEvidencePolicy.partition(screenshots) where span.kind == .privacyRedacted {
-      let frames = span.screenshots.filter(\.isPrivacyRedacted).sorted { $0.capturedAt < $1.capturedAt }
-      guard let first = frames.first, let last = frames.last else { continue }
-      let history = StorageManager.shared.fetchScreenshotsInTimeRange(
-        startTs: first.capturedAt - 720, endTs: first.capturedAt - 1)
-      let previousFrame = first.id == screenshots.first?.id ? history.last : nil
-      let continuous = previousFrame.map { previous in
-        TimelineEvidencePolicy.captureContinues(history: history, next: first,
-          recordedContinuity: TimelineCaptureBoundaries.shared.continuity(from: previous.capturedAt, to: first.capturedAt), privacy: true)
-          && previous.capturedDate.getDayInfoFor4AMBoundary().dayString == first.capturedDate.getDayInfoFor4AMBoundary().dayString
-      } ?? false
-      let pending = continuous ? oldPending.last { item in
-        item.card.evidenceKind == .privacyRedacted && item.endTs == previousFrame?.capturedAt
-          && item.lastScreenshotId == previousFrame?.id && last.capturedAt - item.startTs <= 3600
-      } : nil
-      let previousCard = continuous ? StorageManager.shared.fetchTimelineCardEndingLast(
-        startingBefore: first.capturedDate, excludingBatchId: batchId).flatMap { card in
-          card.evidenceKind == .privacyRedacted && card.endTs == previousFrame?.capturedAt
-            && last.capturedAt - card.startTs <= 3600 ? card : nil
-        } : nil
-      let start = min(first.capturedAt, pending?.startTs ?? first.capturedAt,
-        previousCard?.startTs ?? first.capturedAt)
-      let protectedFrames = StorageManager.shared.fetchScreenshotsInTimeRange(startTs: start, endTs: last.capturedAt)
-        .filter(\.isPrivacyRedacted)
-      guard let sourceFirst = protectedFrames.first, let sourceLast = protectedFrames.last else { continue }
-      var continuousSpan = true
-      for index in protectedFrames.indices.dropFirst() {
-        let previous = protectedFrames[protectedFrames.index(before: index)]
-        let next = protectedFrames[index]
-        if previous.capturedDate.getDayInfoFor4AMBoundary().dayString != next.capturedDate.getDayInfoFor4AMBoundary().dayString
-          || !TimelineEvidencePolicy.captureContinues(history: Array(protectedFrames[..<index]), next: next,
-            recordedContinuity: TimelineCaptureBoundaries.shared.continuity(from: previous.capturedAt, to: next.capturedAt), privacy: true) {
-          continuousSpan = false
-          break
-        }
-      }
-      guard continuousSpan else { continue }
-      let card = TimelineEvidencePolicy.privacyCard(start: TimelineOutputPolicy().formatTimestampForPrompt(start),
-        end: TimelineOutputPolicy().formatTimestampForPrompt(last.capturedAt / 60 * 60 + 60))
-      var sources = Set(span.screenshots.map(\.id) + protectedFrames.map(\.id))
-      if let pending { sources.formUnion(pending.sourceScreenshotIds) }
-      if continuous { sources.formUnion(history.suffix(2).map(\.id)) }
-      if let previousCard { requiredCards.append(previousCard.id) }
-      requiredSources.formUnion(sources)
-      for old in oldPending where old.batchId == batchId && old.card.evidenceKind == .privacyRedacted
-        && old.startTs >= span.startTs && old.endTs <= span.endTs {
-        if let id = old.id, !consumedPrivacy.contains(id) { consumedPrivacy.append(id) }
-      }
-      if let id = pending?.id, !consumedPrivacy.contains(id) { consumedPrivacy.append(id) }
-      failurePrivacy.append(PendingTimelineEvidence(id: nil, batchId: batchId, startTs: start,
-        endTs: last.capturedAt, card: card, firstScreenshotId: sourceFirst.id,
-        lastScreenshotId: sourceLast.id, sourceScreenshotIds: Array(sources)))
-    }
-    return (failurePrivacy, consumedPrivacy, Array(requiredSources), requiredCards)
-  }
-
-  /// Sealed sub-minute batches never call the provider; retain protected facts locally.
-  static func saveShortPrivacyEvidence(batchId: Int64, screenshots: [Screenshot]) async throws {
-    await timelineCardGenerationGate.acquire()
-    defer { timelineCardGenerationGate.release() }
-    let local = localPrivacyPending(batchId: batchId, screenshots: screenshots)
-    _ = try StorageManager.shared.replaceTimelineCardGroups([], batchId: batchId,
-      keepingNewerBatchesCardsStartingAfter: nil, pendingToSave: local.records,
-      pendingToDelete: local.consumed, requiredScreenshotIds: local.sources,
-      requiredPendingIds: local.consumed, requiredCardIds: local.cards)
   }
 
   private static let timelineFailureToastLastShownDayByKindDefaultsKey =
@@ -362,12 +331,32 @@ final class LLMService: LLMServicing {
     _ batchId: Int64, progressHandler: ((LLMProcessingStep) -> Void)? = nil,
     completion: @escaping (Result<ProcessedBatchResult, Error>) -> Void
   ) {
+    Self.batchClaimLock.lock()
+    let claimed = Self.claimedBatches.insert(batchId).inserted
+    Self.batchClaimLock.unlock()
+    guard claimed else {
+      completion(.failure(NSError(domain: "LLMService", code: 409,
+        userInfo: [NSLocalizedDescriptionKey: "This recording is already being analyzed."])))
+      return
+    }
+    processClaimedBatch(batchId, progressHandler: progressHandler) { result in
+      Self.batchClaimLock.lock()
+      Self.claimedBatches.remove(batchId)
+      Self.batchClaimLock.unlock()
+      completion(result)
+    }
+  }
+
+  private func processClaimedBatch(
+    _ batchId: Int64, progressHandler: ((LLMProcessingStep) -> Void)?,
+    completion: @escaping (Result<ProcessedBatchResult, Error>) -> Void
+  ) {
     Task {
       var holdsTimelineCardGenerationGate = false
       var replacingTimelineCards = false
       defer {
         if holdsTimelineCardGenerationGate {
-          Self.timelineCardGenerationGate.release()
+          Self.timelineCommitGate.release()
         }
       }
 
@@ -389,8 +378,7 @@ final class LLMService: LLMServicing {
         configuredContext = try makeConfiguredTimelineContext(loadConfiguration())
         configurationError = nil
       } catch {
-        // Privacy-only evidence is local and can still be handled without a
-        // configured model. Visible evidence reports the original setup error.
+        // Report setup errors through the ordinary batch failure path.
         configuredContext = nil
         configurationError = error
       }
@@ -401,6 +389,7 @@ final class LLMService: LLMServicing {
       var originalSourceSnapshot: [Int64] = []
       var originalPendingSnapshot: [Int64] = []
       var originalCardSnapshot: [Int64] = []
+      var expectedTimeline: TimelineRewriteSnapshot?
       print(
         "🧭 [LLMService] processBatch selected primary=\(primaryProviderID) "
           + "label=\(primaryProviderLabel)"
@@ -432,24 +421,48 @@ final class LLMService: LLMServicing {
         let batchStartTime = batchStartDate
 
         var pendingCandidate: PendingTimelineEvidence?
-        var privacyCandidate: PendingTimelineEvidence?
-        var privacyPreviousFrame: Screenshot?
         func makeGenerationContext(batchObservations: [Observation]) -> ActivityGenerationContext {
           // Fetch existing timeline cards that overlap with the recent batching window.
           let existingTimelineCards = StorageManager.shared.fetchTimelineCardsByTimeRange(
             from: windowStartTime,
             to: currentTime
           )
+          let categoryPolicy = TimelineCategoryWritePolicy.current()
+          let protectedEnd = categoryPolicy.protectedHistoryEnd(existingTimelineCards)
           let hasPreviousCardWithinFiveMinutes = StorageManager.shared.hasTimelineCardConnected(
             toBatchStartingAt: batchStartTime,
             maxGap: 5 * 60
           )
 
-          // Convert TimelineCards to ActivityCardData for context
+          // Establish the full connected history before asking the model to rewrite it.
+          // Checking only the frame immediately before this batch can admit older cards
+          // across a stop or interleaved recording streams.
+          let firstFrame = screenshots.min { $0.capturedAt < $1.capturedAt }
+          var continuousFrames: [Screenshot] = []
+          var continuousStart = batchStartTs
+          if let first = firstFrame {
+            let earliestCard = existingTimelineCards.compactMap(\.startTs).min() ?? first.capturedAt
+            let history = StorageManager.shared.fetchScreenshotsInTimeRange(
+              startTs: min(earliestCard - 120, first.capturedAt - 720), endTs: first.capturedAt - 1)
+            continuousFrames = TimelineEvidencePolicy.continuousCaptureSuffix(history + [first],
+              recordedContinuity: { TimelineCaptureBoundaries.shared.continuity(from: $0, to: $1) })
+            continuousStart = continuousFrames.first?.capturedAt ?? first.capturedAt
+            if continuousFrames.first?.id == history.first?.id {
+              // Legacy cards can start at the first frame's minute. This tolerance
+              // applies only at the start of known evidence, never after a barrier.
+              continuousStart = continuousStart / 60 * 60
+            }
+          }
+          let continuous = continuousFrames.count > 1
+
+          // Convert only cards entirely inside that capture span to model context.
           let existingActivityCards = existingTimelineCards.filter { card in
             // End clocks must be exact; a supported earlier start is restored on save.
-            guard card.category != "System", card.evidenceKind != .privacyRedacted,
-              let start = card.startTs, let end = card.endTs else { return false }
+            guard card.category != "System",
+              let start = card.startTs, let end = card.endTs,
+              start >= continuousStart,
+              !categoryPolicy.isDisabled(card.category),
+              protectedEnd.map({ start >= $0 }) ?? true else { return false }
             if let pending = pendingCandidate,
               let range = try? ClaudeOutputValidator.resolveActivityCardInterval(pending.card, nearest: pending.startTs),
               range.lowerBound <= start && end <= range.upperBound { return false }
@@ -469,21 +482,16 @@ final class LLMService: LLMServicing {
             )
           }
 
-          let firstFrame = screenshots.min { $0.capturedAt < $1.capturedAt }
-          let continuous = firstFrame.map { first in
-            let history = StorageManager.shared.fetchScreenshotsInTimeRange(
-              startTs: first.capturedAt - 720, endTs: first.capturedAt - 1)
-            let boundary = history.last.flatMap {
-              TimelineCaptureBoundaries.shared.continuity(from: $0.capturedAt, to: first.capturedAt)
-            }
-            return TimelineEvidencePolicy.captureContinues(history: history, next: first, recordedContinuity: boundary)
-          } ?? false
-          let pendingCards = pendingCandidate.map { [$0.card] } ?? []
+          let pendingCards = pendingCandidate.flatMap { pending -> [ActivityCardData]? in
+            guard !categoryPolicy.isDisabled(pending.card.category),
+              protectedEnd.map({ pending.startTs >= $0 }) ?? true else { return nil }
+            return [pending.card]
+          } ?? []
           return ActivityGenerationContext(
             batchObservations: batchObservations,
             existingCards: existingActivityCards + pendingCards,
             currentTime: currentTime,
-            categories: CategoryStore.descriptorsForLLM(),
+            categories: categoryPolicy.descriptors,
             hasPreviousCardWithinFiveMinutes: hasPreviousCardWithinFiveMinutes || pendingCandidate != nil,
             hasContinuousCaptureBeforeBatch: continuous
           )
@@ -494,41 +502,39 @@ final class LLMService: LLMServicing {
           progressHandler?(.generatingCards)
         }
 
-        // Timeline reads, generation, and replacement form one serialized rewrite.
-        await Self.timelineCardGenerationGate.acquire()
+        // Snapshot planning and commits are short critical sections. Provider
+        // requests run outside this gate and may overlap unrelated retries.
+        await Self.timelineCommitGate.acquire()
         holdsTimelineCardGenerationGate = true
+        expectedTimeline = try StorageManager.shared.captureTimelineRewriteSnapshot(
+          from: min(Int(windowStartTime.timeIntervalSince1970) - 3600 - 60, batchStartTs - 3600),
+          to: batchEndTs / 60 * 60 + 60)
+        let priorPending = StorageManager.shared.pendingTimelineEvidence()
 
         if let first = screenshots.min(by: { $0.capturedAt < $1.capturedAt }) {
           let history = StorageManager.shared.fetchScreenshotsInTimeRange(
             startTs: first.capturedAt - 720, endTs: first.capturedAt - 1)
           if let previousFrame = history.last,
             TimelineEvidencePolicy.captureContinues(history: history, next: first,
-              recordedContinuity: TimelineCaptureBoundaries.shared.continuity(from: previousFrame.capturedAt, to: first.capturedAt),
-              privacy: first.isPrivacyRedacted) {
+              recordedContinuity: TimelineCaptureBoundaries.shared.continuity(from: previousFrame.capturedAt, to: first.capturedAt)) {
             let pending = StorageManager.shared.pendingTimelineEvidence().last { item in
-              item.endTs == previousFrame.capturedAt && item.lastScreenshotId == previousFrame.id
+              !TimelineCategoryWritePolicy.current().isDisabled(item.card.category)
+                && item.endTs == previousFrame.capturedAt && item.lastScreenshotId == previousFrame.id
                 && Date(timeIntervalSince1970: Double(item.startTs)).getDayInfoFor4AMBoundary().dayString
                   == first.capturedDate.getDayInfoFor4AMBoundary().dayString
                 && first.capturedAt - item.startTs <= 3600
-                && (first.isPrivacyRedacted ? item.card.evidenceKind == .privacyRedacted
-                  : (item.card.evidenceKind == nil || item.card.evidenceKind == .visible))
+                && (item.card.evidenceKind == nil || item.card.evidenceKind == .visible || item.card.evidenceKind == .privacyRedacted)
             }
-            if first.isPrivacyRedacted,
-              previousFrame.capturedDate.getDayInfoFor4AMBoundary().dayString == first.capturedDate.getDayInfoFor4AMBoundary().dayString {
-              privacyCandidate = pending
-              privacyPreviousFrame = previousFrame
-            } else if !first.isPrivacyRedacted {
-              pendingCandidate = pending
-            }
+            pendingCandidate = pending
           }
         }
         let generationContext = makeGenerationContext(batchObservations: [])
         let exactHistory = StorageManager.shared.fetchTimelineCardsByTimeRange(from: windowStartTime, to: currentTime)
-        let previousPrivacy = privacyPreviousFrame.flatMap { frame in
-          exactHistory.last { card in
-            card.evidenceKind == .privacyRedacted && card.endTs == frame.capturedAt
-              && card.startTs.map { frame.capturedAt - $0 < 3600 } == true
-          }
+        func historicalClockRange(_ previous: TimelineCard) -> Range<Int>? {
+          guard let card = generationContext.existingCards.first(where: {
+            $0.startTime == previous.startTimestamp && $0.endTime == previous.endTimestamp
+          }) else { return nil }
+          return try? ClaudeOutputValidator.resolveActivityCardInterval(card, nearest: batchStartTs)
         }
         hasExistingBatchHistory = exactHistory.contains { card in
           card.category != "System" && (card.startTs ?? Int.max) < batchEndTs
@@ -538,65 +544,86 @@ final class LLMService: LLMServicing {
         // read alone cannot reveal that an intermediate frame was removed.
         var originalSourceIds = Set(screenshots.map(\.id))
         if let pendingCandidate { originalSourceIds.formUnion(pendingCandidate.sourceScreenshotIds) }
-        if let privacyCandidate { originalSourceIds.formUnion(privacyCandidate.sourceScreenshotIds) }
-        let sourceStart = min(Int(windowStartTime.timeIntervalSince1970), pendingCandidate?.startTs ?? batchStartTs,
-          privacyCandidate?.startTs ?? batchStartTs, previousPrivacy?.startTs ?? batchStartTs)
+        let sourceStart = min(Int(windowStartTime.timeIntervalSince1970), pendingCandidate?.startTs ?? batchStartTs)
         let earlierSources = StorageManager.shared.fetchScreenshotsInTimeRange(
           startTs: sourceStart, endTs: batchStartTs - 1)
         let contextRanges = generationContext.existingCards.compactMap {
           try? ClaudeOutputValidator.resolveActivityCardInterval($0, nearest: batchStartTs)
         }
         for frame in earlierSources where contextRanges.contains(where: { $0.contains(frame.capturedAt) })
-          || (pendingCandidate.map { frame.capturedAt >= $0.startTs && frame.capturedAt <= $0.endTs } ?? false)
-          || (privacyCandidate.map { frame.capturedAt >= $0.startTs && frame.capturedAt <= $0.endTs } ?? false)
-          || (previousPrivacy.map { frame.capturedAt >= ($0.startTs ?? batchStartTs) && frame.capturedAt <= ($0.endTs ?? batchStartTs) } ?? false) {
+          || (pendingCandidate.map { frame.capturedAt >= $0.startTs && frame.capturedAt <= $0.endTs } ?? false) {
           originalSourceIds.insert(frame.id)
         }
         originalSourceSnapshot = Array(originalSourceIds)
-        originalPendingSnapshot = [pendingCandidate?.id, privacyCandidate?.id].compactMap { $0 }
+        originalPendingSnapshot = [pendingCandidate?.id].compactMap { $0 }
         originalCardSnapshot = exactHistory.compactMap { card in
           guard generationContext.existingCards.contains(where: {
             $0.startTime == card.startTimestamp && $0.endTime == card.endTimestamp
-          }) || card.recordId == previousPrivacy?.recordId else { return nil }
+          }) else { return nil }
           return card.recordId
         }
         let generator: TimelineEvidencePolicy.Generate = configuredContext?.generateTimeline ?? { _, _, _ in
           throw configurationError ?? AIConfiguredRuntimeError.missingRoute
         }
+        Self.timelineCommitGate.release()
+        holdsTimelineCardGenerationGate = false
         let result = try await TimelineEvidencePolicy.generate(
           screenshots: screenshots, context: generationContext,
           batchId: batchId, using: generator)
-        let cards = result.cards
+        await Self.timelineCommitGate.acquire()
+        holdsTimelineCardGenerationGate = true
+        let generatedCards = result.cards
         let isBackupGenerated = configuredContext?.fallbackState.usedFallback ?? false
         print(
-          "🧩 [LLMService] One-step timeline → \(cards.count) cards, "
+          "🧩 [LLMService] One-step timeline → \(generatedCards.count) cards, "
             + "\(result.observations.count) observations")
 
         // Model clocks are minute-rounded. Publish only the range bounded by actual
         // captured evidence; keep shorter output as pending facts, outside the timeline.
-        let priorPending = StorageManager.shared.pendingTimelineEvidence()
-        let sourceSpans = TimelineEvidencePolicy.partition(screenshots)
-        let earliest = min(Int(windowStartTime.timeIntervalSince1970), pendingCandidate?.startTs ?? screenshots.first!.capturedAt,
-          privacyCandidate?.startTs ?? screenshots.first!.capturedAt, previousPrivacy?.startTs ?? screenshots.first!.capturedAt)
+        let earliest = min(Int(windowStartTime.timeIntervalSince1970), pendingCandidate?.startTs ?? screenshots.first!.capturedAt)
+        // A batch can begin near the end of an MP4. Retain the preceding segment
+        // context for rotation checks, without publishing or attaching its older
+        // activity to the generated card. A suffix starting at index 13 is not
+        // evidence that the segment itself lacked index 0.
         let evidence = StorageManager.shared.fetchScreenshotsInTimeRange(
-          startTs: earliest, endTs: screenshots.last!.capturedAt)
+          startTs: earliest - Int(FrameStore.segmentDuration) - 120,
+          endTs: screenshots.last!.capturedAt)
         var publishedCards: [ActivityCardData] = []
         var insertedCardIds: [Int64] = []
         var deletedVideoPaths: [String] = []
         var committed = false
         var didCallCommitHook = false
         for attempt in 0..<3 {
+          // Re-read switches after the async provider and the final commit hook.
+          // Historical labels are protected, not normalized into the new fallback.
+          if !didCallCommitHook { beforeTimelineCommit?(); didCallCommitHook = true }
+          let commitHistory = StorageManager.shared.fetchTimelineCardsByTimeRange(
+            from: windowStartTime, to: currentTime)
+          let categoryPolicy = TimelineCategoryWritePolicy.current()
           let minimum = Int(AnalysisPreferences.interval)
+          let normalizedCards = try categoryPolicy.cardsForCommit(
+            generatedCards, history: commitHistory, nearest: batchStartTs)
+          let cards = try TimelineStabilizedCommit.cards(normalizedCards, nearest: batchStartTs, minimum: minimum)
+          let protectedFloor = categoryPolicy.protectedHistoryEnd(commitHistory).map { ($0 + 59) / 60 * 60 }
           var pendingToSave: [PendingTimelineEvidence] = []
           var pendingToDelete: [Int64] = []
           var replacementGroups: [TimelineCardReplacementGroup] = []
           var currentPublishedCards: [ActivityCardData] = []
           var requiredSourceIds = originalSourceIds
+          var replacementSourceIDs: Set<Int64> = []
+          var consumedCardIDs: Set<Int64> = []
           for (cardIndex, card) in cards.enumerated() {
             let range = try ClaudeOutputValidator.resolveActivityCardInterval(card, nearest: batchStartTs)
             let nextRange = cardIndex + 1 < cards.count
               ? try ClaudeOutputValidator.resolveActivityCardInterval(cards[cardIndex + 1], nearest: batchStartTs) : nil
-            let boundaryStartsAnotherCard = nextRange?.lowerBound == range.upperBound
+            let currentRunIDs = Set(card.sourceScreenshotIDs ?? screenshots.map(\.id))
+            let previousRunIDs: Set<Int64>? = cardIndex > 0
+              ? Set(cards[cardIndex - 1].sourceScreenshotIDs ?? screenshots.map(\.id)) : nil
+            let nextRunIDs: Set<Int64>? = cardIndex + 1 < cards.count
+              ? Set(cards[cardIndex + 1].sourceScreenshotIDs ?? screenshots.map(\.id)) : nil
+            let isFirstInRun = previousRunIDs != currentRunIDs
+            let isLastInRun = nextRunIDs != currentRunIDs
+            let boundaryStartsAnotherCard = !isLastInRun && nextRange?.lowerBound == range.upperBound
             if card.category == "System" {
               replacementGroups.append(TimelineCardReplacementGroup(
                 from: Date(timeIntervalSince1970: Double(range.lowerBound)),
@@ -607,128 +634,128 @@ final class LLMService: LLMServicing {
                   distractions: card.distractions, appSites: card.appSites, evidenceKind: card.evidenceKind)]))
               continue
             }
-            if card.evidenceKind == .privacyRedacted {
-              let currentFrames = screenshots.filter {
-                $0.isPrivacyRedacted && $0.capturedAt >= range.lowerBound && $0.capturedAt < range.upperBound
-              }
-              guard let first = currentFrames.first, let last = currentFrames.last else {
-                throw ClaudeOutputValidationError.outputOutsideEvidence
-              }
-              let eligiblePrevious = first.id == screenshots.first?.id
-                && previousPrivacy?.startTs.map({ last.capturedAt - $0 <= 3600 }) == true ? previousPrivacy : nil
-              let eligiblePending = first.id == screenshots.first?.id
-                && privacyCandidate.map({ last.capturedAt - $0.startTs <= 3600 }) == true ? privacyCandidate : nil
-              let start = min(first.capturedAt, eligiblePending?.startTs ?? first.capturedAt,
-                eligiblePrevious?.startTs ?? first.capturedAt)
-              let end = last.capturedAt
-              let protectedFrames = evidence.filter {
-                $0.isPrivacyRedacted && $0.capturedAt >= start && $0.capturedAt <= end
-              }
-              guard let sourceFirst = protectedFrames.first, let sourceLast = protectedFrames.last else {
-                throw ClaudeOutputValidationError.missingEvidenceCoverage
-              }
-              for index in protectedFrames.indices.dropFirst() {
-                let previous = protectedFrames[protectedFrames.index(before: index)]
-                let next = protectedFrames[index]
-                let boundary = TimelineCaptureBoundaries.shared.continuity(from: previous.capturedAt, to: next.capturedAt)
-                guard TimelineEvidencePolicy.captureContinues(history: Array(protectedFrames[..<index]),
-                  next: next, recordedContinuity: boundary, privacy: true),
-                  previous.capturedDate.getDayInfoFor4AMBoundary().dayString == next.capturedDate.getDayInfoFor4AMBoundary().dayString
-                else { throw ClaudeOutputValidationError.cardCoversEvidenceGap(title: card.title) }
-              }
-              requiredSourceIds.formUnion(protectedFrames.map(\.id))
-              let protectedCard = TimelineEvidencePolicy.privacyCard(
-                start: TimelineOutputPolicy().formatTimestampForPrompt(start),
-                end: TimelineOutputPolicy().formatTimestampForPrompt(end / 60 * 60 + 60))
-              for old in priorPending where old.batchId == batchId && old.card.evidenceKind == .privacyRedacted
-                && old.id != nil && range.lowerBound <= old.startTs && range.upperBound >= old.endTs {
-                if let id = old.id, !pendingToDelete.contains(id) { pendingToDelete.append(id) }
-              }
-              if let id = eligiblePending?.id, !pendingToDelete.contains(id) { pendingToDelete.append(id) }
-              if end - start < minimum {
-                var sourceIds = Set(sourceSpans.filter {
-                  $0.kind == .privacyRedacted && range.overlaps($0.startTs..<$0.endTs)
-                }.flatMap { $0.screenshots.map(\.id) })
-                sourceIds.formUnion(protectedFrames.map(\.id))
-                if let eligiblePending { sourceIds.formUnion(eligiblePending.sourceScreenshotIds) }
-                pendingToSave.append(PendingTimelineEvidence(id: nil, batchId: batchId,
-                  startTs: start, endTs: end, card: protectedCard, firstScreenshotId: sourceFirst.id,
-                  lastScreenshotId: sourceLast.id, sourceScreenshotIds: Array(sourceIds)))
-              } else {
-                currentPublishedCards.append(protectedCard)
-                replacementGroups.append(TimelineCardReplacementGroup(
-                  from: Date(timeIntervalSince1970: Double(start)), to: Date(timeIntervalSince1970: Double(end)),
-                  cards: [TimelineCardShell(startTimestamp: protectedCard.startTime, endTimestamp: protectedCard.endTime,
-                    category: protectedCard.category, subcategory: "", title: protectedCard.title,
-                    summary: protectedCard.summary, detailedSummary: "", distractions: nil, appSites: nil,
-                    evidenceKind: .privacyRedacted, exactStartTs: start, exactEndTs: end)]))
-              }
-              continue
-            }
+            // Only the first capture run can extend the batch's lookback.
+            // Minute-rounded clocks from later runs may overlap that history.
+            let runSourceIDs = Set(card.sourceScreenshotIDs ?? screenshots.map(\.id))
+            let mayExtendHistory = runSourceIDs.contains(screenshots.first!.id)
             let matchingHistory = exactHistory.filter { previous in
-              guard generationContext.hasContinuousCaptureBeforeBatch,
-                let start = previous.startTs, let end = previous.endTs,
-                start >= range.lowerBound, end <= range.upperBound,
-                previous.category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                  == card.category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-                previous.evidenceKind == nil || previous.evidenceKind == .visible
+              guard mayExtendHistory, generationContext.hasContinuousCaptureBeforeBatch,
+                let clockRange = historicalClockRange(previous),
+                clockRange.lowerBound >= range.lowerBound, clockRange.upperBound <= range.upperBound,
+                !categoryPolicy.isDisabled(previous.category),
+                previous.evidenceKind == nil || previous.evidenceKind == .visible || previous.evidenceKind == .privacyRedacted
               else { return false }
               return generationContext.existingCards.contains {
                 $0.startTime == previous.startTimestamp && $0.endTime == previous.endTimestamp
               }
             }
             let matchedPending = pendingCandidate.flatMap { pending -> PendingTimelineEvidence? in
-              guard range.lowerBound <= pending.startTs && range.upperBound >= pending.endTs,
-                card.category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                  == pending.card.category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+              guard mayExtendHistory,
+                range.lowerBound <= pending.startTs && range.upperBound >= pending.endTs
               else { return nil }
               return pending
             }
-            let sourceStart = min(screenshots.first!.capturedAt,
-              matchedPending?.startTs ?? screenshots.first!.capturedAt,
-              matchingHistory.compactMap(\.startTs).min() ?? screenshots.first!.capturedAt)
-            let supported = evidence.filter {
-              !$0.isPrivacyRedacted && $0.capturedAt >= max(range.lowerBound, sourceStart)
-                && ($0.capturedAt < range.upperBound || (!boundaryStartsAnotherCard && $0.capturedAt == range.upperBound))
+            var allowedSourceIDs = runSourceIDs
+            if let matchedPending { allowedSourceIDs.formUnion(matchedPending.sourceScreenshotIds) }
+            for frame in earlierSources where matchingHistory.contains(where: {
+              frame.capturedAt >= ($0.startTs ?? Int.max) && frame.capturedAt <= ($0.endTs ?? Int.min)
+            }) || (matchedPending.map { frame.capturedAt >= $0.startTs && frame.capturedAt <= $0.endTs } ?? false) {
+              allowedSourceIDs.insert(frame.id)
             }
+            let runFrames = screenshots.filter { runSourceIDs.contains($0.id) }
+            guard let runFirst = runFrames.first, let runLast = runFrames.last else {
+              throw ClaudeOutputValidationError.missingEvidenceCoverage
+            }
+            let runStart = runFirst.capturedAt
+            let sourceStart = min(runStart, matchedPending?.startTs ?? runStart,
+              matchingHistory.compactMap(\.startTs).min() ?? runStart)
+            let lower = max(protectedFloor ?? Int.min,
+              isFirstInRun ? min(range.lowerBound, sourceStart) : max(range.lowerBound, sourceStart))
+            let restoredHistoryEnd = matchingHistory.filter {
+              historicalClockRange($0)?.upperBound == range.upperBound
+            }.compactMap(\.endTs).max() ?? range.upperBound
+            let upper = isLastInRun ? max(range.upperBound, runLast.capturedAt + 1)
+              : max(range.upperBound, restoredHistoryEnd)
+            let supported = evidence.filter {
+              allowedSourceIDs.contains($0.id) && $0.capturedAt >= lower
+                && ($0.capturedAt < upper || (!boundaryStartsAnotherCard && $0.capturedAt == upper))
+            }
+            // Every card in the run uses the same publication eligibility window.
+            // Distinct short switches are stabilized by the generator, never hidden.
+            let relatedCards = cards.filter {
+              Set($0.sourceScreenshotIDs ?? screenshots.map(\.id)) == runSourceIDs
+            }
+            let relatedRanges = try relatedCards.map {
+              try ClaudeOutputValidator.resolveActivityCardInterval($0, nearest: batchStartTs)
+            }
+            let fullLower = relatedRanges.map(\.lowerBound).min() ?? range.lowerBound
+            let fullUpper = relatedRanges.map(\.upperBound).max() ?? range.upperBound
+            let runHistory = mayExtendHistory ? exactHistory.filter { previous in
+              guard generationContext.hasContinuousCaptureBeforeBatch,
+                let clockRange = historicalClockRange(previous),
+                clockRange.lowerBound >= fullLower, clockRange.upperBound <= fullUpper,
+                !categoryPolicy.isDisabled(previous.category) else { return false }
+              return true
+            } : []
+            consumedCardIDs.formUnion((matchingHistory + runHistory).compactMap(\.recordId))
+            let historicalStart = runHistory.compactMap(\.startTs).min()
+            let pendingStart = mayExtendHistory ? pendingCandidate.flatMap {
+              fullLower <= $0.startTs && fullUpper >= $0.endTs ? $0.startTs : nil
+            } : nil
+            let stabilityStart = max(protectedFloor ?? Int.min,
+              min(runStart, historicalStart ?? runStart, pendingStart ?? runStart))
+            let stabilityWindow = stabilityStart..<runLast.capturedAt
             guard let first = supported.first, let last = supported.last else {
               throw ClaudeOutputValidationError.missingEvidenceCoverage
             }
-            for index in supported.indices.dropFirst() {
-              let previous = supported[supported.index(before: index)]
-              let next = supported[index]
-              let stop = TimelineCaptureBoundaries.shared.continuity(from: previous.capturedAt, to: next.capturedAt)
-              let sameDay = previous.capturedDate.getDayInfoFor4AMBoundary().dayString
-                == next.capturedDate.getDayInfoFor4AMBoundary().dayString
-              let sameCapture = TimelineEvidencePolicy.captureContinues(
-                history: Array(supported[..<index]), next: next, recordedContinuity: stop)
-              guard sameDay && sameCapture else { throw ClaudeOutputValidationError.cardCoversEvidenceGap(title: card.title) }
+            let supportingPaths = Set(supported.map(\.filePath))
+            let continuityHistory = evidence.filter {
+              $0.capturedAt < first.capturedAt && supportingPaths.contains($0.filePath)
             }
-            requiredSourceIds.formUnion(supported.map(\.id))
+            var checkedHistory = continuityHistory
+            for frame in supported {
+              if let previous = checkedHistory.last, previous.capturedAt >= first.capturedAt {
+                let stop = TimelineCaptureBoundaries.shared.continuity(from: previous.capturedAt, to: frame.capturedAt)
+                let sameDay = previous.capturedDate.getDayInfoFor4AMBoundary().dayString
+                  == frame.capturedDate.getDayInfoFor4AMBoundary().dayString
+                let sameCapture = TimelineEvidencePolicy.captureContinues(
+                  history: checkedHistory, next: frame, recordedContinuity: stop)
+                guard sameDay && sameCapture else { throw ClaudeOutputValidationError.cardCoversEvidenceGap(title: card.title) }
+              }
+              checkedHistory.append(frame)
+            }
+            requiredSourceIds.formUnion(checkedHistory.map(\.id))
+            replacementSourceIDs.formUnion(supported.map(\.id))
             let firstId = first.id, lastId = last.id
             let start = min(first.capturedAt, matchingHistory.compactMap(\.startTs).min() ?? first.capturedAt)
-            let end = last.capturedAt
+            // The last capture before a change still belongs to the preceding
+            // event until the next event's first capture. Use one shared seam,
+            // instead of leaving one capture interval blank between cards.
+            let seamFrames = evidence.filter { frame in
+              runSourceIDs.contains(frame.id) || runHistory.contains {
+                frame.capturedAt >= ($0.startTs ?? Int.max) && frame.capturedAt <= ($0.endTs ?? Int.min)
+              } || (pendingStart.map { frame.capturedAt >= $0 && frame.capturedAt < runStart } ?? false)
+            }
+            let seam = !isLastInRun ? nextRange.flatMap { next in
+              seamFrames.first { $0.capturedAt >= next.lowerBound }?.capturedAt
+            } : nil
+            let end = seam ?? last.capturedAt
+            if let seam, let seamFrame = seamFrames.first(where: { $0.capturedAt == seam }) {
+              requiredSourceIds.insert(seamFrame.id)
+            }
             for old in priorPending where old.batchId == batchId && old.id != nil
-              && range.lowerBound <= old.startTs && range.upperBound >= old.endTs {
+              && start <= old.startTs && end >= old.endTs
+              && allowedSourceIDs.contains(old.firstScreenshotId)
+              && allowedSourceIDs.contains(old.lastScreenshotId) {
               pendingToDelete.append(old.id!)
             }
-            if let pending = pendingCandidate, let id = pending.id,
-              range.lowerBound <= pending.startTs && range.upperBound >= pending.endTs,
-              card.category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                == pending.card.category.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            if let pending = matchedPending, let id = pending.id {
               if !pendingToDelete.contains(id) { pendingToDelete.append(id) }
             }
-            if end - start < minimum {
-              // Retain this provider input span, not unrelated privacy or visible
-              // spans that happened to share the surrounding batch.
-              var pendingSourceIds = Set(sourceSpans.filter {
-                $0.kind == .visible && range.overlaps($0.startTs..<$0.endTs)
-              }.flatMap { $0.screenshots.map(\.id) })
-              pendingSourceIds.formUnion(supported.map(\.id))
-              if let matchedPending { pendingSourceIds.formUnion(matchedPending.sourceScreenshotIds) }
-              for frame in earlierSources where contextRanges.contains(where: { $0.contains(frame.capturedAt) }) {
-                pendingSourceIds.insert(frame.id)
-              }
+            if stabilityWindow.upperBound - stabilityWindow.lowerBound < minimum {
+              // Retain this provider input span, not unrelated capture spans
+              // that happened to share the surrounding batch.
+              let pendingSourceIds = allowedSourceIDs
               pendingToSave.append(PendingTimelineEvidence(id: nil, batchId: batchId,
                 startTs: start, endTs: end, card: card,
                 firstScreenshotId: firstId, lastScreenshotId: lastId,
@@ -740,15 +767,30 @@ final class LLMService: LLMServicing {
               from: Date(timeIntervalSince1970: Double(start)),
               to: Date(timeIntervalSince1970: Double(end)),
               cards: [TimelineCardShell(startTimestamp: TimelineOutputPolicy().formatTimestampForPrompt(start),
-                endTimestamp: TimelineOutputPolicy().formatTimestampForPrompt(end / 60 * 60 + 60),
+                endTimestamp: TimelineOutputPolicy().formatTimestampForPrompt(isLastInRun ? end / 60 * 60 + 60 : end),
                 category: card.category, subcategory: card.subcategory, title: card.title,
                 summary: card.summary, detailedSummary: card.detailedSummary,
                 distractions: card.distractions, appSites: card.appSites,
                 isBackupGenerated: isBackupGenerated ? true : nil, evidenceKind: card.evidenceKind,
-                exactStartTs: start, exactEndTs: end)]))
+                exactStartTs: start, exactEndTs: end)], stabilityWindow: stabilityWindow))
+          }
+          // A retry can split one old pending event into several new cards.
+          // Replace its facts using the union of all new exact source frames,
+          // while retaining pending records from runs absent from this rewrite.
+          for old in priorPending where old.batchId == batchId && old.id != nil
+            && !pendingToDelete.contains(old.id!)
+            && replacementSourceIDs.contains(old.firstScreenshotId)
+            && replacementSourceIDs.contains(old.lastScreenshotId) {
+            let oldIDs = Set(old.sourceScreenshotIds)
+            let oldIntervalSources = evidence.filter {
+              $0.capturedAt >= old.startTs && $0.capturedAt <= old.endTs
+                && (oldIDs.isEmpty || oldIDs.contains($0.id))
+            }.map(\.id)
+            if !oldIntervalSources.isEmpty && Set(oldIntervalSources).isSubset(of: replacementSourceIDs) {
+              pendingToDelete.append(old.id!)
+            }
           }
           do {
-            if !didCallCommitHook { beforeTimelineCommit?(); didCallCommitHook = true }
             replacingTimelineCards = true
             let saved = try StorageManager.shared.replaceTimelineCardGroups(
               replacementGroups, batchId: batchId,
@@ -756,8 +798,8 @@ final class LLMService: LLMServicing {
               pendingToSave: pendingToSave, pendingToDelete: pendingToDelete, enforceMinimum: true,
               markBatchAnalyzed: true, replacementObservations: result.observations,
               requiredScreenshotIds: Array(requiredSourceIds),
-              requiredPendingIds: [pendingCandidate?.id, privacyCandidate?.id].compactMap { $0 },
-              requiredCardIds: originalCardSnapshot)
+              requiredPendingIds: [pendingCandidate?.id].compactMap { $0 },
+              requiredCardIds: Array(consumedCardIDs), expectedTimeline: expectedTimeline)
             insertedCardIds = saved.insertedIds
             deletedVideoPaths = saved.deletedVideoPaths
             publishedCards = currentPublishedCards
@@ -775,6 +817,7 @@ final class LLMService: LLMServicing {
 
         for path in deletedVideoPaths {
           let url = URL(fileURLWithPath: path)
+          guard AppStoragePaths.canRemoveGeneratedMedia(at: url) else { continue }
           do {
             try FileManager.default.removeItem(at: url)
             print("🗑️ Deleted timelapse: \(path)")
@@ -791,19 +834,24 @@ final class LLMService: LLMServicing {
 
         // Track analysis batch completed
 
-        let providerWasUsed = sourceSpans.contains { $0.kind == .visible }
-        // Local privacy handling does not prove a failed provider has recovered.
-        if providerWasUsed { TimelineFailureToastCenter.hide() }
+        TimelineFailureToastCenter.hide()
 
         completion(.success(ProcessedBatchResult(cards: publishedCards, cardIds: insertedCardIds,
-          providerWasUsed: providerWasUsed)))
+          providerWasUsed: true)))
 
       } catch {
         if !holdsTimelineCardGenerationGate {
-          await Self.timelineCardGenerationGate.acquire()
+          await Self.timelineCommitGate.acquire()
           holdsTimelineCardGenerationGate = true
         }
 
+        // A stale result is not a provider failure and must never replace newer
+        // cards with either its generated output or a failure placeholder.
+        let timelineChanged = (error as? TimelineCardReplacementError) == .timelineChanged
+        if timelineChanged {
+          completion(.failure(TimelineCardReplacementError.timelineChanged))
+          return
+        }
         print("Error processing batch: \(error)")
         if let ns = error as NSError?, ns.domain == "GeminiError" {
           print("🔎 GEMINI DEBUG: NSError.userInfo=\(ns.userInfo)")
@@ -823,13 +871,9 @@ final class LLMService: LLMServicing {
 
         // Track analysis batch failed
 
-        // Mark batch as failed. The raw error stays in the batch row for debugging;
-        // the user only ever sees the classifier's plain-language copy.
-        StorageManager.shared.updateBatch(
-          batchId, status: "failed", reason: error.localizedDescription)
-
         // A failed replacement has rolled back; no second write may change its history.
         if replacingTimelineCards {
+          StorageManager.shared.updateBatch(batchId, status: "failed", reason: error.localizedDescription)
           emitTimelineFailureToast(
             classification: failureClassification,
             operation: lastProcessingStep,
@@ -851,7 +895,6 @@ final class LLMService: LLMServicing {
         let failedSpans = TimelineEvidencePolicy.partition(failedScreenshots)
         let protectHistory = hasExistingBatchHistory || error is TimelineNaturalMergeError
         let failureGroups: [TimelineCardReplacementGroup] = protectHistory ? [] : failedSpans.compactMap { span in
-          guard span.kind != .privacyRedacted else { return nil }
           let start = Date(timeIntervalSince1970: Double(span.startTs))
           let end = Date(timeIntervalSince1970: Double(span.endTs))
           return TimelineCardReplacementGroup(from: start, to: end, cards: [
@@ -859,16 +902,21 @@ final class LLMService: LLMServicing {
               message: failureClassification.cardMessage(fallbackProviderLabel: primaryProviderLabel))])
         }
 
-        // Privacy is a local fact even when a visible provider fails. Keep it
-        // pending with exact boundaries; the manager can publish it once it
-        // qualifies, without sending protected frames to any provider.
-        let localPrivacy = Self.localPrivacyPending(batchId: batchId, screenshots: failedScreenshots)
-        let savedFailure = try? StorageManager.shared.replaceTimelineCardGroups(
-          failureGroups, batchId: batchId, keepingNewerBatchesCardsStartingAfter: batchStartDate,
-          pendingToSave: localPrivacy.records, pendingToDelete: localPrivacy.consumed,
-          requiredScreenshotIds: originalSourceSnapshot + localPrivacy.sources,
-          requiredPendingIds: Array(Set(originalPendingSnapshot + localPrivacy.consumed)),
-          requiredCardIds: Array(Set(originalCardSnapshot + localPrivacy.cards)))
+        let savedFailure: (insertedIds: [Int64], deletedVideoPaths: [String])?
+        do {
+          savedFailure = try StorageManager.shared.replaceTimelineCardGroups(
+            failureGroups, batchId: batchId, keepingNewerBatchesCardsStartingAfter: batchStartDate,
+            requiredScreenshotIds: originalSourceSnapshot,
+            requiredPendingIds: originalPendingSnapshot,
+            requiredCardIds: originalCardSnapshot, expectedTimeline: expectedTimeline)
+        } catch TimelineCardReplacementError.timelineChanged {
+          completion(.failure(TimelineCardReplacementError.timelineChanged))
+          return
+        } catch {
+          completion(.failure(error))
+          return
+        }
+        StorageManager.shared.updateBatch(batchId, status: "failed", reason: error.localizedDescription)
         if savedFailure != nil {
           emitTimelineFailureToast(
             classification: failureClassification,
@@ -889,6 +937,7 @@ final class LLMService: LLMServicing {
         // Clean up any deleted video files (if there were existing cards)
         for path in deletedVideoPaths {
           let url = URL(fileURLWithPath: path)
+          guard AppStoragePaths.canRemoveGeneratedMedia(at: url) else { continue }
           do {
             try FileManager.default.removeItem(at: url)
             print("🗑️ Deleted timelapse for replaced card: \(path)")

@@ -6,14 +6,37 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
   typealias MessageContent = OllamaProvider.MessageContent
   typealias Completion = (ChatRequest, String, Int64?) async throws -> String
 
+  /// One-step prompts request {frames, cards}; older compatible endpoints may
+  /// still return a bare card array. Decode both without treating frame notes as
+  /// events, then run the same category and evidence validation on the cards.
+  private struct TimelineResponse: Codable {
+    let cards: [ActivityCardData]
+    enum CodingKeys: String, CodingKey { case cards }
+
+    init(from decoder: Decoder) throws {
+      let value = try decoder.singleValueContainer()
+      if let array = try? value.decode([ActivityCardData].self) {
+        cards = array
+      } else {
+        cards = try decoder.container(keyedBy: CodingKeys.self)
+          .decode([ActivityCardData].self, forKey: .cards)
+      }
+    }
+  }
+
   private let transport: OllamaProvider
   private let configuration: OpenAICompatibleRuntimeConfiguration
   private let completion: Completion?
+  private let sleep: (TimeInterval) async throws -> Void
 
-  init(configuration: OpenAICompatibleRuntimeConfiguration, completion: Completion? = nil) {
+  init(configuration: OpenAICompatibleRuntimeConfiguration,
+    sleep: @escaping (TimeInterval) async throws -> Void = { seconds in
+      try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+    }, completion: Completion? = nil) {
     self.configuration = configuration
     self.transport = OllamaProvider(openAICompatible: configuration)
     self.completion = completion
+    self.sleep = sleep
   }
 
   func makeRequest(content: [MessageContent], feature: ModelFeature = .activityCards) -> ChatRequest {
@@ -69,12 +92,19 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
         )
       } catch {
         try Task.checkCancellation()
-        if error is CancellationError || attempt == 3 { throw error }
-        // Every HTTP call is independent, so keep the full input on correction attempts.
-        currentPrompt =
-          prompt + "\n\nPREVIOUS ATTEMPT FAILED. Fix: "
-          + error.localizedDescription + "\nReturn the full corrected JSON only."
-        try await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000)
+        guard !TimelineRetryPolicy.isCancellation(error), attempt < 3 else { throw error }
+        if let delay = TimelineRetryPolicy.transportDelay(for: error, attempt: attempt) {
+          // Same images and prompt: a dropped connection is not a bad model answer.
+          try await sleep(delay)
+        } else if TimelineRetryPolicy.isOutputFailure(error) {
+          // A real decode/coverage failure may be corrected, within the SAME
+          // three-call budget. Never feed credential/network errors to the model.
+          currentPrompt = prompt + "\n\nPREVIOUS ATTEMPT FAILED. Fix: "
+            + error.localizedDescription + "\nReturn the full corrected JSON only."
+          try await sleep(TimeInterval(attempt))
+        } else {
+          throw error
+        }
       }
     }
     throw invalidOutput("No valid response returned.")
@@ -95,7 +125,6 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
   func transcribeScreenshots(
     _ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?
   ) async throws -> (observations: [Observation], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     let sorted = screenshots.sorted { $0.capturedAt < $1.capturedAt }
     guard let first = sorted.first, let last = sorted.last else {
       throw invalidOutput("No screenshots to transcribe.")
@@ -156,7 +185,6 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
   func generateTimeline(
     screenshots: [Screenshot], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context)
     let frames = try await OneStepTimelineFrames.write(screenshots, maxHeight: 1080,
       directoryPrefix: "TargetFlow-api-timeline")
     defer { frames.cleanup() }
@@ -174,8 +202,8 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
     }
     let (cards, log) = try await generate(prompt: prompt, images: images,
       operation: "generate_timeline", batchId: batchId) { output in
-      let decoded = try self.transport.parseJSONResponse([ActivityCardData].self,
-        from: Data(self.cleanJSON(output).utf8))
+      let decoded = try self.transport.parseJSONResponse(TimelineResponse.self,
+        from: Data(self.cleanJSON(output).utf8)).cards
       let cards = self.normalizeCards(decoded, descriptors: context.categories)
       try ClaudeOutputValidator.validateActivityCards(cards,
         existingCards: plan.context.existingCards, observations: [window])
@@ -190,7 +218,6 @@ final class OpenAICompatibleProvider: ChatGPTTimelinePromptSupporting {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let prompt = buildCardsPrompt(observations: observations, context: context)
     return try await generate(prompt: prompt, operation: "generate_cards", batchId: batchId) {
       output in

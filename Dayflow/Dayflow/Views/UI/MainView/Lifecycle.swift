@@ -21,6 +21,7 @@ extension MainView {
   }
 
   func handleMinuteTickForDayChange() {
+    guard !RecordingReplayPreview.isEnabled else { return }
     // Detect timeline day rollover (4am boundary) regardless of what day user is viewing
     let currentTimelineDay = cachedDayFormatter.string(from: timelineDisplayDate(from: Date()))
     if currentTimelineDay != lastObservedTimelineDay {
@@ -38,6 +39,7 @@ extension MainView {
   }
 
   func performIdleResetAndScroll() {
+    guard !RecordingReplayPreview.isEnabled else { return }
     // Switch to today
     setSelectedDate(timelineDisplayDate(from: Date()))
     // Clear selection
@@ -54,6 +56,8 @@ extension MainView {
   }
 
   func performInitialScrollIfNeeded() {
+    guard !RecordingReplayPreview.isEnabled else { return }
+    guard !RecordingReplayPreview.isEnabled else { return }
     // Check all conditions for initial scroll:
     // 1. Timeline is visible (not in settings)
     // 2. No modal is open

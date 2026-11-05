@@ -35,7 +35,13 @@ enum AppStoragePaths {
   static let uiPreviewDataDirectory: URL? = {
     let environment = ProcessInfo.processInfo.environment
     let previewBundle = Bundle.main.bundleIdentifier?.hasPrefix("local.targetflow.preview.") ?? false
-    guard let path = environment["TARGETFLOW_UI_PREVIEW_DATA_DIR"] else {
+    let packagedReplay = previewBundle && Bundle.main.object(forInfoDictionaryKey: "TargetFlowReplayPreview") as? Bool == true
+    let packagedDirectory = packagedReplay ? Bundle.main.bundleURL.deletingLastPathComponent() : nil
+    if let packagedDirectory, environment["TARGETFLOW_UI_PREVIEW_DATA_DIR"] == nil {
+      precondition(FileManager.default.fileExists(atPath: packagedDirectory.appendingPathComponent("manifest.json").path),
+        "Keep the replay application beside its recording manifest and data.")
+    }
+    guard let path = environment["TARGETFLOW_UI_PREVIEW_DATA_DIR"] ?? packagedDirectory?.path else {
       precondition(!previewBundle, "A UI preview bundle must be launched with its snapshot directory.")
       return nil
     }
@@ -48,6 +54,36 @@ enum AppStoragePaths {
       fatalError("UI preview cannot use the production data directory or one of its parent directories.")
     }
     return directory
+  }()
+
+  /// A replay manifest is accepted only inside an explicitly isolated preview directory.
+  static let replayManifestURL: URL? = {
+    guard let directory = uiPreviewDataDirectory else { return nil }
+    let packagedReplay = Bundle.main.object(forInfoDictionaryKey: "TargetFlowReplayPreview") as? Bool == true
+    guard let path = ProcessInfo.processInfo.environment["TARGETFLOW_REPLAY_MANIFEST"]
+      ?? (packagedReplay ? directory.appendingPathComponent("manifest.json").path : nil),
+      path.hasPrefix("/") else { return nil }
+    let url = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
+    guard url.path.hasPrefix(directory.path + "/") else { return nil }
+    return url
+  }()
+
+  /// Replays simulate feeding saved frames into one recording session. Real gaps,
+  /// frame-index discontinuities and day boundaries still use production checks.
+  /// Historical sub-cadence pauses were not persisted and cannot be reconstructed.
+  static let replayCaptureStartTimestamp: Int? = {
+    guard let url = replayManifestURL,
+      let data = try? Data(contentsOf: url),
+      let manifest = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+      manifest["version"] as? Int == 1,
+      manifest["captureContinuityMode"] as? String == "timestamp-and-frame-index",
+      let start = manifest["replayStartTs"] as? Int, start > 0,
+      let windows = manifest["windows"] as? [[String: Any]], !windows.isEmpty,
+      windows.allSatisfy({ window in
+        guard let lower = window["startTs"] as? Int, let upper = window["endTs"] as? Int else { return false }
+        return lower >= start && upper > lower
+      }) else { return nil }
+    return start
   }()
 
   static var isUIPreview: Bool { uiPreviewDataDirectory != nil }
@@ -70,9 +106,26 @@ enum AppStoragePaths {
 
   static func prepareUIPreviewPreferences() {
     guard isIsolated else { return }
+    if let manifest = replayManifestURL {
+      let seed = manifest.deletingLastPathComponent().appendingPathComponent("replay-preferences.plist")
+      if seed.resolvingSymlinksInPath().path.hasPrefix(uiPreviewDataDirectory!.path + "/"),
+        let data = try? Data(contentsOf: seed),
+        let values = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] {
+        for (key, value) in values { defaults.set(value, forKey: key) }
+      }
+    }
     defaults.set(true, forKey: "didOnboard")
     defaults.set(false, forKey: "isRecording")
     defaults.set(true, forKey: "showDockIcon")
+  }
+
+  /// Snapshots can carry absolute paths. Cleanup in an isolated process may
+  /// only remove generated media physically inside that process's own root.
+  static func canRemoveGeneratedMedia(at url: URL) -> Bool {
+    guard isIsolated else { return true }
+    let root = applicationSupport.standardizedFileURL.resolvingSymlinksInPath().path
+    let path = url.standardizedFileURL.resolvingSymlinksInPath().path
+    return path.hasPrefix(root + "/")
   }
 
   static var timelapses: URL {

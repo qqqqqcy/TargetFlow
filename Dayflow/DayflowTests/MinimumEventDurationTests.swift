@@ -166,12 +166,13 @@ final class MinimumEventDurationTests: XCTestCase {
       }
       let cards = context.existingCards.isEmpty
         ? [item(0, 240, "Work", "Earlier work", "Work evidence"), item(240, 360, "Idle", "Early tail", "Tail evidence")]
-        : [item(240, 600, "Idle", "Natural continued event", "Later evidence")]
+        : [item(0, 720, "Idle", "Natural continued event", "Later evidence")]
       return (cards, [], nil, LLMCall(timestamp: nil, latency: nil, input: nil, output: nil))
     })
-    let firstProcessed = expectation(description: "pending is not evaluated")
+    let firstProcessed = expectation(description: "continuous run is published and evaluated")
     let published = expectation(description: "published event enqueued")
     let refreshed = expectation(description: "timeline committed")
+    refreshed.expectedFulfillmentCount = 2
     let observer = NotificationCenter.default.addObserver(forName: .timelineCardsDidCommit, object: nil, queue: nil) { _ in refreshed.fulfill() }
     defer { NotificationCenter.default.removeObserver(observer) }
     let suite = "MinimumDurationEvaluation.\(UUID().uuidString)"
@@ -181,44 +182,51 @@ final class MinimumEventDurationTests: XCTestCase {
     let target = FocusTarget(id: UUID(), text: event.name, startedAt: Date(timeIntervalSince1970: Double(base - 60)),
       events: [FocusTargetEvent(id: event.id, name: event.name, details: event.details)])
     targetDefaults.set(try JSONEncoder().encode(target), forKey: "target.current")
-    var prompts: [String] = []
     let targetStore = TargetStore(defaults: targetDefaults, storage: storage,
-      automaticReminders: AutomaticReminderState(isRecording: false), notify: { _, _, _ in false }, generate: { prompt in
-        prompts.append(prompt)
-        return #"{"alignment":"neutral","reason":"Synthetic","reminder":""}"#
+      automaticReminders: AutomaticReminderState(isRecording: false), notify: { _, _, _ in false }, generate: { _ in
+        XCTFail("Goal alignment must be determined locally from event membership")
+        return "invalid"
       })
     targetStore.synchronize(events: [event])
+    var evaluations = 0
     let manager = AnalysisManager(store: storage, llmService: service, evidenceCaptureStartTs: base - 1000, evaluate: { ids in
-      if ids.isEmpty { firstProcessed.fulfill() }
-      else { targetStore.enqueue(cardIDs: ids); published.fulfill() }
+      XCTAssertFalse(ids.isEmpty, "A continuous run reaching the stability window must not be dropped into per-card pending")
+      targetStore.enqueue(cardIDs: ids)
+      evaluations += 1
+      if evaluations == 1 { firstProcessed.fulfill() }
+      else { published.fulfill() }
     })
     try insert([0, 60, 120, 180, 240, 300])
     manager.triggerAnalysisNow()
     await fulfillment(of: [firstProcessed], timeout: 5)
-    XCTAssertEqual(storage.pendingTimelineEvidence().filter { $0.startTs >= base && $0.endTs <= base + 300 }.count, 2)
-    XCTAssertTrue(prompts.isEmpty)
-    try insert([360, 420, 480, 540])
+    XCTAssertEqual(storage.pendingTimelineEvidence().filter { $0.startTs >= base && $0.endTs <= base + 300 }.count, 0)
+    let firstPublished = storage.fetchTimelineCardsByTimeRange(from: Date(timeIntervalSince1970: Double(base)),
+      to: Date(timeIntervalSince1970: Double(base + 300))).filter { ($0.startTs ?? Int.min) >= base && ($0.endTs ?? Int.max) <= base + 300 }
+    XCTAssertEqual(firstPublished.count, 1)
+    XCTAssertEqual(firstPublished.first?.startTs, base)
+    XCTAssertEqual(firstPublished.first?.endTs, base + 300)
+    try insert([360, 420, 480, 540, 600, 660])
     manager.triggerAnalysisNow()
     await fulfillment(of: [published, refreshed], timeout: 5)
     await targetStore.waitForEvaluations()
     let selectedDate = Date(timeIntervalSince1970: Double(base + 240))
     let day = TimelineActivityLoader.dayPayload(for: selectedDate, storageManager: storage, now: selectedDate).activities
     let week = TimelineActivityLoader.activities(in: TimelineWeekRange.containing(selectedDate), storageManager: storage)
-    let saved = try XCTUnwrap(day.first { $0.title == "Natural continued event" })
+    let saved = try XCTUnwrap(day.first { $0.title == "Natural continued event" }, "Visible titles: \(day.map(\.title))")
     XCTAssertTrue(week.contains { $0.recordId == saved.recordId })
     XCTAssertEqual(Int(saved.endTime.timeIntervalSince(saved.startTime)), 300)
-    XCTAssertEqual(prompts.count, 1)
-    XCTAssertTrue(prompts.first?.contains("Tail evidence") == true)
-    XCTAssertTrue(prompts.first?.contains("Later evidence") == true)
-    // The Work candidate's model saw the entire first visible span, including
-    // this frame outside its own short time range; removing it invalidates that candidate.
-    let workPending = try XCTUnwrap(storage.pendingTimelineEvidence().first { $0.card.title == "Earlier work" })
-    let sourceOutsideRange = try XCTUnwrap(storage.fetchScreenshotsInTimeRange(startTs: base + 300, endTs: base + 300).first { $0.filePath == path })
-    XCTAssertGreaterThan(sourceOutsideRange.capturedAt, workPending.endTs)
-    try storage.timedWrite("delete model context outside pending range") { db in
-      try db.execute(sql: "UPDATE screenshots SET is_deleted = 1 WHERE id = ?", arguments: [sourceOutsideRange.id])
-    }
-    XCTAssertFalse(storage.pendingTimelineEvidence().contains { $0.id == workPending.id })
+    let assessment = try XCTUnwrap(saved.recordId.flatMap { targetStore.assessment(for: $0) })
+    XCTAssertEqual(assessment.alignment, .severe)
+    XCTAssertEqual(assessment.targetText, event.name)
+    XCTAssertFalse(assessment.reminder.isEmpty)
+    // Short switches are preserved as facts inside the published event, not left
+    // behind as independent pending cards that a later batch cannot continue.
+    XCTAssertFalse(storage.pendingTimelineEvidence().contains { $0.startTs >= base && $0.endTs <= base + 600 })
+    let persisted = storage.fetchTimelineCardsByTimeRange(from: Date(timeIntervalSince1970: Double(base)),
+      to: Date(timeIntervalSince1970: Double(base + 720)))
+    let allDetails = persisted.map(\.detailedSummary).joined(separator: "\n")
+    XCTAssertTrue(allDetails.contains("Work evidence"))
+    XCTAssertTrue(allDetails.contains("Tail evidence"))
   }
 
 
@@ -553,9 +561,8 @@ final class MinimumEventDurationTests: XCTestCase {
     let short = try XCTUnwrap(storage.allBatches().first { $0.start == base && $0.end == base + 30 })
     XCTAssertEqual(short.status, "skipped_short")
     XCTAssertEqual(storage.screenshotsForBatch(short.id).count, 2)
-    let protected = try XCTUnwrap(storage.pendingTimelineEvidence().first { $0.batchId == short.id })
-    XCTAssertEqual(protected.card.evidenceKind, .privacyRedacted)
-    XCTAssertEqual(protected.endTs - protected.startTs, 30)
+    XCTAssertFalse(storage.pendingTimelineEvidence().contains { $0.batchId == short.id },
+      "Sealed sub-minute black captures retain raw evidence without a generated status card")
     XCTAssertFalse(storage.fetchUnprocessedScreenshots(since: base).contains { $0.filePath == path })
     let saved = try XCTUnwrap(storage.fetchTimelineCardsByTimeRange(from: Date(timeIntervalSince1970: Double(base)), to: Date(timeIntervalSince1970: Double(base + 660))).first { $0.title == "After gap" })
     XCTAssertEqual(saved.startTs, base + 300)
@@ -571,7 +578,7 @@ final class MinimumEventDurationTests: XCTestCase {
 
 
   @MainActor
-  func testPrivacyRemainsASeparateShortStatusBetweenPendingEvidence() async throws {
+  func testMixedRedactionUsesOnePendingEventAndSourceDeletionInvalidatesIt() async throws {
     XCTAssertTrue(AppStoragePaths.isIsolated)
     let defaults = AppStoragePaths.defaults
     let original = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
@@ -583,9 +590,9 @@ final class MinimumEventDurationTests: XCTestCase {
     let path = "minimum-privacy-\(UUID().uuidString)"
     let storage = StorageManager.shared
     let batch = try storage.timedWrite("privacy minimum setup") { db -> Int64 in
-      try db.execute(sql: "INSERT INTO analysis_batches(batch_start_ts,batch_end_ts) VALUES (?,?)", arguments: [base, base + 300])
+      try db.execute(sql: "INSERT INTO analysis_batches(batch_start_ts,batch_end_ts) VALUES (?,?)", arguments: [base, base + 240])
       let id = db.lastInsertedRowID
-      for offset in stride(from: 0, through: 300, by: 60) {
+      for offset in stride(from: 0, through: 240, by: 60) {
         try db.execute(sql: "INSERT INTO screenshots(captured_at,file_path,frame_index,is_privacy_redacted) VALUES (?,?,?,?)", arguments: [base + offset, path, offset / 60, offset == 120 ? 1 : 0])
         try db.execute(sql: "INSERT INTO batch_screenshots(batch_id,screenshot_id) VALUES (?,?)", arguments: [id, db.lastInsertedRowID])
       }
@@ -605,7 +612,8 @@ final class MinimumEventDurationTests: XCTestCase {
     var calls = 0
     let service = LLMService(loadConfiguration: { config }, timelineGeneratorOverride: { frames, _, _ in
       calls += 1
-      XCTAssertFalse(frames.contains { $0.isPrivacyRedacted })
+      XCTAssertEqual(frames.map(\.capturedAt), [0, 60, 120, 180, 240].map { base + $0 })
+      XCTAssertEqual(frames.filter(\.isPrivacyRedacted).count, 1)
       let start = try XCTUnwrap(frames.first).capturedAt / 60 * 60
       let end = try XCTUnwrap(frames.last).capturedAt / 60 * 60 + 60
       let card = ActivityCardData(startTime: policy.formatTimestampForPrompt(start), endTime: policy.formatTimestampForPrompt(end), category: "Idle", subcategory: "", title: "Visible portion", summary: "Visible", detailedSummary: "Observed", distractions: nil, appSites: nil)
@@ -615,20 +623,20 @@ final class MinimumEventDurationTests: XCTestCase {
       service.processBatch(batch, progressHandler: nil) { continuation.resume(returning: $0) }
     }
     let ids = try result.get().cardIds
-    XCTAssertEqual(calls, 2)
+    XCTAssertEqual(calls, 1)
     XCTAssertTrue(ids.isEmpty)
     let initialPending = storage.pendingTimelineEvidence().filter { $0.batchId == batch }
-    XCTAssertEqual(initialPending.count, 3)
-    XCTAssertEqual(initialPending.first { $0.card.evidenceKind == .privacyRedacted }?.startTs, base + 120)
-    XCTAssertEqual(initialPending.first { $0.card.evidenceKind == .privacyRedacted }?.endTs, base + 120)
-    let last = try XCTUnwrap(storage.screenshotsForBatch(batch).first { $0.capturedAt == base + 300 })
-    try storage.timedWrite("delete one privacy-separated source") { db in
-      try db.execute(sql: "UPDATE screenshots SET is_deleted = 1 WHERE id = ?", arguments: [last.id])
+    XCTAssertEqual(initialPending.count, 1)
+    let pending = try XCTUnwrap(initialPending.first)
+    XCTAssertEqual(pending.card.evidenceKind, .visible)
+    XCTAssertEqual(pending.startTs, base)
+    XCTAssertEqual(pending.endTs, base + 240)
+    XCTAssertEqual(Set(pending.sourceScreenshotIds), Set(storage.screenshotsForBatch(batch).map(\.id)))
+    let redacted = try XCTUnwrap(storage.screenshotsForBatch(batch).first { $0.isPrivacyRedacted })
+    try storage.timedWrite("delete sanitized source") { db in
+      try db.execute(sql: "UPDATE screenshots SET is_deleted = 1 WHERE id = ?", arguments: [redacted.id])
     }
-    let remaining = storage.pendingTimelineEvidence().filter { $0.batchId == batch }
-    XCTAssertEqual(remaining.count, 2)
-    XCTAssertTrue(remaining.contains { $0.startTs == base })
-    XCTAssertTrue(remaining.contains { $0.card.evidenceKind == .privacyRedacted })
+    XCTAssertFalse(storage.pendingTimelineEvidence().contains { $0.batchId == batch })
   }
 
 
@@ -883,7 +891,7 @@ final class MinimumEventDurationTests: XCTestCase {
 
 
   @MainActor
-  func testPrivacyPendingContinuesToMinimumThenUsesOrdinaryEvaluation() async throws {
+  func testBlackOnlyPendingContinuesToMinimumAndRewritesThroughConfiguredProvider() async throws {
     XCTAssertTrue(AppStoragePaths.isIsolated)
     let defaults = AppStoragePaths.defaults
     let original = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
@@ -897,11 +905,16 @@ final class MinimumEventDurationTests: XCTestCase {
       != Date(timeIntervalSince1970: Double(base + 600)).getDayInfoFor4AMBoundary().dayString { base -= 3600 }
     let path = "minimum-private-continuation-\(UUID().uuidString)"
     let storage = StorageManager.shared
-    func insert(_ offsets: [Int]) throws {
+    func insert(_ offsets: [Int]) throws -> Int64 {
       try storage.timedWrite("privacy continuation setup") { db in
+        try db.execute(sql: "INSERT INTO analysis_batches(batch_start_ts,batch_end_ts) VALUES (?,?)",
+          arguments: [base + offsets.first!, base + offsets.last!])
+        let batch = db.lastInsertedRowID
         for offset in offsets {
-          try db.execute(sql: "INSERT INTO screenshots(captured_at,file_path,frame_index,is_privacy_redacted) VALUES (?,?,?,?)", arguments: [base + offset, path, offset / 60, offset >= 240 ? 1 : 0])
+          try db.execute(sql: "INSERT INTO screenshots(captured_at,file_path,frame_index,idle_seconds_at_capture,is_privacy_redacted) VALUES (?,?,?,?,1)", arguments: [base + offset, path, offset / 60, 0])
+          try db.execute(sql: "INSERT INTO batch_screenshots(batch_id,screenshot_id) VALUES (?,?)", arguments: [batch, db.lastInsertedRowID])
         }
+        return batch
       }
     }
     defer { try? storage.timedWrite("privacy continuation cleanup") { db in
@@ -923,9 +936,13 @@ final class MinimumEventDurationTests: XCTestCase {
     var calls = 0
     let service = LLMService(loadConfiguration: { config }, timelineGeneratorOverride: { frames, context, _ in
       calls += 1
-      XCTAssertFalse(frames.contains { $0.isPrivacyRedacted })
-      XCTAssertFalse(context.existingCards.contains { $0.evidenceKind == .privacyRedacted })
-      let card = ActivityCardData(startTime: policy.formatTimestampForPrompt(base), endTime: policy.formatTimestampForPrompt(base + 240), category: "Idle", subcategory: "", title: "Visible secret fixture", summary: "Visible secret fixture", detailedSummary: "Visible secret fixture", distractions: nil, appSites: nil)
+      XCTAssertTrue(frames.allSatisfy(\.isPrivacyRedacted))
+      if calls > 1 {
+        XCTAssertEqual(context.existingCards.count, 1)
+        XCTAssertTrue(context.hasContinuousCaptureBeforeBatch)
+      }
+      let end = try XCTUnwrap(frames.last).capturedAt / 60 * 60 + 60
+      let card = ActivityCardData(startTime: policy.formatTimestampForPrompt(base), endTime: policy.formatTimestampForPrompt(end), category: "Idle", subcategory: "", title: "Black frames", summary: "Activity unavailable in redacted captures", detailedSummary: "No hidden activity inferred", distractions: nil, appSites: nil)
       return ([card], [], nil, LLMCall(timestamp: nil, latency: nil, input: nil, output: nil))
     })
     let suite = "PrivacyMinimumEvaluation.\(UUID().uuidString)"
@@ -935,16 +952,15 @@ final class MinimumEventDurationTests: XCTestCase {
     let target = FocusTarget(id: UUID(), text: event.name, startedAt: Date(timeIntervalSince1970: Double(base - 60)),
       events: [FocusTargetEvent(id: event.id, name: event.name, details: event.details)])
     targetDefaults.set(try JSONEncoder().encode(target), forKey: "target.current")
-    var prompts: [String] = []
     let targetStore = TargetStore(defaults: targetDefaults, storage: storage,
-      automaticReminders: AutomaticReminderState(isRecording: false), notify: { _, _, _ in false }, generate: { prompt in
-        prompts.append(prompt)
-        return #"{"alignment":"severe","reason":"Synthetic duration policy","reminder":"Take a break"}"#
+      automaticReminders: AutomaticReminderState(isRecording: false), notify: { _, _, _ in false }, generate: { _ in
+        XCTFail("Black-frame event alignment must also be local")
+        return "invalid"
       })
     targetStore.synchronize(events: [event])
-    let firstDone = expectation(description: "short privacy not evaluated")
-    let published = expectation(description: "qualified privacy evaluated")
-    let extended = expectation(description: "continuous privacy extension evaluated")
+    let firstDone = expectation(description: "short model event stays pending")
+    let published = expectation(description: "qualified model event evaluated")
+    let extended = expectation(description: "continuous model rewrite evaluated")
     var publishedIDs: [Int64] = []
     var publicationCount = 0
     let manager = AnalysisManager(store: storage, llmService: service, evaluate: { ids in
@@ -956,44 +972,52 @@ final class MinimumEventDurationTests: XCTestCase {
         if publicationCount == 1 { published.fulfill() } else { extended.fulfill() }
       }
     })
-    try insert([0, 60, 120, 180, 240, 300])
-    manager.triggerAnalysisNow()
+    func process(_ batch: Int64) async throws {
+      let result: Result<Void, Error> = await withCheckedContinuation { continuation in
+        manager.reprocessBatch(batch, stepHandler: { _ in }) { continuation.resume(returning: $0) }
+      }
+      try result.get()
+    }
+    let firstBatch = try insert([0, 60])
+    try await process(firstBatch)
     await fulfillment(of: [firstDone], timeout: 5)
-    XCTAssertTrue(prompts.isEmpty)
-    XCTAssertTrue(storage.pendingTimelineEvidence().contains { $0.card.evidenceKind == .privacyRedacted && $0.endTs - $0.startTs == 60 })
+    XCTAssertEqual(calls, 1)
+    XCTAssertTrue(targetStore.assessments.isEmpty)
+    let pending = try XCTUnwrap(storage.pendingTimelineEvidence().first { $0.batchId == firstBatch })
+    XCTAssertEqual(pending.card.evidenceKind, .visible)
+    XCTAssertEqual(pending.endTs - pending.startTs, 60)
     XCTAssertTrue(storage.fetchTimelineCardsByTimeRange(from: Date(timeIntervalSince1970: Double(base)), to: Date(timeIntervalSince1970: Double(base + 300))).isEmpty)
-    try insert([360, 420, 480, 540])
-    manager.triggerAnalysisNow()
+    let secondBatch = try insert([120, 180, 240, 300])
+    try await process(secondBatch)
     await fulfillment(of: [published], timeout: 5)
     await targetStore.waitForEvaluations()
     let id = try XCTUnwrap(publishedIDs.first)
     let card = try XCTUnwrap(storage.fetchTimelineCard(byId: id))
-    XCTAssertEqual(card.evidenceKind, .privacyRedacted)
-    XCTAssertEqual(card.startTs, base + 240)
-    XCTAssertEqual(card.endTs, base + 540)
+    XCTAssertEqual(card.evidenceKind, .visible)
+    XCTAssertEqual(card.startTs, base)
+    XCTAssertEqual(card.endTs, base + 300)
     XCTAssertEqual(targetStore.assessments[id]?.alignment, .severe)
-    XCTAssertEqual(prompts.count, 1)
-    XCTAssertTrue(prompts[0].contains("privacyRedacted"))
-    XCTAssertFalse(prompts[0].contains("Visible secret fixture"))
-    XCTAssertEqual(calls, 1)
-    XCTAssertFalse(storage.pendingTimelineEvidence().contains { $0.card.evidenceKind == .privacyRedacted && $0.startTs == base + 240 })
-    try insert([600, 660, 720, 780, 840, 900])
-    manager.triggerAnalysisNow()
+    XCTAssertEqual(targetStore.assessments[id]?.targetText, event.name)
+    XCTAssertFalse(targetStore.assessments[id]?.reminder.isEmpty ?? true)
+    XCTAssertEqual(calls, 2)
+    XCTAssertFalse(storage.pendingTimelineEvidence().contains { $0.batchId == firstBatch })
+    let thirdBatch = try insert([360, 420, 480, 540, 600])
+    try await process(thirdBatch)
     await fulfillment(of: [extended], timeout: 5)
     await targetStore.waitForEvaluations()
     let extendedID = try XCTUnwrap(publishedIDs.first)
     let extendedCard = try XCTUnwrap(storage.fetchTimelineCard(byId: extendedID))
     XCTAssertNil(storage.fetchTimelineCard(byId: id))
-    XCTAssertEqual(extendedCard.startTs, base + 240)
-    XCTAssertEqual(extendedCard.endTs, base + 900)
-    XCTAssertEqual(extendedCard.evidenceKind, .privacyRedacted)
+    XCTAssertEqual(extendedCard.startTs, base)
+    XCTAssertEqual(extendedCard.endTs, base + 600)
+    XCTAssertEqual(extendedCard.evidenceKind, .visible)
     XCTAssertEqual(targetStore.assessments[extendedID]?.alignment, .severe)
-    XCTAssertEqual(calls, 1)
+    XCTAssertEqual(calls, 3)
   }
 
 
   @MainActor
-  func testPrivacyNeverContinuesAcrossStopOrFourAM() async throws {
+  func testBlackCapturesUseProviderButNeverContinueAcrossStopOrFourAM() async throws {
     XCTAssertTrue(AppStoragePaths.isIsolated)
     let defaults = AppStoragePaths.defaults
     let original = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
@@ -1004,8 +1028,10 @@ final class MinimumEventDurationTests: XCTestCase {
     let calendar = Calendar.current
     let boundary = try XCTUnwrap(calendar.date(from: DateComponents(year: 2027, month: 7, day: 10, hour: 4)))
     let storage = StorageManager.shared
-    // Privacy-only batches must work even when no model route is configured.
-    let service = LLMService(loadConfiguration: { throw AIConfiguredRuntimeError.missingRoute })
+    let connection = AIProviderConnection(name: "Stub", kind: .local, models: [AIConfiguredModel(id: "test")])
+    let assignment = AIModelAssignment(connectionID: connection.id, modelID: "test")
+    let config = AIConfiguration(connections: [connection], routes: [.timeline: .init(primary: assignment)])
+    let policy = TimelineOutputPolicy()
     for (mode, base) in [("stop", 1_804_000_020), ("4am", Int(boundary.timeIntervalSince1970) - 120)] {
       let path = "minimum-private-boundary-\(mode)-\(UUID().uuidString)"
       if mode == "stop" { TimelineCaptureBoundaries.shared.recordStop(at: base + 90) }
@@ -1030,6 +1056,19 @@ final class MinimumEventDurationTests: XCTestCase {
         }
         try db.execute(sql: "DELETE FROM screenshots WHERE file_path = ?", arguments: [path])
       } }
+      var calls = 0
+      let service = LLMService(loadConfiguration: { config }, timelineGeneratorOverride: { frames, context, _ in
+        calls += 1
+        XCTAssertTrue(frames.allSatisfy(\.isPrivacyRedacted))
+        XCTAssertTrue(context.existingCards.isEmpty, mode)
+        let start = try XCTUnwrap(frames.first).capturedAt
+        let end = try XCTUnwrap(frames.last).capturedAt / 60 * 60 + 60
+        let card = ActivityCardData(startTime: policy.formatTimestampForPrompt(start),
+          endTime: policy.formatTimestampForPrompt(end), category: "Idle", subcategory: "",
+          title: "Redacted captures", summary: "Activity unavailable", detailedSummary: "No hidden activity inferred",
+          distractions: nil, appSites: nil)
+        return ([card], [], nil, LLMCall(timestamp: nil, latency: nil, input: nil, output: nil))
+      })
       func process(_ id: Int64) async throws -> ProcessedBatchResult {
         let result: Result<ProcessedBatchResult, Error> = await withCheckedContinuation { continuation in
           service.processBatch(id, progressHandler: nil) { continuation.resume(returning: $0) }
@@ -1038,19 +1077,20 @@ final class MinimumEventDurationTests: XCTestCase {
       }
       let first = try await process(ids[0])
       XCTAssertTrue(first.cardIds.isEmpty, mode)
-      XCTAssertTrue(storage.pendingTimelineEvidence().contains { $0.batchId == ids[0] && $0.card.evidenceKind == .privacyRedacted }, mode)
+      XCTAssertTrue(storage.pendingTimelineEvidence().contains { $0.batchId == ids[0] && $0.card.evidenceKind == .visible }, mode)
       let second = try await process(ids[1])
       let card = try XCTUnwrap(second.cardIds.first.flatMap { storage.fetchTimelineCard(byId: $0) })
       XCTAssertEqual(card.startTs, base + 120, mode)
       XCTAssertEqual(card.endTs, base + 420, mode)
-      XCTAssertEqual(card.evidenceKind, .privacyRedacted, mode)
+      XCTAssertEqual(card.evidenceKind, .visible, mode)
+      XCTAssertEqual(calls, 2, mode)
       XCTAssertTrue(storage.pendingTimelineEvidence().contains { $0.batchId == ids[0] }, mode)
     }
   }
 
 
   @MainActor
-  func testProviderSetupFailureKeepsPrivacyPendingAndPublishesOnlyWhenQualified() async throws {
+  func testBlackOnlyProviderSetupFailureReportsOrdinaryErrorWithoutPrivacyPublication() async throws {
     XCTAssertTrue(AppStoragePaths.isIsolated)
     let defaults = AppStoragePaths.defaults
     let original = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
@@ -1067,7 +1107,7 @@ final class MinimumEventDurationTests: XCTestCase {
       try db.execute(sql: "INSERT INTO analysis_batches(batch_start_ts,batch_end_ts) VALUES (?,?)", arguments: [base, base + 420])
       let id = db.lastInsertedRowID
       for offset in stride(from: 0, through: 420, by: 60) {
-        try db.execute(sql: "INSERT INTO screenshots(captured_at,file_path,frame_index,is_privacy_redacted) VALUES (?,?,?,?)", arguments: [base + offset, path, offset / 60, offset >= 120 ? 1 : 0])
+        try db.execute(sql: "INSERT INTO screenshots(captured_at,file_path,frame_index,is_privacy_redacted) VALUES (?,?,?,?)", arguments: [base + offset, path, offset / 60, 1])
         try db.execute(sql: "INSERT INTO batch_screenshots(batch_id,screenshot_id) VALUES (?,?)", arguments: [id, db.lastInsertedRowID])
       }
       return id
@@ -1080,23 +1120,22 @@ final class MinimumEventDurationTests: XCTestCase {
       try db.execute(sql: "DELETE FROM screenshots WHERE file_path = ?", arguments: [path])
     } }
     let service = LLMService(loadConfiguration: { throw AIConfiguredRuntimeError.missingRoute })
-    let evaluated = expectation(description: "qualified local privacy reaches ordinary evaluation")
     var evaluatedIDs: [Int64] = []
     let manager = AnalysisManager(store: storage, llmService: service, evaluate: { ids in
-      if !ids.isEmpty { evaluatedIDs = ids; evaluated.fulfill() }
+      evaluatedIDs.append(contentsOf: ids)
     })
     let result: Result<Void, Error> = await withCheckedContinuation { continuation in
       manager.reprocessBatch(batch, stepHandler: { _ in }) { continuation.resume(returning: $0) }
     }
-    if case .success = result { XCTFail("Visible span should report missing configuration") }
-    await fulfillment(of: [evaluated], timeout: 5)
-    let privacy = try XCTUnwrap(evaluatedIDs.first.flatMap { storage.fetchTimelineCard(byId: $0) })
-    XCTAssertEqual(privacy.evidenceKind, .privacyRedacted)
-    XCTAssertEqual(privacy.startTs, base + 120)
-    XCTAssertEqual(privacy.endTs, base + 420)
-    let cards = storage.fetchTimelineCardsByTimeRange(from: Date(timeIntervalSince1970: Double(base)), to: Date(timeIntervalSince1970: Double(base + 480)))
-    XCTAssertTrue(cards.contains { $0.category == "System" && $0.title == "Processing failed" })
-    XCTAssertEqual(cards.filter { $0.evidenceKind == .privacyRedacted }.count, 1)
+    guard case .failure(let error) = result else { XCTFail("Black captures require the configured provider"); return }
+    guard case AIConfiguredRuntimeError.missingRoute = error else { XCTFail("Unexpected error: \(error)"); return }
+    XCTAssertTrue(evaluatedIDs.isEmpty)
+    XCTAssertFalse(storage.pendingTimelineEvidence().contains { $0.batchId == batch })
+    let cards = storage.fetchTimelineCardsByTimeRange(from: Date(timeIntervalSince1970: Double(base)), to: Date(timeIntervalSince1970: Double(base + 480))).filter { $0.batchId == batch }
+    XCTAssertEqual(cards.count, 1)
+    XCTAssertEqual(cards.first?.category, "System")
+    XCTAssertEqual(cards.first?.title, "Processing failed")
+    XCTAssertFalse(cards.contains { $0.evidenceKind == .privacyRedacted })
   }
 
 }

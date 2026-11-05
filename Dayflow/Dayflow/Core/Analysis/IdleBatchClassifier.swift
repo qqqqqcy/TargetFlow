@@ -46,7 +46,7 @@ enum IdleBatchClassifier {
   ) -> IdleBatchAssessment? {
     let ordered = screenshots.sorted { $0.capturedAt < $1.capturedAt }
     guard let first = ordered.first, let last = ordered.last,
-      !ordered.contains(where: { $0.isPrivacyRedacted || $0.isDeleted }),
+      !ordered.contains(where: \.isDeleted),
       evidenceSince.map({ first.capturedAt >= $0 }) ?? true
     else { return nil }
 
@@ -64,7 +64,7 @@ enum IdleBatchClassifier {
     let window = (preceding + ordered).sorted { $0.capturedAt < $1.capturedAt }
     guard window.count <= IdleBatchRules.maximumComparedFrames, let baselineFrame = window.first,
       baselineFrame.capturedAt <= windowStart,
-      !window.contains(where: { $0.isPrivacyRedacted || $0.isDeleted }),
+      !window.contains(where: \.isDeleted),
       let baseline = pixels(baselineFrame), !baseline.isEmpty
     else { return nil }
     let gaps = zip(window, window.dropFirst()).map { $1.capturedAt - $0.capturedAt }.filter { $0 > 0 }.sorted()
@@ -183,7 +183,7 @@ enum IdleBatchClassifier {
   }
 
   static func screenPixels(_ screenshot: Screenshot) -> [UInt8]? {
-    guard !screenshot.isPrivacyRedacted, !screenshot.isDeleted,
+    guard !screenshot.isDeleted,
       let image = FrameStore.shared.image(for: screenshot, maxPixelSize: 96)
     else { return nil }
     var bytes = [UInt8](repeating: 0, count: 96 * 54)

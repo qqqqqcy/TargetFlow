@@ -39,6 +39,7 @@ extension GeminiDirectProvider {
 
     let finalTranscriptionPrompt = """
       Screen Recording Transcription (Reconstruct Mode)
+      \(TimelinePrivacyPromptGuidance.instructions)
       Watch this screen recording and create an activity log detailed enough that someone could reconstruct the session.
       CRITICAL: This video is exactly \(durationString) long. ALL timestamps must be within 00:00 to \(durationString). No gaps.
       Identifying the active app: On macOS, the app name is always shown in the top-left corner of the screen, right next to the Apple () menu. Check this FIRST to identify which app is being used. Do NOT guess — read the actual name from the menu bar. If you can't read it clearly, describe it generically (e.g., "code editor," "browser," "messaging app") rather than guessing a specific product name. Common code editors like Cursor, VS Code, Xcode, and Zed all look similar but have different names in the menu bar.
@@ -606,7 +607,6 @@ extension GeminiDirectProvider {
   func transcribeScreenshots(_ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?)
     async throws -> (observations: [Observation], log: LLMCall)
   {
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     guard !screenshots.isEmpty else {
       throw NSError(
         domain: "GeminiDirectProvider", code: 11,

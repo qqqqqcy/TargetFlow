@@ -107,7 +107,8 @@ final class TimelineFailure1937Tests: XCTestCase {
     let stored = "Something went wrong while turning this time into cards. Target Flow will try again automatically. Your recording is saved."
     let displayed = TimelineFailureClassifier.displaySummary(stored)
     XCTAssertFalse(displayed.contains("automatically"))
-    XCTAssertTrue(displayed.contains("retry"))
+    XCTAssertEqual(displayed, String(localized:
+      "This time couldn't be turned into events. You can retry this time. Your recording is saved."))
     XCTAssertFalse(TimelineFailureClassifier.displaySummary("Failed to process: PRIVATE SENTINEL").contains("PRIVATE SENTINEL"))
     XCTAssertEqual(TimelineFailureClassifier.displaySummary("Ordinary safe summary"), "Ordinary safe summary")
   }

@@ -53,17 +53,24 @@ final class UnchangedInactivityEvidenceTests: XCTestCase {
     XCTAssertNotNil(assess(end: 600, threshold: InactivityPreferences.thresholdSeconds(in: defaults)))
   }
 
-  func testPrivacyIsExcludedBeforeAnyImageDecode() {
+  func testBlackFramesUseOrdinaryImageAndInputEvidence() {
     for threshold in InactivityPreferences.thresholdOptions {
       var decodes = 0
       let history = frames(Array(stride(from: 0, to: threshold - 60, by: 60)), privacy: true)
       let batch = frames([threshold - 60, threshold])
-      XCTAssertNil(IdleBatchClassifier.assess(batch, history: history, thresholdSeconds: threshold, pixels: { _ in
+      XCTAssertNotNil(IdleBatchClassifier.assess(batch, history: history, thresholdSeconds: threshold, pixels: { _ in
         decodes += 1; return self.pixels
       }))
-      XCTAssertEqual(decodes, 0)
-      XCTAssertNil(IdleBatchClassifier.assess(frames([threshold - 60, threshold], privacy: true),
+      XCTAssertGreaterThan(decodes, 0)
+      let blackBatch = frames([threshold - 60, threshold], privacy: true)
+      XCTAssertNotNil(IdleBatchClassifier.assess(blackBatch,
         history: history, thresholdSeconds: threshold, pixels: { _ in self.pixels }))
+      XCTAssertNil(IdleBatchClassifier.assess(blackBatch,
+        history: history, thresholdSeconds: threshold, pixels: { $0.capturedAt == threshold ? nil : self.pixels }))
+      XCTAssertNil(IdleBatchClassifier.assess(blackBatch,
+        history: history, thresholdSeconds: threshold, pixels: {
+          $0.capturedAt == threshold ? [UInt8](repeating: 200, count: self.pixels.count) : self.pixels
+        }))
     }
   }
 
@@ -142,9 +149,9 @@ final class UnchangedInactivityEvidenceTests: XCTestCase {
   }
 
   func testReservedLabelsNeverBorrowConfiguredGoalColor() {
-    XCTAssertEqual(TimelineEventDisplay.reservedCategory("__unmatched__")?.name, String(localized: "Idle"))
+    XCTAssertEqual(TimelineEventDisplay.reservedCategory("__unmatched__")?.name, String(localized: "Other"))
     XCTAssertEqual(TimelineEventDisplay.reservedCategory("__unmatched__")?.isIdle, true)
-    XCTAssertEqual(TimelineEventDisplay.reservedCategory("__privacy__")?.name, String(localized: "Privacy"))
+    XCTAssertEqual(TimelineEventDisplay.reservedCategory("__privacy__")?.name, String(localized: "Other"))
     XCTAssertEqual(TimelineEventDisplay.reservedCategory("Idle")?.isIdle, true)
     XCTAssertEqual(TimelineEventDisplay.reservedCategory("__unmatched__")?.colorHex, "#A0AEC0")
   }

@@ -4,7 +4,6 @@ extension GeminiDirectProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let callStart = Date()
 
     // Convert observations to human-readable format for the prompt

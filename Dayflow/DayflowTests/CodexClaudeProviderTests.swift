@@ -26,6 +26,20 @@ final class CodexClaudeProviderTests: XCTestCase {
         XCTAssertTrue(prompt.contains(marker))
       }
       XCTAssertTrue(prompt.contains("detailedSummary"))
+      XCTAssertTrue(prompt.contains(TimelinePrivacyPromptGuidance.instructions))
+      XCTAssertFalse(prompt.contains("gaps, privacy,"))
+    }
+  }
+
+  func testTranscriptionPromptsDescribePrivacyRedactionWithoutInferringHiddenContent() {
+    let prompts = [
+      claudeProvider.buildScreenshotTranscriptionPrompt(
+        numFrames: 2, duration: "00:01:00", startTime: "00:00:00", endTime: "00:01:00"),
+      CodexProvider().buildScreenshotTranscriptionPrompt(
+        numFrames: 2, duration: "00:01:00", startTime: "00:00:00", endTime: "00:01:00"),
+    ]
+    for prompt in prompts {
+      XCTAssertTrue(prompt.contains(TimelinePrivacyPromptGuidance.instructions))
     }
   }
 

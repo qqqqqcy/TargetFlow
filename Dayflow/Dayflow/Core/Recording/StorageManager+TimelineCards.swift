@@ -10,12 +10,17 @@ struct TimelineCardReplacementGroup {
   let to: Date
   let cards: [TimelineCardShell]
   let preservingStartOfCardId: Int64?
+  /// Mature continuous evidence can contain several stable labels. The interval
+  /// is a stabilization window, not a minimum duration for each displayed card.
+  let stabilityWindow: Range<Int>?
 
-  init(from: Date, to: Date, cards: [TimelineCardShell], preservingStartOfCardId: Int64? = nil) {
+  init(from: Date, to: Date, cards: [TimelineCardShell], preservingStartOfCardId: Int64? = nil,
+    stabilityWindow: Range<Int>? = nil) {
     self.from = from
     self.to = to
     self.cards = cards
     self.preservingStartOfCardId = preservingStartOfCardId
+    self.stabilityWindow = stabilityWindow
   }
 }
 
@@ -30,12 +35,20 @@ struct PendingTimelineEvidence {
   var sourceScreenshotIds: [Int64] = []
 }
 
-enum TimelineCardReplacementError: Error, Equatable {
+enum TimelineCardReplacementError: Error, Equatable, LocalizedError {
   case invalidGroup
   case invalidCardTime
   case minimumDurationChanged
   case pendingChanged
   case sourceEvidenceChanged
+  case timelineChanged
+
+  var errorDescription: String? {
+    if self == .timelineChanged {
+      return String(localized: "The timeline changed while this recording was being analyzed. Retry with the latest events.")
+    }
+    return nil
+  }
 }
 
 extension StorageManager {
@@ -601,12 +614,19 @@ extension StorageManager {
     enforceMinimum: Bool = false, markBatchAnalyzed: Bool = false,
     replacementObservations: [Observation]? = nil,
     requiredScreenshotIds: [Int64] = [], requiredPendingIds: [Int64] = [],
-    requiredCardIds: [Int64] = []
+    requiredCardIds: [Int64] = [], expectedTimeline: TimelineRewriteSnapshot? = nil
   ) throws -> (insertedIds: [Int64], deletedVideoPaths: [String]) {
+    var clearedFailurePlaceholder = false
     let result = try timedWrite("replaceTimelineCardGroups") { db in
       // The model and classifier run outside this transaction. Every frame they
       // used must still be present and active when their result is committed.
       try requireTimelineSources(in: db, screenshotIds: requiredScreenshotIds, pendingIds: requiredPendingIds, cardIds: requiredCardIds)
+      if let expectedTimeline {
+        guard try timelineRewriteMatches(in: db, snapshot: expectedTimeline,
+          groups: groups, pendingToSave: pendingToSave, pendingToDelete: pendingToDelete,
+          markBatchAnalyzed: markBatchAnalyzed, batchId: batchId, requiredCardIds: requiredCardIds)
+        else { throw TimelineCardReplacementError.timelineChanged }
+      }
       if enforceMinimum {
         let minimum = Int(AnalysisPreferences.interval)
         for group in groups {
@@ -620,7 +640,15 @@ extension StorageManager {
             guard !overlapsNewer else { throw TimelineCardReplacementError.invalidGroup }
           }
           for card in group.cards where card.category != "System" {
-            guard let start = card.exactStartTs, let end = card.exactEndTs, end - start >= minimum else {
+            guard let start = card.exactStartTs, let end = card.exactEndTs, end > start else {
+              throw TimelineCardReplacementError.minimumDurationChanged
+            }
+            if let window = group.stabilityWindow {
+              guard window.upperBound - window.lowerBound >= minimum,
+                window.lowerBound <= start, end <= window.upperBound else {
+                throw TimelineCardReplacementError.minimumDurationChanged
+              }
+            } else if end - start < minimum {
               throw TimelineCardReplacementError.minimumDurationChanged
             }
           }
@@ -669,11 +697,24 @@ extension StorageManager {
         }
       }
       if markBatchAnalyzed {
+        // Success may produce only pending fragments, with no published ranges
+        // to replace the old error card. Clear this batch's placeholders in the
+        // SAME transaction, never neighboring failures or ordinary history.
+        paths += try String.fetchAll(db, sql: """
+          SELECT video_summary_url FROM timeline_cards
+          WHERE batch_id = ? AND category = 'System' AND title = 'Processing failed'
+            AND is_deleted = 0 AND video_summary_url IS NOT NULL
+          """, arguments: [batchId])
+        try db.execute(sql: """
+          UPDATE timeline_cards SET is_deleted = 1
+          WHERE batch_id = ? AND category = 'System' AND title = 'Processing failed' AND is_deleted = 0
+          """, arguments: [batchId])
+        clearedFailurePlaceholder = db.changesCount > 0
         try db.execute(sql: "UPDATE analysis_batches SET status = 'analyzed', reason = NULL WHERE id = ?", arguments: [batchId])
       }
       return (ids, paths)
     }
-    if !groups.isEmpty { NotificationCenter.default.post(name: .timelineCardsDidCommit, object: nil) }
+    if !groups.isEmpty || clearedFailurePlaceholder { NotificationCenter.default.post(name: .timelineCardsDidCommit, object: nil) }
     return result
   }
 

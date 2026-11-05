@@ -28,10 +28,13 @@ final class SameLabelSingleEventTests: XCTestCase {
     XCTAssertThrowsError(try TimelineEvidencePolicy.mergeConsecutiveSameLabel(items, nearest: Int(Date().timeIntervalSince1970)))
   }
 
-  func testLimitsAndPrivacy() throws {
-    let items = [card("9:00 AM", "9:30 AM", "A"), card("9:30 AM", "10:00 AM", "B"),
-      card("10:00 AM", "10:01 AM", "C"), card("10:01 AM", "10:02 AM", "Private", kind: .privacyRedacted)]
-    XCTAssertThrowsError(try TimelineEvidencePolicy.mergeConsecutiveSameLabel(items, nearest: Int(Date().timeIntervalSince1970)))
+  func testLegacyRedactionRequiresOrdinaryRewriteWhileDurationAndInactivityRemainBoundaries() throws {
+    let anchor = Int(Date().timeIntervalSince1970)
+    let items = [card("10:00 AM", "10:01 AM", "C"),
+      card("10:01 AM", "10:02 AM", "Legacy redacted", kind: .privacyRedacted)]
+    XCTAssertThrowsError(try TimelineEvidencePolicy.mergeConsecutiveSameLabel(items, nearest: anchor))
+    let inactive = [items[0], card("10:01 AM", "10:02 AM", "No input", kind: .inputInactive)]
+    XCTAssertEqual(try TimelineEvidencePolicy.mergeConsecutiveSameLabel(inactive, nearest: anchor).count, 2)
     let overLimit = [card("9:00 AM", "10:00 AM", "A"), card("10:00 AM", "10:01 AM", "B")]
     XCTAssertEqual(try TimelineEvidencePolicy.mergeConsecutiveSameLabel(overLimit, nearest: Int(Date().timeIntervalSince1970)).count, 2)
   }
@@ -80,8 +83,12 @@ final class SameLabelSingleEventTests: XCTestCase {
       currentTime: Date(timeIntervalSince1970: Double(base + 120)), categories: [], hasPreviousCardWithinFiveMinutes: true,
       hasContinuousCaptureBeforeBatch: true)
     let frames = [0, 60].map { offset in Screenshot(id: Int64(offset), capturedAt: base + offset,
-      filePath: "synthetic", fileSize: nil, idleSecondsAtCapture: 0, isDeleted: false, isPrivacyRedacted: false) }
-    let result = try await TimelineEvidencePolicy.generate(screenshots: frames, context: context, batchId: batch) { _, context, _ in
+      filePath: "synthetic", fileSize: nil, idleSecondsAtCapture: 0, isDeleted: false, isPrivacyRedacted: offset == 0) }
+    var requests = 0
+    let result = try await TimelineEvidencePolicy.generate(screenshots: frames, context: context, batchId: batch) { shots, context, _ in
+      requests += 1
+      XCTAssertEqual(shots.map(\.id), frames.map(\.id))
+      XCTAssertTrue(shots[0].isPrivacyRedacted)
       XCTAssertEqual(context.existingCards.count, 1)
       let rewritten = ActivityCardData(startTime: old.startTime, endTime: current.endTime,
         category: "Idle", subcategory: "", title: "A natural combined title",
@@ -89,6 +96,7 @@ final class SameLabelSingleEventTests: XCTestCase {
         distractions: nil, appSites: current.appSites, evidenceKind: .visible)
       return ([rewritten], [], nil, LLMCall(timestamp: nil, latency: nil, input: nil, output: nil))
     }
+    XCTAssertEqual(requests, 1)
     XCTAssertEqual(result.cards.count, 1)
     let merged = try XCTUnwrap(result.cards.first)
     XCTAssertEqual(merged.title, "A natural combined title")
@@ -117,7 +125,8 @@ final class SameLabelSingleEventTests: XCTestCase {
     XCTAssertNotEqual(TargetStore.fingerprint(saved), TargetStore.fingerprint(oldStored))
     let screenshotIDs = try [base - 60, base + 60, base + 120].map { stamp in
       try XCTUnwrap(storage.saveScreenshot(segmentPath: "synthetic-single-event", frameIndex: 0,
-        capturedAt: Date(timeIntervalSince1970: Double(stamp)), idleSecondsAtCapture: 0))
+        capturedAt: Date(timeIntervalSince1970: Double(stamp)), idleSecondsAtCapture: 0,
+        isPrivacyRedacted: stamp == base + 60))
     }
     defer { try? storage.timedWrite("single event screenshot cleanup") { db in
       try db.execute(sql: "DELETE FROM screenshots WHERE file_path = 'synthetic-single-event'")
@@ -420,20 +429,18 @@ final class SameLabelSingleEventTests: XCTestCase {
     let target = FocusTarget(id: UUID(), text: event.name, startedAt: Date(timeIntervalSince1970: Double(base - 120)),
       events: [FocusTargetEvent(id: event.id, name: event.name, details: event.details)])
     defaults.set(try JSONEncoder().encode(target), forKey: "target.current")
-    var prompts: [String] = []
     let targetStore = TargetStore(defaults: defaults, storage: storage,
       automaticReminders: AutomaticReminderState(isRecording: false), notify: { _, _, _ in false },
-      generate: { prompt in
-        prompts.append(prompt)
-        return #"{"alignment":"neutral","reason":"Mixed concrete activities","reminder":"Return to the goal"}"#
+      generate: { _ in
+        XCTFail("Goal alignment must use the persisted event group, not a model")
+        return "invalid"
       })
     targetStore.synchronize(events: [event])
     targetStore.enqueue(cardIDs: [stored.id])
     await targetStore.waitForEvaluations()
-    XCTAssertEqual(prompts.count, 1)
-    XCTAssertTrue(prompts[0].contains("Article detail"))
-    XCTAssertTrue(prompts[0].contains("Video detail"))
-    XCTAssertEqual(targetStore.assessments[stored.id]?.alignment, .neutral)
+    XCTAssertEqual(targetStore.assessments[stored.id]?.alignment, .severe)
+    XCTAssertEqual(targetStore.assessments[stored.id]?.targetText, event.name)
+    XCTAssertEqual(targetStore.assessments[stored.id]?.fingerprint, TargetStore.fingerprint(stored))
     XCTAssertEqual(Int(targetStore.assessments[stored.id]?.startTime.timeIntervalSince1970 ?? 0), base - 60)
     XCTAssertEqual(Int(targetStore.assessments[stored.id]?.endTime.timeIntervalSince1970 ?? 0), base + 62)
   }
@@ -447,7 +454,9 @@ final class SameLabelSingleEventTests: XCTestCase {
     XCTAssertTrue(TimelineEvidencePolicy.captureContinues(history: history, next: frame(600, "new", 0)))
     XCTAssertFalse(TimelineEvidencePolicy.captureContinues(history: [frame(0, "old", 0), frame(9, "old", 9)], next: frame(10, "new", 0)))
     XCTAssertFalse(TimelineEvidencePolicy.captureContinues(history: [frame(8, "old", 8), frame(9, "old", 9)], next: frame(10, "old", 11)))
-    XCTAssertFalse(TimelineEvidencePolicy.captureContinues(history: history, next: frame(600, "new", 0, privacy: true)))
+    XCTAssertTrue(TimelineEvidencePolicy.captureContinues(history: history, next: frame(600, "new", 0, privacy: true)))
+    XCTAssertTrue(TimelineEvidencePolicy.captureContinues(history: history + [frame(600, "new", 0, privacy: true)],
+      next: frame(620, "new", 1)))
   }
 
   func testRewrittenPreviousInterruptionsRemainInDetails() throws {
@@ -693,19 +702,17 @@ final class SameLabelSingleEventTests: XCTestCase {
     let target = FocusTarget(id: UUID(), text: event.name, startedAt: Date(timeIntervalSince1970: Double(base - 120)),
       events: [FocusTargetEvent(id: event.id, name: event.name, details: event.details)])
     defaults.set(try JSONEncoder().encode(target), forKey: "target.current")
-    var prompts: [String] = []
     let targetStore = TargetStore(defaults: defaults, storage: storage,
-      automaticReminders: AutomaticReminderState(isRecording: false), notify: { _, _, _ in false }, generate: { prompt in
-        prompts.append(prompt)
-        return #"{"alignment":"neutral","reason":"Synthetic facts","reminder":"Return to the goal"}"#
+      automaticReminders: AutomaticReminderState(isRecording: false), notify: { _, _, _ in false }, generate: { _ in
+        XCTFail("Continued event alignment must use its persisted group")
+        return "invalid"
       })
     targetStore.synchronize(events: [event])
     targetStore.enqueue(cardIDs: [final.id])
     await targetStore.waitForEvaluations()
-    let prompt = try XCTUnwrap(prompts.first)
-    XCTAssertTrue(prompt.contains("Visible detail"))
-    XCTAssertTrue(prompt.contains("Continued detail"))
-    XCTAssertTrue(prompt.contains("Third distinct detail"))
+    XCTAssertEqual(targetStore.assessments[final.id]?.alignment, .severe)
+    XCTAssertEqual(targetStore.assessments[final.id]?.targetText, event.name)
+    XCTAssertEqual(targetStore.assessments[final.id]?.fingerprint, TargetStore.fingerprint(final))
     XCTAssertEqual(Int(targetStore.assessments[final.id]?.startTime.timeIntervalSince1970 ?? 0), base + 32)
     XCTAssertEqual(Int(targetStore.assessments[final.id]?.endTime.timeIntervalSince1970 ?? 0), base + 241)
   }
@@ -728,6 +735,101 @@ final class SameLabelSingleEventTests: XCTestCase {
       recordedContinuity: same.continuity(from: 1140, to: 1200)))
   }
 
+
+  func testContinuousSuffixIncludesRedactionButRespectsStopsMissingFramesAndDayBoundary() {
+    func frame(_ timestamp: Int, index: Int, privacy: Bool = false) -> Screenshot {
+      Screenshot(id: Int64(timestamp), capturedAt: timestamp, filePath: "suffix", fileSize: nil,
+        idleSecondsAtCapture: 0, isDeleted: false, frameIndex: index, isPrivacyRedacted: privacy)
+    }
+    let frames = [frame(0, index: 0), frame(20, index: 1), frame(40, index: 2), frame(60, index: 3)]
+    XCTAssertEqual(TimelineEvidencePolicy.continuousCaptureSuffix(frames,
+      recordedContinuity: { _, _ in true }).map(\.capturedAt), [0, 20, 40, 60])
+    XCTAssertEqual(TimelineEvidencePolicy.continuousCaptureSuffix(frames,
+      recordedContinuity: { previous, _ in previous == 20 ? false : true }).map(\.capturedAt), [40, 60])
+    XCTAssertEqual(TimelineEvidencePolicy.continuousCaptureSuffix([
+      frames[0], frame(20, index: 1, privacy: true), frames[2], frames[3]],
+      recordedContinuity: { _, _ in true }).map(\.capturedAt), [0, 20, 40, 60])
+    XCTAssertEqual(TimelineEvidencePolicy.continuousCaptureSuffix([frames[0], frames[2], frames[3]],
+      recordedContinuity: { _, _ in true }).map(\.capturedAt), [40, 60])
+    var calendar = Calendar.current
+    calendar.timeZone = .current
+    let fourAM = Int(calendar.date(from: DateComponents(year: 2027, month: 1, day: 20, hour: 4))!.timeIntervalSince1970)
+    XCTAssertEqual(TimelineEvidencePolicy.continuousCaptureSuffix([
+      frame(fourAM - 20, index: 0), frame(fourAM, index: 1), frame(fourAM + 20, index: 2)],
+      recordedContinuity: { _, _ in true }).map(\.capturedAt), [fourAM, fourAM + 20])
+  }
+
+  func testProcessBatchContinuesLatestEventAfterInterleavedCaptureHistory() async throws {
+    XCTAssertTrue(AppStoragePaths.isIsolated)
+    let storage = StorageManager.shared
+    let base = 1_800_000_000
+    let policy = TimelineOutputPolicy()
+    let path = "interleaved-history-\(UUID().uuidString)"
+    let (batch, earlierID, latestID): (Int64, Int64, Int64) = try storage.timedWrite("interleaved history setup") { db in
+      try db.execute(sql: "INSERT INTO analysis_batches(batch_start_ts,batch_end_ts) VALUES (?,?)", arguments: [base + 701, base + 1001])
+      let batch = db.lastInsertedRowID
+      func insertCard(start: Int, end: Int, title: String) throws -> Int64 {
+        try db.execute(sql: """
+          INSERT INTO timeline_cards(start,end,start_ts,end_ts,day,title,category,summary,detailed_summary,metadata)
+          VALUES (?,?,?,?,?,?,?,?,?,?)
+          """, arguments: [policy.formatTimestampForPrompt(base + start), policy.formatTimestampForPrompt((base + end) / 60 * 60 + 60),
+            base + start, base + end, Date(timeIntervalSince1970: Double(base)).getDayInfoFor4AMBoundary().dayString,
+            title, "Idle", title, title + " detail", #"{"evidenceKind":"visible"}"#])
+        return db.lastInsertedRowID
+      }
+      let earlier = try insertCard(start: 0, end: 300, title: "Earlier separate event")
+      let latest = try insertCard(start: 381, end: 681, title: "Latest continuous event")
+      func insertFrame(_ offset: Int, stream: String, index: Int, inBatch: Bool = false) throws {
+        try db.execute(sql: "INSERT INTO screenshots(captured_at,file_path,frame_index,is_privacy_redacted) VALUES (?,?,?,0)",
+          arguments: [base + offset, path + stream, index])
+        if inBatch {
+          try db.execute(sql: "INSERT INTO batch_screenshots(batch_id,screenshot_id) VALUES (?,?)", arguments: [batch, db.lastInsertedRowID])
+        }
+      }
+      for offset in stride(from: 0, through: 360, by: 20) {
+        try insertFrame(offset, stream: "A", index: offset / 20)
+      }
+      for offset in stride(from: 321, through: 1001, by: 20) {
+        try insertFrame(offset, stream: "B", index: (offset - 321) / 20, inBatch: offset >= 701)
+      }
+      return (batch, earlier, latest)
+    }
+    defer { try? storage.timedWrite("interleaved history cleanup") { db in
+      try db.execute(sql: "DELETE FROM observations WHERE batch_id = ?", arguments: [batch])
+      try db.execute(sql: "DELETE FROM timeline_cards WHERE batch_id = ? OR id IN (?,?)", arguments: [batch, earlierID, latestID])
+      try db.execute(sql: "DELETE FROM batch_screenshots WHERE batch_id = ?", arguments: [batch])
+      try db.execute(sql: "DELETE FROM screenshots WHERE file_path IN (?,?)", arguments: [path + "A", path + "B"])
+      try db.execute(sql: "DELETE FROM analysis_batches WHERE id = ?", arguments: [batch])
+    } }
+    let connection = AIProviderConnection(name: "Stub", kind: .local, models: [AIConfiguredModel(id: "test")])
+    let assignment = AIModelAssignment(connectionID: connection.id, modelID: "test")
+    let config = AIConfiguration(connections: [connection], routes: [.timeline: .init(primary: assignment)])
+    var calls = 0
+    let service = LLMService(loadConfiguration: { config }, timelineGeneratorOverride: { _, context, _ in
+      calls += 1
+      XCTAssertEqual(context.existingCards.map(\.title), ["Latest continuous event"])
+      let first = try XCTUnwrap(context.existingCards.first)
+      let combined = ActivityCardData(startTime: first.startTime, endTime: policy.formatTimestampForPrompt(base + 1020),
+        category: "Idle", subcategory: "", title: "Natural continued event", summary: "Coherent combined account",
+        detailedSummary: "New batch detail", distractions: nil, appSites: nil)
+      return ([combined], [], nil, LLMCall(timestamp: nil, latency: nil, input: nil, output: nil))
+    })
+    let result: Result<ProcessedBatchResult, Error> = await withCheckedContinuation { continuation in
+      service.processBatch(batch, progressHandler: nil) { continuation.resume(returning: $0) }
+    }
+    let ids = try result.get().cardIds
+    XCTAssertEqual(calls, 1)
+    XCTAssertEqual(ids.count, 1)
+    let saved = try XCTUnwrap(ids.first.flatMap { storage.fetchTimelineCard(byId: $0) })
+    XCTAssertEqual(saved.startTs, base + 381)
+    XCTAssertEqual(saved.endTs, base + 1001)
+    XCTAssertEqual(saved.title, "Natural continued event")
+    XCTAssertTrue(saved.detailedSummary.contains("Latest continuous event detail"))
+    XCTAssertTrue(saved.detailedSummary.contains("New batch detail"))
+    XCTAssertFalse(saved.detailedSummary.contains("Earlier separate event"))
+    XCTAssertNil(storage.fetchTimelineCard(byId: latestID))
+    XCTAssertNotNil(storage.fetchTimelineCard(byId: earlierID))
+  }
 
   func testLegacyJPEGContinuityUsesCadenceAndKnownStop() {
     func jpeg(_ timestamp: Int) -> Screenshot {

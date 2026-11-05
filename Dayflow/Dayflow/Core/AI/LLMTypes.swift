@@ -103,6 +103,13 @@ struct ActivityCardData: Codable {
   let distractions: [Distraction]?
   let appSites: AppSites?
   var evidenceKind: ActivityEvidenceKind? = nil
+  /// Trusted, process-local capture provenance; never accepted from model JSON.
+  var sourceScreenshotIDs: [Int64]? = nil
+
+  enum CodingKeys: String, CodingKey {
+    case startTime, endTime, category, subcategory, title, summary, detailedSummary
+    case distractions, appSites, evidenceKind
+  }
 }
 
 // Distraction is defined in StorageManager.swift

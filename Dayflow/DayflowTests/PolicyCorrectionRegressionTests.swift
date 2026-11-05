@@ -55,7 +55,7 @@ final class PolicyCorrectionRegressionTests: XCTestCase {
   }
 
   @MainActor
-  func testVisibleIdleAndLegacyAliasUseEvaluatorRatherThanInactivityShortcut() async throws {
+  func testVisibleIdleAndLegacyAliasAreDistractedByEventMembership() async throws {
     for category in ["Idle", "__unmatched__"] {
       let fixture = try fixture(category: category, evidence: .visible)
       defer { fixture.defaults.removePersistentDomain(forName: fixture.suite) }
@@ -70,8 +70,8 @@ final class PolicyCorrectionRegressionTests: XCTestCase {
         })
       store.enqueue(cardIDs: [1])
       await store.waitForEvaluations()
-      XCTAssertEqual(calls, 1)
-      XCTAssertEqual(fixture.storage.saved[1]?.alignment, .focused)
+      XCTAssertEqual(calls, 0)
+      XCTAssertEqual(fixture.storage.saved[1]?.alignment, .severe)
       XCTAssertEqual(notifications, 0)
       XCTAssertEqual(TimelineEventDisplay.reservedCategory(category)?.isIdle, true)
     }
@@ -108,7 +108,7 @@ final class PolicyCorrectionRegressionTests: XCTestCase {
     let restored = store()
     restored.enqueue(cardIDs: [1])
     await restored.waitForEvaluations()
-    XCTAssertEqual(calls, 1)
+    XCTAssertEqual(calls, 0)
     XCTAssertEqual(notifications, 1)
     XCTAssertEqual(restored.assessments[1]?.alignment, .severe)
     XCTAssertEqual(fixture.storage.saved[1]?.alignment, .severe)
@@ -128,7 +128,7 @@ final class PolicyCorrectionRegressionTests: XCTestCase {
         generate: { _ in calls += 1; return Self.severe })
       store.enqueue(cardIDs: [1])
       await store.waitForEvaluations()
-      XCTAssertEqual(calls, 1)
+      XCTAssertEqual(calls, 0)
       XCTAssertEqual(fixture.storage.saved[1]?.alignment, .severe)
       XCTAssertEqual(notifications, 0)
     }

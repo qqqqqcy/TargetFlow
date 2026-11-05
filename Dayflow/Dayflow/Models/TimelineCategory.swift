@@ -14,6 +14,22 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
   var updatedAt: Date
   // Optional for backwards-compatible decoding of existing event definitions.
   var targetEnabled: Bool?
+  // Missing in older definitions: existing events remain enabled.
+  var eventEnabled: Bool?
+
+  var isEventEnabled: Bool { eventEnabled ?? true }
+  var isEnabled: Bool { isEventEnabled }
+
+  var isClassificationCandidate: Bool {
+    (isIdle || isEventEnabled)
+      && !TimelineEventDisplay.isPlaceholderName(name)
+      && (isIdle || !TimelineEventDisplay.isReserved(name))
+  }
+
+  /// Localize the built-in label without changing persisted names or matching keys.
+  var displayName: String {
+    isIdle ? String(localized: "Other") : name
+  }
 
   var isCurrentTarget: Bool {
     !isSystem && !isIdle && !TimelineEventDisplay.isReserved(name) && targetEnabled == true
@@ -30,7 +46,8 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
     isNew: Bool = false,
     createdAt: Date = Date(),
     updatedAt: Date = Date(),
-    targetEnabled: Bool = false
+    targetEnabled: Bool = false,
+    eventEnabled: Bool = true
   ) {
     self.id = id
     self.name = name
@@ -43,6 +60,7 @@ struct TimelineCategory: Identifiable, Codable, Equatable, Sendable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.targetEnabled = targetEnabled
+    self.eventEnabled = eventEnabled
   }
 }
 
@@ -50,19 +68,27 @@ enum TimelineEventDisplay {
   static let unmatched = "__unmatched__"
   static let privacy = "__privacy__"
 
+  /// Automatically generated editor names are drafts, even if an older version saved details.
+  static func isPlaceholderName(_ raw: String) -> Bool {
+    raw.trimmingCharacters(in: .whitespacesAndNewlines).range(
+      of: #"^(new event|新事件)(\s+[0-9]+)?$"#,
+      options: [.regularExpression, .caseInsensitive]) != nil
+  }
+
+  static func canonicalCategoryKey(_ raw: String) -> String {
+    let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return isReserved(key) || isPlaceholderName(key) ? "idle" : key
+  }
+
   static func reservedCategory(_ raw: String) -> TimelineCategory? {
-    switch raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-    case unmatched, "idle", "idle time":
-      return TimelineCategory(name: String(localized: "Idle"), colorHex: "#A0AEC0", order: 0, isSystem: true, isIdle: true)
-    case privacy:
-      return TimelineCategory(name: String(localized: "Privacy"), colorHex: "#A0AEC0", order: 0, isSystem: true)
-    default: return nil
-    }
+    guard canonicalCategoryKey(raw) == "idle" else { return nil }
+    // Keep legacy storage keys while presenting the fallback as Other.
+    return TimelineCategory(name: String(localized: "Other"), colorHex: "#A0AEC0", order: 0, isSystem: true, isIdle: true)
   }
 
   static func isReserved(_ raw: String) -> Bool {
     let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    return key == unmatched || key == privacy || key == "idle" || key == "idle time"
+    return [unmatched, privacy, "idle", "idle time", "other", "其他", "其它"].contains(key)
   }
 }
 
@@ -82,7 +108,7 @@ func firstCategoryLookup(
   var lookup: [String: TimelineCategory] = [:]
   lookup.reserveCapacity(categories.count)
 
-  for category in categories {
+  for category in categories where !TimelineEventDisplay.isPlaceholderName(category.name) {
     let key = normalizedKey(category.name)
     if lookup[key] == nil {
       lookup[key] = category
@@ -119,7 +145,7 @@ final class CategoryStore: ObservableObject {
   }
 
   var currentTargets: [TimelineCategory] {
-    editableCategories.filter(\.isCurrentTarget)
+    editableCategories.filter { $0.isEventEnabled && $0.isCurrentTarget }
   }
 
   func setCurrentTarget(_ enabled: Bool, for id: UUID) {
@@ -129,8 +155,19 @@ final class CategoryStore: ObservableObject {
     updateCategory(id: id) { $0.targetEnabled = enabled }
   }
 
+  func setEventEnabled(_ enabled: Bool, for id: UUID) {
+    guard let event = categories.first(where: { $0.id == id }),
+      !event.isSystem, !event.isIdle, event.isEventEnabled != enabled
+    else { return }
+    updateCategory(id: id) { $0.eventEnabled = enabled }
+  }
+
   var editableCategories: [TimelineCategory] {
     categories.filter { !$0.isSystem }.sorted { $0.order < $1.order }
+  }
+
+  var matchableCategories: [TimelineCategory] {
+    editableCategories.filter(\.isClassificationCandidate)
   }
 
   var idleCategory: TimelineCategory? {
@@ -147,21 +184,28 @@ final class CategoryStore: ObservableObject {
       ?? Self.newCategoryColors[categories.count % Self.newCategoryColors.count]
   }
 
-  func addCategory(name: String, colorHex: String? = nil) {
+  @discardableResult
+  func addCategory(
+    name: String, colorHex: String? = nil, details: String = "", targetEnabled: Bool = false,
+    eventEnabled: Bool = true
+  ) -> UUID? {
     let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty, !TimelineEventDisplay.isReserved(trimmed) else { return }
+    guard !trimmed.isEmpty, !TimelineEventDisplay.isReserved(trimmed),
+      !TimelineEventDisplay.isPlaceholderName(trimmed) else { return nil }
     let nextOrder = (categories.map { $0.order }.max() ?? -1) + 1
     let now = Date()
     let category = TimelineCategory(
       name: trimmed,
       colorHex: colorHex ?? colorForNewCategory(),
-      details: "",
+      details: details,
       order: nextOrder,
       isSystem: false,
       isIdle: false,
       isNew: true,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      targetEnabled: targetEnabled,
+      eventEnabled: eventEnabled
     )
     categories.append(category)
     save()
@@ -169,6 +213,7 @@ final class CategoryStore: ObservableObject {
     if defaults.bool(forKey: StoreKeys.hasUsedApp) == false {
       defaults.set(true, forKey: StoreKeys.hasUsedApp)
     }
+    return category.id
   }
 
   func updateCategory(id: UUID, mutate: (inout TimelineCategory) -> Void) {
@@ -196,7 +241,8 @@ final class CategoryStore: ObservableObject {
 
   func renameCategory(id: UUID, to newName: String) {
     let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty, !TimelineEventDisplay.isReserved(trimmed) else { return }
+    guard !trimmed.isEmpty, !TimelineEventDisplay.isReserved(trimmed),
+      !TimelineEventDisplay.isPlaceholderName(trimmed) else { return }
     updateCategory(id: id) { cat in
       cat.name = trimmed
     }
@@ -275,9 +321,12 @@ extension CategoryStore {
   nonisolated static func descriptorsForLLM() -> [LLMCategoryDescriptor] {
     let categories = CategoryPersistence.loadPersistedCategories()
     let effective = categories.isEmpty ? CategoryPersistence.defaultCategories : categories
-    return
-      effective
-      .filter { $0.isIdle || !TimelineEventDisplay.isReserved($0.name) }
+    return descriptorsForLLM(categories: effective)
+  }
+
+  nonisolated static func descriptorsForLLM(categories: [TimelineCategory]) -> [LLMCategoryDescriptor] {
+    return CategoryPersistence.ensureIdleCategoryPresent(in: categories)
+      .filter(\.isClassificationCandidate)
       .sorted { $0.order < $1.order }
       .map { category in
         LLMCategoryDescriptor(

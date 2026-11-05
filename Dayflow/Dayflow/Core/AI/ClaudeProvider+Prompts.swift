@@ -36,7 +36,7 @@ extension ClaudeProvider {
     let boundaryBlock = """
       Reconstruct the concrete activities and their supported times. Merge adjacent activities
       with the same label into one card, even when their purposes differ. Keep different labels,
-      genuine gaps, privacy, recording pauses and 4 AM boundaries separate. Each card has positive
+      genuine gaps, recording pauses and 4 AM boundaries separate. Each card has positive
       duration and is at most 60 minutes. Preserve all previous and new facts and timed details;
       do not infer focus or inactivity from the label.
       """
@@ -109,6 +109,8 @@ extension ClaudeProvider {
     return """
       Analyze these \(numFrames) screenshots from a \(duration) screen recording
       (\(startTime) to \(endTime)). They are 1 min apart and in order.
+
+      \(TimelinePrivacyPromptGuidance.instructions)
 
       Create an activity log detailed enough that someone could reconstruct what
       the user did.

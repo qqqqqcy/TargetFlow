@@ -62,6 +62,24 @@ final class TestIsolationTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: segment), contents)
   }
 
+  func testGeneratedMediaCleanupCannotEscapeIsolationRoot() throws {
+    let root = AppStoragePaths.applicationSupport
+    let outside = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    let alias = root.appendingPathComponent("external-media-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+    try Data("external recording".utf8).write(to: outside.appendingPathComponent("test.mp4"))
+    defer {
+      try? FileManager.default.removeItem(at: alias)
+      try? FileManager.default.removeItem(at: outside)
+    }
+    try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: outside)
+    XCTAssertTrue(AppStoragePaths.canRemoveGeneratedMedia(at: root.appendingPathComponent("timelapses/test.mp4")))
+    XCTAssertFalse(AppStoragePaths.canRemoveGeneratedMedia(at: root))
+    XCTAssertFalse(AppStoragePaths.canRemoveGeneratedMedia(at: outside.appendingPathComponent("test.mp4")))
+    XCTAssertFalse(AppStoragePaths.canRemoveGeneratedMedia(at: alias.appendingPathComponent("test.mp4")))
+  }
+
   func testCredentialOperationsUseIsolatedFiles() {
     let provider = "isolation-check-\(UUID().uuidString)"
     XCTAssertTrue(KeychainManager.shared.store("fixture-secret", for: provider))

@@ -15,7 +15,25 @@ final class RetryCoordinator: ObservableObject {
   @Published private(set) var activeBatchId: Int64? = nil
   @Published private var dotTick: Int = 0
 
+  typealias Reprocess = (Int64, @escaping (LLMProcessingStep) -> Void,
+    @escaping (Result<Void, Error>) -> Void) -> Void
+
+  private let batchIDsForDay: @Sendable (String) -> [Int64]
+  private let reprocess: Reprocess
+  private let setManualRetryRunning: (Bool) -> Void
+  private var retryDay = ""
   private var dotTimer: Timer?
+
+  init(batchIDsForDay: (@Sendable (String) -> [Int64])? = nil,
+    reprocess: Reprocess? = nil, setManualRetryRunning: ((Bool) -> Void)? = nil) {
+    self.batchIDsForDay = batchIDsForDay ?? Self.failedBatchIds
+    self.reprocess = reprocess ?? { id, progress, completion in
+      AnalysisManager.shared.reprocessBatch(id, stepHandler: progress, completion: completion)
+    }
+    self.setManualRetryRunning = setManualRetryRunning ?? {
+      AnalysisManager.shared.setManualRetryRunning($0)
+    }
+  }
 
   func statusLine(for batchId: Int64?) -> String? {
     guard let batchId, let status = statuses[batchId] else { return nil }
@@ -86,10 +104,12 @@ final class RetryCoordinator: ObservableObject {
   func startRetry(for dayString: String, onBatchCompleted: @escaping (Int64) -> Void) {
     guard !isRunning else { return }
     isRunning = true
-    AnalysisManager.shared.setManualRetryRunning(true)
+    retryDay = dayString
+    setManualRetryRunning(true)
 
+    let load = batchIDsForDay
     Task.detached {
-      let batchIds = Self.failedBatchIds(for: dayString)
+      let batchIds = load(dayString)
       await MainActor.run {
         self.beginQueue(batchIds: batchIds, onBatchCompleted: onBatchCompleted)
       }
@@ -101,7 +121,7 @@ final class RetryCoordinator: ObservableObject {
     var seen = Set<Int64>()
     var ordered: [Int64] = []
 
-    for card in cards {
+    for card in cards.sorted(by: { ($0.startTs ?? 0) < ($1.startTs ?? 0) }) {
       // A batch already being retried automatically still shows its failed
       // card; skip it so two runs don't race.
       guard
@@ -121,8 +141,7 @@ final class RetryCoordinator: ObservableObject {
     statuses = [:]
     activeBatchId = nil
     guard !batchIds.isEmpty else {
-      isRunning = false
-      AnalysisManager.shared.setManualRetryRunning(false)
+      finishRun()
       return
     }
 
@@ -143,18 +162,25 @@ final class RetryCoordinator: ObservableObject {
     }
 
     let batchId = batchIds[index]
+    // Successful neighboring batches can replace failed placeholders. Re-check
+    // immediately before dispatch, rather than replaying the stale day snapshot.
+    guard batchIDsForDay(retryDay).contains(batchId) else {
+      statuses[batchId] = .done
+      processNext(index: index + 1, batchIds: batchIds, onBatchCompleted: onBatchCompleted)
+      return
+    }
     activeBatchId = batchId
     statuses[batchId] = .running(step: .transcribing)
     startDotTimerIfNeeded()
 
-    AnalysisManager.shared.reprocessBatch(
+    reprocess(
       batchId,
-      stepHandler: { [weak self] step in
+      { [weak self] step in
         self?.statuses[batchId] = .running(step: step)
       },
-      completion: { [weak self] result in
+      { [weak self, setManualRetryRunning] result in
         guard let self else {
-          AnalysisManager.shared.setManualRetryRunning(false)
+          setManualRetryRunning(false)
           return
         }
 
@@ -163,10 +189,17 @@ final class RetryCoordinator: ObservableObject {
           self.statuses[batchId] = .done
           onBatchCompleted(batchId)
           self.processNext(index: index + 1, batchIds: batchIds, onBatchCompleted: onBatchCompleted)
-        case .failure:
+        case .failure(let error):
           self.statuses[batchId] = .failed
-          self.markRemainingStopped(from: index + 1, batchIds: batchIds)
-          self.finishRun()
+          // Refresh the error details too; otherwise the UI keeps showing the
+          // previous network failure even when this retry failed validation.
+          onBatchCompleted(batchId)
+          if TimelineRetryPolicy.canContinueQueue(after: error) {
+            self.processNext(index: index + 1, batchIds: batchIds, onBatchCompleted: onBatchCompleted)
+          } else {
+            self.markRemainingStopped(from: index + 1, batchIds: batchIds)
+            self.finishRun()
+          }
         }
       }
     )
@@ -182,7 +215,7 @@ final class RetryCoordinator: ObservableObject {
   private func finishRun() {
     activeBatchId = nil
     isRunning = false
-    AnalysisManager.shared.setManualRetryRunning(false)
+    setManualRetryRunning(false)
     stopDotTimer()
   }
 

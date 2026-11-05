@@ -15,7 +15,6 @@ extension ClaudeProvider {
   func transcribeScreenshots(
     _ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?
   ) async throws -> (observations: [Observation], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     guard !screenshots.isEmpty else {
       throw NSError(
         domain: "ClaudeProvider", code: -96,

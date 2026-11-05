@@ -92,7 +92,6 @@ final class OllamaProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let callStart = Date()
     let prompt = CodexProvider().buildCardsPrompt(observations: observations, context: context)
     let output = try await callTextAPI(prompt, operation: "generate_cards", expectJSON: true, batchId: batchId)

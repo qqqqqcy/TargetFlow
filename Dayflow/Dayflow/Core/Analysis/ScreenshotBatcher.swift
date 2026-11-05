@@ -32,18 +32,8 @@ enum ScreenshotBatcher {
         let gap = screenshot.capturedAt - previous.capturedAt
         let crossesDay = previous.capturedDate.getDayInfoFor4AMBoundary().dayString
           != screenshot.capturedDate.getDayInfoFor4AMBoundary().dayString
-        let continuous: Bool
-        if previous.isPrivacyRedacted != screenshot.isPrivacyRedacted {
-          // Privacy transitions remain in the batch and are split by the evidence policy.
-          continuous = stop != false && gap > 0 && TimeInterval(gap) <= maxGap
-        } else if previous.isPrivacyRedacted {
-          continuous = TimeInterval(gap) <= maxGap
-            && TimelineEvidencePolicy.captureContinues(history: bucket, next: screenshot,
-              recordedContinuity: stop, privacy: true)
-        } else {
-          continuous = TimeInterval(gap) <= maxGap
-            && TimelineEvidencePolicy.captureContinues(history: bucket, next: screenshot, recordedContinuity: stop)
-        }
+        let continuous = TimeInterval(gap) <= maxGap
+          && TimelineEvidencePolicy.captureContinues(history: bucket, next: screenshot, recordedContinuity: stop)
         if crossesDay || !continuous {
           appendBucket()
           bucket = []

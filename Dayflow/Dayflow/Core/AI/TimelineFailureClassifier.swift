@@ -372,8 +372,15 @@ enum TimelineFailureClassifier {
   static func classify(_ error: Error) -> TimelineFailureClassification {
     // Structural errors are typed before localization; translated descriptions
     // and words inside a generated title must not be mistaken for account failures.
-    if error is ClaudeOutputValidationError {
+    if error is ClaudeOutputValidationError || error is TimelineNaturalMergeError {
       return TimelineFailureClassification(kind: .timelineMismatch, providerName: nil)
+    }
+    if error is DecodingError {
+      return TimelineFailureClassification(kind: .modelFlaky, providerName: nil)
+    }
+    let value = error as NSError
+    if value.domain == NSURLErrorDomain, value.code != NSURLErrorCancelled {
+      return TimelineFailureClassification(kind: .transient, providerName: nil)
     }
     let lower = error.localizedDescription.lowercased()
     return TimelineFailureClassification(
@@ -461,7 +468,8 @@ enum TimelineFailureClassifier {
       ]
     ),
     (.geoBlocked, ["location is not supported"]),
-    (.accountBlocked, ["denied access", "organization has disabled", "account is on hold"]),
+    (.accountBlocked, ["denied access", "organization has disabled", "account is on hold",
+      "your account is not active", "check your billing details"]),
     (.notConfigured, ["no llm provider configured"]),
     (
       .transient,

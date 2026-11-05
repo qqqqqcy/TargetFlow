@@ -11,6 +11,8 @@ struct EditableCategoryCard: View {
   let isEditing: Bool
   @Binding var draftName: String
   @Binding var draftDetails: String
+  var targetEnabledOverride: Binding<Bool>? = nil
+  var eventEnabledOverride: Binding<Bool>? = nil
   var onStartEdit: () -> Void
   var onSave: () -> Void
   var onDelete: () -> Void
@@ -36,11 +38,31 @@ struct EditableCategoryCard: View {
   }
 
   @ViewBuilder
+  private var eventToggle: some View {
+    if !category.isSystem && !category.isIdle {
+      Toggle(
+        "Event enabled",
+        isOn: eventEnabledOverride ?? Binding(
+          get: { category.isEventEnabled },
+          set: { categoryStore.setEventEnabled($0, for: category.id) }
+        )
+      )
+      .toggleStyle(DayflowToggleStyle())
+      .controlSize(.small)
+      .font(.system(size: 12))
+      .tint(theme.accent)
+      .foregroundStyle(theme.textSecondary)
+      .fixedSize()
+      .accessibilityLabel("Enable event \(category.name)")
+    }
+  }
+
+  @ViewBuilder
   private var targetToggle: some View {
     if !category.isSystem && !category.isIdle {
       Toggle(
         "Current goal",
-        isOn: Binding(
+        isOn: targetEnabledOverride ?? Binding(
           get: { category.isCurrentTarget },
           set: { categoryStore.setCurrentTarget($0, for: category.id) }
         )
@@ -53,6 +75,12 @@ struct EditableCategoryCard: View {
       .fixedSize()
       .accessibilityLabel("Set \(category.name) as a current goal")
     }
+  }
+
+  private var canSave: Bool {
+    let name = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+    return !name.isEmpty && !TimelineEventDisplay.isPlaceholderName(name)
+      && !TimelineEventDisplay.isReserved(name)
   }
 
   private var editingView: some View {
@@ -77,8 +105,21 @@ struct EditableCategoryCard: View {
             .background(theme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 7))
         }
         .buttonStyle(.plain)
-        .pointingHandCursor()
+        .disabled(!canSave)
+        .pointingHandCursor(enabled: canSave)
         .accessibilityLabel("Save event")
+
+        if !category.isSystem {
+          Button(action: onDelete) {
+            Image(systemName: "trash")
+              .font(.system(size: 12))
+              .foregroundStyle(theme.textTertiary)
+              .frame(width: 28, height: 28)
+          }
+          .buttonStyle(.plain)
+          .pointingHandCursor()
+          .accessibilityLabel("Delete event")
+        }
       }
 
       ZStack(alignment: .topLeading) {
@@ -101,7 +142,10 @@ struct EditableCategoryCard: View {
       .background(theme.inputFill, in: RoundedRectangle(cornerRadius: 8))
       .overlay(RoundedRectangle(cornerRadius: 8).stroke(theme.inputBorder, lineWidth: 1))
 
-      targetToggle
+      HStack(spacing: 12) {
+        eventToggle
+        targetToggle
+      }
     }
     .padding(14)
     .background(theme.rightPanelFill, in: RoundedRectangle(cornerRadius: 10))
@@ -117,7 +161,7 @@ struct EditableCategoryCard: View {
           .padding(.top, 5)
 
         VStack(alignment: .leading, spacing: 6) {
-          Text(category.name)
+          Text(category.displayName)
             .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(theme.textPrimary)
           Text(
@@ -140,6 +184,7 @@ struct EditableCategoryCard: View {
       }
 
       HStack(spacing: 8) {
+        eventToggle
         targetToggle
         Spacer(minLength: 0)
         if !category.isSystem {
@@ -205,7 +250,7 @@ struct ColorAssignmentCard: View {
         colorSwatch(category.colorHex)
 
         VStack(alignment: .leading, spacing: 4) {
-          Text(category.name)
+          Text(category.displayName)
             .font(Font.system(size: 12).weight(.bold))
             .foregroundColor(theme.textPrimary)
 

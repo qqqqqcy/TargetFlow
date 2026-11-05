@@ -22,7 +22,6 @@ extension ClaudeProvider {
   ) async throws -> (
     cards: [ActivityCardData], observations: [Observation], rewriteSpan: Range<Int>?, log: LLMCall
   ) {
-    try TimelineEvidencePolicy.requireVisibleContext(context)
     guard !screenshots.isEmpty else {
       throw NSError(
         domain: "ClaudeProvider", code: -96,

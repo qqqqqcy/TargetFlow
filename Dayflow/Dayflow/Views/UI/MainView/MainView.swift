@@ -17,9 +17,9 @@ struct MainView: View {
   @Environment(\.accessibilityReduceMotion) var reduceMotion
   @Environment(\.dayflowTheme) var theme
   @State var selectedIcon: SidebarIcon = .timeline
-  @State var selectedDate = timelineDisplayDate(from: Date())
+  @State var selectedDate = timelineDisplayDate(from: RecordingReplayPreview.initialDate ?? Date())
   @State var cachedTimelineWeekRange: TimelineWeekRange = TimelineWeekRange.containing(
-    timelineDisplayDate(from: Date()))
+    timelineDisplayDate(from: RecordingReplayPreview.initialDate ?? Date()))
   @StateObject var dayTimelineZoom = DayTimelineZoomState()
   @State var timelineMode: TimelineMode = .day
   @State var hideWeekCardsDuringModeSwitch = false
@@ -71,6 +71,15 @@ struct MainView: View {
 
   var body: some View {
     mainLayout
+      .onReceive(NotificationCenter.default.publisher(for: .recordingReplayShowDate)) { notification in
+        guard RecordingReplayPreview.isEnabled,
+          let date = notification.object as? Date ?? notification.userInfo?["date"] as? Date
+        else { return }
+        selectedIcon = .timeline
+        timelineMode = .day
+        selectedActivity = nil
+        setSelectedDate(timelineDisplayDate(from: date))
+      }
       .onReceive(NotificationCenter.default.publisher(for: .navigateToEvents)) { _ in
         selectedIcon = .timeline
         showCategoryEditor = true

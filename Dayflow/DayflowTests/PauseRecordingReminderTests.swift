@@ -124,18 +124,15 @@ final class PauseRecordingReminderTests: XCTestCase {
     XCTAssertFalse(fixture.service.canPresentTargetNotice(identifier: old))
   }
 
-  func testModelLateReturnSavesAssessmentWithoutReminderOrDedupAdvance() async throws {
+  func testQueuedLocalEvaluationSavesAssessmentWithoutReminderAfterPause() async throws {
     for resume in [false, true] {
       let fixture = try EvaluationFixture()
       defer { fixture.cleanUp() }
-      let gate = AsyncGate()
-      fixture.modelGate = gate
       let store = fixture.store()
       store.enqueue(cardIDs: [1])
-      await fulfillment(of: [gate.started], timeout: 2)
+      // Local assessment has no model await. Pause before the queued worker runs.
       fixture.state.setRecording(false)
       if resume { fixture.state.setRecording(true) }
-      gate.finish()
       await store.waitForEvaluations()
       XCTAssertEqual(store.assessments[1]?.alignment, .severe)
       XCTAssertEqual(fixture.storage.saved.count, 1)
@@ -146,7 +143,6 @@ final class PauseRecordingReminderTests: XCTestCase {
       store.enqueue(cardIDs: [1])
       await store.waitForEvaluations()
       XCTAssertEqual(fixture.notifications, 0)
-      fixture.modelGate = nil
       fixture.storage.card = EvaluationFixture.card(id: 2, end: Date().addingTimeInterval(2))
       store.enqueue(cardIDs: [2])
       await store.waitForEvaluations()
@@ -163,12 +159,12 @@ final class PauseRecordingReminderTests: XCTestCase {
     store.enqueue(cardIDs: [1])
     await store.waitForEvaluations()
     XCTAssertEqual(store.assessments[1]?.alignment, .severe)
-    XCTAssertEqual(fixture.modelCalls, 1)
+    XCTAssertEqual(fixture.modelCalls, 0)
     XCTAssertEqual(fixture.notifications, 0)
     fixture.state.setRecording(true)
     store.retryPendingEvaluations()
     await store.waitForEvaluations()
-    XCTAssertEqual(fixture.modelCalls, 1)
+    XCTAssertEqual(fixture.modelCalls, 0)
     XCTAssertEqual(fixture.notifications, 0)
     XCTAssertNil(fixture.defaults.object(forKey: "target.lastNotifiedEnd"))
   }

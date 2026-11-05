@@ -235,7 +235,7 @@ struct ActivityCard: View {
         timelapsePreviewView(for: activity)
       }
 
-      if let cardID = activity.recordId, let assessment = targetStore.assessments[cardID] {
+      if let cardID = activity.recordId, let assessment = targetStore.assessment(for: cardID) {
         TargetAssessmentView(assessment: assessment)
       }
 
@@ -400,12 +400,9 @@ struct ActivityCard: View {
     let category =
       TimelineEventDisplay.reservedCategory(raw)
       ?? matched
-      ?? CategoryPersistence.defaultCategories.first {
-        $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
-      }
 
     guard let resolvedCategory = category else {
-      return (name: String(localized: "Idle"), indicator: Color.gray)
+      return (name: String(localized: "Other"), indicator: Color.gray)
     }
 
     let nsColor = NSColor(hex: resolvedCategory.colorHex) ?? NSColor(hex: "#4F80EB") ?? .systemBlue

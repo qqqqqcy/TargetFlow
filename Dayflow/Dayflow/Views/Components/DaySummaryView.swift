@@ -333,13 +333,15 @@ struct DaySummaryView: View {
   // MARK: - Helpers
 
   nonisolated private func normalizedCategoryName(_ name: String) -> String {
-    name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    TimelineEventDisplay.canonicalCategoryKey(name)
   }
 
   private var selectableCategories: [TimelineCategory] {
     categories
       .filter {
-        $0.isSystem == false && $0.isIdle == false && normalizedCategoryName($0.name) != "system"
+        $0.isSystem == false && $0.isIdle == false
+          && !TimelineEventDisplay.isPlaceholderName($0.name)
+          && normalizedCategoryName($0.name) != "system"
       }
       .sorted { $0.order < $1.order }
   }

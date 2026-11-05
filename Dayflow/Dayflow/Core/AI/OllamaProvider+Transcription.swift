@@ -16,6 +16,7 @@ extension OllamaProvider {
     // Simple prompt focused on just describing what's happening
     let prompt = """
       Describe what you see on this computer screen in 1-2 sentences.
+      \(TimelinePrivacyPromptGuidance.instructions)
       Focus on: what application/site is open, what the user is doing, and any relevant details visible.
       Be specific and factual.
 
@@ -320,6 +321,8 @@ extension OllamaProvider {
     let basePrompt = """
       You have \(frameDescriptions.count) snapshots from a \(durationString) screen recording.
 
+      \(TimelinePrivacyPromptGuidance.instructions)
+
       CRITICAL TASK: Group these snapshots into EXACTLY 2-5 coherent segments that collectively explain \(durationString) of activity. Brief interruptions (< 2 minutes) should be absorbed into the surrounding segment.
 
       <thinking>
@@ -446,7 +449,6 @@ extension OllamaProvider {
   func transcribeScreenshots(_ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?)
     async throws -> (observations: [Observation], log: LLMCall)
   {
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     guard !screenshots.isEmpty else {
       throw NSError(
         domain: "OllamaProvider", code: 12,

@@ -17,6 +17,10 @@ struct FocusTarget: Codable, Equatable, Identifiable {
   let text: String
   let startedAt: Date
   var events: [FocusTargetEvent]? = nil
+
+  var evaluationEvents: [FocusTargetEvent] {
+    events ?? TargetEvaluationPolicy.legacyEvents(text: text, id: id)
+  }
 }
 
 struct FocusTargetEvent: Codable, Equatable {
@@ -47,7 +51,7 @@ enum TargetAlignment: String, Codable, CaseIterable {
   }
 }
 
-struct TargetAssessment: Codable, Identifiable {
+struct TargetAssessment: Codable, Identifiable, Equatable {
   var id: Int64 { cardID }
   let cardID: Int64
   let targetID: UUID
@@ -59,6 +63,8 @@ struct TargetAssessment: Codable, Identifiable {
   let alignment: TargetAlignment
   let reason: String
   let reminder: String
+  // Preserve the enabled event names at evaluation time for historical reassessment.
+  var targetEvents: [FocusTargetEvent]? = nil
 }
 
 struct TargetEvaluationResponse: Decodable {
@@ -88,6 +94,26 @@ enum TargetEvaluationError: LocalizedError {
 }
 
 enum TargetEvaluationPolicy {
+  static func legacyEvents(text: String, id: UUID) -> [FocusTargetEvent] {
+    text.components(separatedBy: "\n").filter { !$0.isEmpty }.map {
+      FocusTargetEvent(id: id, name: $0.components(separatedBy: "：")[0], details: "")
+    }
+  }
+
+  static func evaluate(category: String, events: [FocusTargetEvent]) -> TargetEvaluationResponse {
+    if !TimelineEventDisplay.isReserved(category), !TimelineEventDisplay.isPlaceholderName(category),
+      events.contains(where: { $0.name == category }) {
+      return TargetEvaluationResponse(
+        alignment: .focused,
+        reason: String(localized: "This event matches an enabled current goal: \(category)."),
+        reminder: "")
+    }
+    return TargetEvaluationResponse(
+      alignment: .severe,
+      reason: String(localized: "This event does not match any enabled current goal."),
+      reminder: String(localized: "Return to an enabled goal, or update your current goals."))
+  }
+
   static func isEligible(endTime: Date, target: FocusTarget) -> Bool {
     endTime > target.startedAt
   }

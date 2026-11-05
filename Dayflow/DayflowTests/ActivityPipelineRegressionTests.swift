@@ -10,14 +10,17 @@ final class ActivityPipelineRegressionTests: XCTestCase {
       idleSecondsAtCapture: idle ?? second, isDeleted: false, isPrivacyRedacted: privacy)
   }
 
-  func testMultiBatchStaticEvidenceAndPrivacyOrCorruptionBreakChain() {
+  func testStaticEvidenceIgnoresPrivacyFlagButRequiresMatchingPixelsAndInput() {
     let history = stride(from: 0, through: 900, by: 30).map { sample($0) }
     let batch = stride(from: 900, through: 1200, by: 30).map { sample($0) }
     let pixels: (Screenshot) -> [UInt8]? = { _ in Array(repeating: 32, count: 128) }
     XCTAssertNotNil(IdleBatchClassifier.assess(batch, history: history, thresholdSeconds: 900, pixels: pixels))
     XCTAssertNil(IdleBatchClassifier.assess(Array(batch.prefix(5)), thresholdSeconds: 900, pixels: pixels))
     let withPrivacy = history.map { $0.capturedAt == 450 ? sample(450, privacy: true) : $0 }
-    XCTAssertNil(IdleBatchClassifier.assess(batch, history: withPrivacy, thresholdSeconds: 900, pixels: pixels))
+    XCTAssertNotNil(IdleBatchClassifier.assess(batch, history: withPrivacy, thresholdSeconds: 900, pixels: pixels))
+    XCTAssertNil(IdleBatchClassifier.assess(batch, history: withPrivacy, thresholdSeconds: 900, pixels: {
+      $0.isPrivacyRedacted ? Array(repeating: 0, count: 128) : pixels($0)
+    }))
     XCTAssertNil(IdleBatchClassifier.assess(batch, history: history, thresholdSeconds: 900, pixels: {
       $0.capturedAt == 450 ? nil : pixels($0)
     }))
@@ -77,7 +80,20 @@ final class ActivityPipelineRegressionTests: XCTestCase {
     XCTAssertEqual(normalized.first?.title, "Actual activity")
     XCTAssertEqual(normalized.first?.detailedSummary, "Concrete details")
     XCTAssertEqual(normalized.first?.evidenceKind, .visible)
-    XCTAssertNotNil(TimelineEventDisplay.reservedCategory("__privacy__"))
+    XCTAssertEqual(TimelineEventDisplay.reservedCategory("__privacy__")?.isIdle, true)
+    let protected = policy.normalizeCards([
+      TimelineEvidencePolicy.privacyCard(start: "10:00 AM", end: "10:05 AM"),
+      ActivityCardData(startTime: "10:05 AM", endTime: "10:10 AM",
+        category: "Synthetic A", subcategory: "", title: "privacy placeholder",
+        summary: "Content hidden by privacy settings", detailedSummary: "",
+        distractions: nil, appSites: nil)
+    ], descriptors: [descriptor])
+    XCTAssertEqual(protected.map(\.category), ["Idle", "Synthetic A"])
+    XCTAssertEqual(protected[0].evidenceKind, .privacyRedacted, "Explicit legacy metadata remains readable")
+    XCTAssertNil(protected[1].evidenceKind, "Model prose must not manufacture privacy metadata")
+    XCTAssertEqual(protected[1].title, "privacy placeholder")
+    XCTAssertEqual(protected[1].summary, "Content hidden by privacy settings")
+    XCTAssertTrue(protected.allSatisfy { $0.appSites == nil && $0.detailedSummary.isEmpty })
   }
 
   func testStaleAssessmentCannotOverwriteChangedEvidenceCategoryOrDistractions() throws {
@@ -154,38 +170,28 @@ final class ActivityPipelineRegressionTests: XCTestCase {
     let target = FocusTarget(id: UUID(), text: event.name, startedAt: Date(timeIntervalSince1970: Double(now - 900)),
       events: [FocusTargetEvent(id: event.id, name: event.name, details: event.details)])
     defaults.set(try JSONEncoder().encode(target), forKey: "target.current")
-    var prompts: [String] = []
     var reminders = 0
     let targetStore = TargetStore(defaults: defaults, storage: storage,
       automaticReminders: AutomaticReminderState(isRecording: true),
       notify: { _, _, allowed in if allowed() { reminders += 1; return true }; return false },
-      generate: { prompt in
-        prompts.append(prompt)
-        if prompt.contains("\"privacyProtected\":\"true\"") {
-          return #"{"alignment":"neutral","reason":"Brief interval","reminder":"Return to A when ready"}"#
-        }
-        if prompt.contains("Synthetic B") {
-          return #"{"alignment":"severe","reason":"Unrelated activity","reminder":"Return to A"}"#
-        }
-        return #"{"alignment":"focused","reason":"Advances A","reminder":""}"#
+      generate: { _ in
+        XCTFail("All event alignment, including privacy, must be local")
+        return "invalid"
       })
     targetStore.synchronize(events: [event])
     targetStore.enqueue(cardIDs: ids)
     await targetStore.waitForEvaluations()
     XCTAssertEqual(Set(storage.fetchTimelineCardsByTimeRange(from: Date(timeIntervalSince1970: Double(now - 601)), to: Date(timeIntervalSince1970: Double(now))).map(\.recordId).compactMap { $0 }).intersection(Set(ids)), Set(ids))
-    XCTAssertEqual(prompts.count, 3)
-    XCTAssertTrue(prompts.contains { $0.contains("Synthetic B") })
-    XCTAssertFalse(prompts.contains { $0.contains("Private interval") })
     XCTAssertEqual(targetStore.assessments[ids[0]]?.alignment, .focused)
     XCTAssertEqual(targetStore.assessments[ids[1]]?.alignment, .severe)
-    XCTAssertEqual(targetStore.assessments[ids[2]]?.alignment, .neutral)
+    XCTAssertEqual(targetStore.assessments[ids[2]]?.alignment, .severe)
     XCTAssertEqual(reminders, 2)
     let saved = try storage.fetchTargetAssessments().filter { ids.contains($0.cardID) }
     XCTAssertEqual(Set(saved.map(\.cardID)), Set(ids))
   }
 
 
-  func testProviderNeverSeesPrivacyAndSameLabelFactsAreMerged() async throws {
+  func testVisibleBlackVisiblePersistsOneModelCardWithAllSupportedCaptures() async throws {
     let base = 1_800_000_000
     let formatter = TimelineOutputPolicy()
     let frames = (0..<6).map { minute in
@@ -199,30 +205,29 @@ final class ActivityPipelineRegressionTests: XCTestCase {
     let result = try await TimelineEvidencePolicy.generate(screenshots: frames, context: context, batchId: 1) {
       shots, _, _ in
       calls += 1
-      XCTAssertFalse(shots.contains(where: \.isPrivacyRedacted))
+      XCTAssertEqual(shots.map(\.id), frames.map(\.id))
+      XCTAssertEqual(shots.filter(\.isPrivacyRedacted).count, 2)
       let start = shots[0].capturedAt
       let end = shots.last!.capturedAt + 60
-      let distractions: [Distraction]? = calls == 1 ? [Distraction(
-        startTime: formatter.formatTimestampForPrompt(start + 60),
-        endTime: formatter.formatTimestampForPrompt(end), title: "Synthetic B", summary: "Off topic")] : nil
+      let distractions: [Distraction]? = nil
       let card = ActivityCardData(startTime: formatter.formatTimestampForPrompt(start),
         endTime: formatter.formatTimestampForPrompt(end), category: "unrelated", subcategory: "",
-        title: "Synthetic A", summary: "MIXED WHOLE SUMMARY",
-        detailedSummary: "\(formatter.formatTimestampForPrompt(start)) - \(formatter.formatTimestampForPrompt(start + 60)): A ONLY\n\(formatter.formatTimestampForPrompt(start + 60)) - \(formatter.formatTimestampForPrompt(end)): B ONLY",
+        title: "Synthetic A", summary: "Visible work around black frames; hidden activity unavailable",
+        detailedSummary: "\(formatter.formatTimestampForPrompt(start)) - \(formatter.formatTimestampForPrompt(start + 120)): A ONLY\n\(formatter.formatTimestampForPrompt(start + 240)) - \(formatter.formatTimestampForPrompt(end)): B ONLY",
         distractions: distractions,
         appSites: nil)
       return ([card], [], start..<end, LLMCall(timestamp: nil, latency: nil, input: nil, output: nil))
     }
-    XCTAssertEqual(calls, 3)
-    XCTAssertEqual(result.cards.count, 3)
-    XCTAssertEqual(result.cards.map(\.evidenceKind), [.visible, .privacyRedacted, .visible])
-    XCTAssertTrue(result.cards[0].title.contains("Synthetic A"))
-    XCTAssertTrue(result.cards[0].detailedSummary.contains("Synthetic B"))
+    XCTAssertEqual(calls, 1)
+    XCTAssertEqual(result.cards.count, 1)
+    XCTAssertEqual(result.cards.map(\.evidenceKind), [.visible])
+    XCTAssertEqual(result.cards[0].title, "Synthetic A")
+    XCTAssertEqual(result.cards[0].summary, "Visible work around black frames; hidden activity unavailable")
     XCTAssertTrue(result.cards[0].detailedSummary.contains("A ONLY"))
     XCTAssertTrue(result.cards[0].detailedSummary.contains("B ONLY"))
     XCTAssertEqual(result.cards[0].category, "Idle")
-    XCTAssertEqual(result.cards[1].category, "__privacy__")
-    XCTAssertTrue(result.observations.allSatisfy { $0.endTs <= base + 120 || $0.startTs >= base + 240 })
+    XCTAssertEqual(result.cards[0].startTime, formatter.formatTimestampForPrompt(base))
+    XCTAssertEqual(result.cards[0].endTime, formatter.formatTimestampForPrompt(base + 360))
     XCTAssertTrue(AppStoragePaths.isIsolated)
     let storage = StorageManager.shared
     let batch: Int64 = try storage.timedWrite("provider regression setup") { db in
@@ -241,11 +246,10 @@ final class ActivityPipelineRegressionTests: XCTestCase {
     let saved = storage.replaceTimelineCardsInRange(from: Date(timeIntervalSince1970: Double(base)),
       to: Date(timeIntervalSince1970: Double(base + 360)), with: shells, batchId: batch,
       keepingNewerBatchesCardsStartingAfter: nil)
-    XCTAssertEqual(saved.insertedIds.count, 3)
-    XCTAssertEqual(Set(saved.insertedIds).count, 3)
+    XCTAssertEqual(saved.insertedIds.count, 1)
     let stored = saved.insertedIds.compactMap { storage.fetchTimelineCard(byId: $0) }
-    XCTAssertEqual(stored.map(\.evidenceKind), [.visible, .privacyRedacted, .visible])
-    XCTAssertTrue(stored[0].detailedSummary.contains("Synthetic B"))
+    XCTAssertEqual(stored.map(\.evidenceKind), [.visible])
+    XCTAssertEqual(stored[0].summary, result.cards[0].summary)
     XCTAssertTrue(stored[0].detailedSummary.contains("B ONLY"))
   }
 
@@ -275,14 +279,16 @@ final class ActivityPipelineRegressionTests: XCTestCase {
       XCTAssertFalse(pieces.contains { !($0.distractions ?? []).isEmpty }, "card \(id)")
       if id == 27 {
         let hidden = try XCTUnwrap(pieces.first { $0.startTime == "7:14 PM" })
-        XCTAssertTrue(hidden.evidenceKind == .privacyRedacted || hidden.evidenceKind == .unknown)
+        XCTAssertNil(hidden.evidenceKind)
+        XCTAssertEqual(hidden.title, "privacy placeholder")
+        XCTAssertEqual(hidden.summary, "Content hidden by privacy settings")
       }
       print("Sanitized replay card=\(id), input_intervals=\(intervals.count), output_cards=\(pieces.count)")
     }
   }
 
 
-  func testReservedLabelsAreReadableAndDoNotBecomeGoalTotals() {
+  func testReservedLabelsAreReadableAndVisibleOtherDoesNotBecomeGoalTotals() {
     func card(_ category: String, _ start: String, _ end: String, evidence: ActivityEvidenceKind) -> TimelineCard {
       TimelineCard(recordId: nil, batchId: nil, startTimestamp: start, endTimestamp: end,
         category: category, subcategory: "", title: "Synthetic", summary: "", detailedSummary: "",
@@ -299,10 +305,12 @@ final class ActivityPipelineRegressionTests: XCTestCase {
       DayGoalCategorySnapshot(categoryID: "1", name: "__privacy__", colorHex: "#000000", sortOrder: 1)]
     XCTAssertEqual(DaySummaryStats.computeTotalFocusTime(from: precomputed, snapshots: snapshots, categories: []), 0)
     XCTAssertEqual(DaySummaryStats.computeTotalDistractedTime(from: precomputed, snapshots: snapshots, categories: []), 0)
-    XCTAssertEqual(DaySummaryStats.computeTotalCapturedTime(from: precomputed, categories: []), 0)
+    XCTAssertEqual(DaySummaryStats.computeTotalCapturedTime(from: precomputed, categories: []), 300)
     let durations = DaySummaryStats.computeCategoryDurations(from: precomputed, categories: [])
-    XCTAssertTrue(durations.isEmpty)
-    XCTAssertTrue(export.contains("Idle"))
+    XCTAssertEqual(durations.count, 1)
+    XCTAssertEqual(durations.first?.name, String(localized: "Other"))
+    XCTAssertEqual(durations.first?.duration, 300)
+    XCTAssertTrue(export.contains(String(localized: "Other")))
   }
 
 

@@ -25,7 +25,7 @@ struct CategoryTimeData: Identifiable {
 
   init(category: TimelineCategory, duration: TimeInterval) {
     self.id = category.id.uuidString
-    self.name = category.name
+    self.name = category.displayName
     self.colorHex = category.colorHex
     self.duration = duration
   }

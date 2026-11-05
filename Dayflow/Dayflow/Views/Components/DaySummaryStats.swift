@@ -23,8 +23,7 @@ enum DaySummaryStats {
   private static let minutesPerDay: Int = 24 * 60
 
   private static func normalizedCategoryName(_ name: String) -> String {
-    let key = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    return key == TimelineEventDisplay.unmatched || key == "idle time" ? "idle" : key
+    TimelineEventDisplay.canonicalCategoryKey(name)
   }
 
   private static func timelineMinutes(for timeString: String) -> Int? {
@@ -111,8 +110,13 @@ enum DaySummaryStats {
     from precomputed: [CardWithDuration], categories: [TimelineCategory]
   ) -> [CardWithDuration] {
     let nonSystemDurations = precomputed.filter { item in
-      item.card.evidenceKind != .privacyRedacted
-        && !isSystemCategoryStatic(item.card.category, categories: categories)
+      guard item.card.evidenceKind != .privacyRedacted,
+        item.card.evidenceKind != .inputInactive else { return false }
+      if normalizedCategoryName(item.card.category) == "idle" {
+        // Other can contain observed activity. Legacy Idle without evidence stays excluded.
+        return item.card.evidenceKind == .visible
+      }
+      return !isSystemCategoryStatic(item.card.category, categories: categories)
     }
     return removeOverlaps(from: nonSystemDurations)
   }
@@ -262,7 +266,8 @@ enum DaySummaryStats {
   private static func isGoalCategoryStatic(
     _ name: String, snapshots: [DayGoalCategorySnapshot], categories: [TimelineCategory]
   ) -> Bool {
-    if TimelineEventDisplay.isReserved(name) || isSystemCategoryStatic(name, categories: categories) { return false }
+    if normalizedCategoryName(name) == "idle" || TimelineEventDisplay.isReserved(name)
+      || isSystemCategoryStatic(name, categories: categories) { return false }
     let normalized = normalizedCategoryName(name)
     let selectedIDs = Set(snapshots.map(\.categoryID))
 

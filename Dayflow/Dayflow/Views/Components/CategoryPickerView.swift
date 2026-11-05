@@ -21,7 +21,7 @@ struct CategoryPill: View {
           .frame(width: 8, height: 8)
 
         // Category name - no line limit, text can wrap if needed
-        Text(category.name)
+        Text(category.displayName)
           .font(Font.custom("Figtree", size: 10).weight(.medium))
           .foregroundColor(isSelected ? theme.controlText : theme.chipText)
           .fixedSize(horizontal: false, vertical: true)

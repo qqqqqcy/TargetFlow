@@ -42,7 +42,6 @@ extension ClaudeProvider {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], rewriteSpan: Range<Int>?, log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     let callStart = Date()
     let generationPlan = makeClaudeCardGenerationPlan(
       observations: observations,

@@ -55,7 +55,7 @@ enum ClaudeTimelinePrompt {
     CORE PRINCIPLE:
     Merge consecutive activities with the same label into one event, even if their purposes differ.
     Preserve all concrete activities and their time bounds in the title, summary and detailedSummary.
-    Different labels, true gaps, privacy, recording pauses and the 4 AM boundary split events.
+    Different labels, true gaps, recording pauses and the 4 AM boundary split events.
     Each card has a positive duration of at most 60 minutes. Do not infer focus or inactivity from a label.
 
     CONTINUITY RULE:

@@ -203,7 +203,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
   func transcribeScreenshots(_ screenshots: [Screenshot], batchStartTime: Date, batchId: Int64?)
     async throws -> (observations: [Observation], log: LLMCall)
   {
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     let requestId = UUID().uuidString
     let startedAt = Date()
     let normalizedEndpoint = resolvedEndpointString()
@@ -381,8 +380,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
   func generateTimeline(
     screenshots: [Screenshot], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], observations: [Observation], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context)
-    try TimelineEvidencePolicy.requireVisibleScreenshots(screenshots)
     let requestId = UUID().uuidString
     let startedAt = Date()
     let normalizedEndpoint = resolvedEndpointString()
@@ -581,7 +578,6 @@ final class DayflowBackendProvider: ChatGPTTimelinePromptSupporting {
   func generateActivityCards(
     observations: [Observation], context: ActivityGenerationContext, batchId: Int64?
   ) async throws -> (cards: [ActivityCardData], log: LLMCall) {
-    try TimelineEvidencePolicy.requireVisibleContext(context, observations: observations)
     // The hosted card endpoint owns its prompt server-side. Use its text endpoint when
     // custom instructions are enabled so those preferences actually reach generation.
     let overrides = ActivityCardPromptPreferences.load()
