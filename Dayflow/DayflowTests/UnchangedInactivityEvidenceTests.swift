@@ -29,12 +29,14 @@ final class UnchangedInactivityEvidenceTests: XCTestCase {
   func testFirstEligibleFiveMinuteBatchMatchesSelectedDuration() {
     let all = frames(Array(stride(from: 0, through: 1200, by: 10)))
     for threshold in InactivityPreferences.thresholdOptions {
-      let firstEnd = stride(from: 0, through: 900, by: 300).first { start in
-        IdleBatchClassifier.assess(
-          all.filter { $0.capturedAt >= start && $0.capturedAt <= start + 300 },
-          history: all.filter { $0.capturedAt < start }, thresholdSeconds: threshold,
-          pixels: { _ in self.pixels }) != nil
-      }.map { $0 + 300 }
+      let firstStart = stride(from: 0, through: 900, by: 300).first { start in
+        let batch = all.filter { $0.capturedAt >= start && $0.capturedAt <= start + 300 }
+        let history = all.filter { $0.capturedAt < start }
+        let assessment = IdleBatchClassifier.assess(
+          batch, history: history, thresholdSeconds: threshold, pixels: { _ in self.pixels })
+        return assessment != nil
+      }
+      let firstEnd = firstStart.map { $0 + 300 }
       XCTAssertEqual(firstEnd, threshold)
     }
   }
