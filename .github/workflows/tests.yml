@@ -1,0 +1,22 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Swift and Python tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Swift tests
+        run: bash scripts/test.sh
+      - name: Run Python unittest
+        if: ${{ success() || failure() }}
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v

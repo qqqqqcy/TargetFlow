@@ -47,10 +47,11 @@ final class ParallelTimelineGenerationTests: XCTestCase {
       return
     }
     await latch.release(fixture.b)
-    let newer = try await b.get()
+    let newerResult = await b
+    await latch.release(fixture.a)
+    let newer = try newerResult.get()
     XCTAssertEqual(newer.cardIds.count, 1)
     let newerID = try XCTUnwrap(newer.cardIds.first)
-    await latch.release(fixture.a)
     let older = await a
     if overlap {
       guard case .failure(let error) = older else { return XCTFail("A stale result was accepted") }
@@ -86,9 +87,9 @@ final class ParallelTimelineGenerationTests: XCTestCase {
       throw NSError(domain: "Duplicate", code: 1)
     }
     let duplicate = await invoke(duplicateService, fixture.a)
+    await latch.release(fixture.a)
     guard case .failure(let error) = duplicate else { return XCTFail("Duplicate was not rejected") }
     XCTAssertEqual((error as NSError).code, 409)
-    await latch.release(fixture.a)
     let original = try await first.get()
     XCTAssertEqual(original.cardIds.count, 1)
   }

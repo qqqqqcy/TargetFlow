@@ -16,7 +16,8 @@ final class TargetFlowScopeTests: XCTestCase {
     XCTAssertTrue(AppStoragePaths.isTesting)
     XCTAssertTrue(AppStoragePaths.isIsolated)
     XCTAssertNotEqual(fork, support.appendingPathComponent("TargetFlow", isDirectory: true))
-    XCTAssertTrue(fork.path.contains("TargetFlowTests/"))
+    XCTAssertTrue(AppStoragePaths.isSafePreviewDirectory(
+      fork, production: AppStoragePaths.productionApplicationSupport))
     XCTAssertNotEqual(fork, upstream)
     XCTAssertEqual(
       AppStoragePaths.timelapses,

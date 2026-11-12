@@ -16,6 +16,13 @@ final class TimelineCaptureBoundaries: @unchecked Sendable {
     stops.append(timestamp)
   }
 
+  #if DEBUG
+  func removeTestStop(at timestamp: Int) {
+    lock.lock(); defer { lock.unlock() }
+    if let index = stops.firstIndex(of: timestamp) { stops.remove(at: index) }
+  }
+  #endif
+
   func continuity(from previous: Int, to next: Int) -> Bool? {
     if previous < observedSince { return next >= observedSince ? false : nil }
     lock.lock(); defer { lock.unlock() }
