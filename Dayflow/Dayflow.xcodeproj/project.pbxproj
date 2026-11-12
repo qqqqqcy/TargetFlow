@@ -18,19 +18,11 @@
 			remoteGlobalIDString = C4C1D2A02DB56805007D5A55;
 			remoteInfo = Dayflow;
 		};
-		C4C1D2BD2DB56806007D5A55 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C4C1D2992DB56805007D5A55 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C4C1D2A02DB56805007D5A55;
-			remoteInfo = Dayflow;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		C4C1D2A12DB56805007D5A55 /* TargetFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TargetFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4C1D2B22DB56806007D5A55 /* DayflowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayflowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C4C1D2BC2DB56806007D5A55 /* DayflowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayflowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4DF00012EFB100000000001 /* Config/Dayflow.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Dayflow.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -43,11 +35,6 @@
 		FEFD599FBA059B170B03FA5E /* DayflowTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = DayflowTests;
-			sourceTree = "<group>";
-		};
-		C4DF00022EFB100000000001 /* DayflowUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = DayflowUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -68,13 +55,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C4C1D2B92DB56806007D5A55 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -83,7 +63,6 @@
 			children = (
 				C4C1D2A32DB56805007D5A55 /* Dayflow */,
 				FEFD599FBA059B170B03FA5E /* DayflowTests */,
-				C4DF00022EFB100000000001 /* DayflowUITests */,
 				C4DF00012EFB100000000001 /* Config/Dayflow.xcconfig */,
 				C4C1D2A22DB56805007D5A55 /* Products */,
 			);
@@ -94,7 +73,6 @@
 			children = (
 				C4C1D2A12DB56805007D5A55 /* TargetFlow.app */,
 				C4C1D2B22DB56806007D5A55 /* DayflowTests.xctest */,
-				C4C1D2BC2DB56806007D5A55 /* DayflowUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -148,29 +126,6 @@
 			productReference = C4C1D2B22DB56806007D5A55 /* DayflowTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		C4C1D2BB2DB56806007D5A55 /* DayflowUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = C4C1D2CC2DB56806007D5A55 /* Build configuration list for PBXNativeTarget "DayflowUITests" */;
-			buildPhases = (
-				C4C1D2B82DB56806007D5A55 /* Sources */,
-				C4C1D2B92DB56806007D5A55 /* Frameworks */,
-				C4C1D2BA2DB56806007D5A55 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				C4C1D2BE2DB56806007D5A55 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				C4DF00022EFB100000000001 /* DayflowUITests */,
-			);
-			name = DayflowUITests;
-			packageProductDependencies = (
-			);
-			productName = DayflowUITests;
-			productReference = C4C1D2BC2DB56806007D5A55 /* DayflowUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -185,10 +140,6 @@
 						CreatedOnToolsVersion = 16.2;
 					};
 					C4C1D2B12DB56806007D5A55 = {
-						CreatedOnToolsVersion = 16.2;
-						TestTargetID = C4C1D2A02DB56805007D5A55;
-					};
-					C4C1D2BB2DB56806007D5A55 = {
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = C4C1D2A02DB56805007D5A55;
 					};
@@ -220,7 +171,6 @@
 			targets = (
 				C4C1D2A02DB56805007D5A55 /* Dayflow */,
 				C4C1D2B12DB56806007D5A55 /* DayflowTests */,
-				C4C1D2BB2DB56806007D5A55 /* DayflowUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -234,13 +184,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		C4C1D2B02DB56806007D5A55 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C4C1D2BA2DB56806007D5A55 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,13 +209,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C4C1D2B82DB56806007D5A55 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -280,11 +216,6 @@
 			isa = PBXTargetDependency;
 			target = C4C1D2A02DB56805007D5A55 /* Dayflow */;
 			targetProxy = C4C1D2B32DB56806007D5A55 /* PBXContainerItemProxy */;
-		};
-		C4C1D2BE2DB56806007D5A55 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C4C1D2A02DB56805007D5A55 /* Dayflow */;
-			targetProxy = C4C1D2BD2DB56806007D5A55 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -517,38 +448,6 @@
 			};
 			name = Release;
 		};
-		C4C1D2CD2DB56806007D5A55 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.uitests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = Dayflow;
-			};
-			name = Debug;
-		};
-		C4C1D2CE2DB56806007D5A55 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 0.0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = local.targetflow.uitests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = Dayflow;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -575,15 +474,6 @@
 			buildConfigurations = (
 				C4C1D2CA2DB56806007D5A55 /* Debug */,
 				C4C1D2CB2DB56806007D5A55 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		C4C1D2CC2DB56806007D5A55 /* Build configuration list for PBXNativeTarget "DayflowUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C4C1D2CD2DB56806007D5A55 /* Debug */,
-				C4C1D2CE2DB56806007D5A55 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -20,9 +20,45 @@ enum AppStoragePaths {
       || Bundle.allBundles.contains { $0.bundleURL.pathExtension == "xctest" }
   )
 
-  private static let testIdentifier = UUID().uuidString
-  private static let testDirectory = FileManager.default.temporaryDirectory
-    .appendingPathComponent("TargetFlowTests/\(testIdentifier)", isDirectory: true)
+  private struct TestStorage {
+    let directory: URL
+    let defaultsDomain: String
+  }
+
+  private static let testStorage: TestStorage = {
+    let environment = ProcessInfo.processInfo.environment
+    let suppliedRunID = environment["TARGETFLOW_TEST_RUN_ID"] ?? ""
+    let suppliedRoot = environment["TARGETFLOW_TEST_ROOT"] ?? ""
+    let managedRun = !suppliedRunID.isEmpty || !suppliedRoot.isEmpty
+    let safeCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+    precondition(!managedRun || (!suppliedRunID.isEmpty && suppliedRunID.utf8.count <= 80
+      && suppliedRunID.unicodeScalars.allSatisfy { safeCharacters.contains($0) }
+      && suppliedRoot.hasPrefix("/")), "Tests require a safe run ID and an absolute test root from the scheme.")
+    let runID = managedRun ? suppliedRunID : UUID().uuidString
+    let hostID = UUID().uuidString
+    // The runner passes this path explicitly through the scheme; TMPDIR may differ
+    // between xcodebuild and its parallel test hosts.
+    let root = managedRun ? URL(fileURLWithPath: suppliedRoot, isDirectory: true)
+      : FileManager.default.temporaryDirectory.appendingPathComponent("TargetFlowTests/\(runID)", isDirectory: true)
+    precondition(isSafePreviewDirectory(root, production: productionApplicationSupport),
+      "Tests cannot use the production data directory or one of its parent directories.")
+    let hostDirectory = root.appendingPathComponent(hostID, isDirectory: true)
+    let directory = hostDirectory.appendingPathComponent("data", isDirectory: true)
+    let domain = "local.targetflow.tests.\(runID).\(hostID)"
+    do {
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      // Register before opening the suite so even a crashed host can be cleaned up.
+      let registration: [String: Any] = [
+        "runID": runID, "hostID": hostID, "defaultsDomain": domain,
+        "pid": ProcessInfo.processInfo.processIdentifier,
+      ]
+      let data = try JSONSerialization.data(withJSONObject: registration, options: [.sortedKeys])
+      try data.write(to: hostDirectory.appendingPathComponent("host.json"), options: .atomic)
+    } catch {
+      fatalError("Cannot register isolated test storage: \(error)")
+    }
+    return TestStorage(directory: directory, defaultsDomain: domain)
+  }()
 
   static func isSafePreviewDirectory(_ directory: URL, production: URL) -> Bool {
     let path = directory.standardizedFileURL.resolvingSymlinksInPath().path
@@ -90,14 +126,14 @@ enum AppStoragePaths {
   static var isIsolated: Bool { isTesting || isUIPreview }
 
   static var applicationSupport: URL {
-    if isTesting { return testDirectory }
+    if isTesting { return testStorage.directory }
     return uiPreviewDataDirectory ?? productionApplicationSupport
   }
 
   /// Tests never read or write the application's persistent preference domain.
   static let defaults: UserDefaults = {
     if isTesting {
-      return UserDefaults(suiteName: "local.targetflow.tests.\(testIdentifier)")!
+      return UserDefaults(suiteName: testStorage.defaultsDomain)!
     }
     // Validate preview identity before any preference access can mutate a domain.
     _ = uiPreviewDataDirectory

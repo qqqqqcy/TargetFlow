@@ -203,10 +203,10 @@ open /Applications/TargetFlow.app
 
 ### 单元测试
 
+该入口会隔离并清理本次测试创建的应用数据与测试偏好。也可以指定测试类，例如 `bash scripts/test.sh -only-testing:DayflowTests/TimelineRewriteSnapshotTests`。直接使用 Xcode 或 `xcodebuild test` 时不会经过脚本清理。
+
 ```bash
-xcodebuild -project Dayflow/Dayflow.xcodeproj \
-  -scheme Dayflow -destination 'platform=macOS' \
-  -only-testing:DayflowTests CODE_SIGNING_ALLOWED=NO test
+bash scripts/test.sh
 ```
 
 ## 应用标识与数据

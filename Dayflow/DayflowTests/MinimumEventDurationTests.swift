@@ -4,6 +4,18 @@ import XCTest
 @testable import Dayflow
 
 final class MinimumEventDurationTests: XCTestCase {
+  func testRemovingTestStopPreservesOtherStops() {
+    let boundaries = TimelineCaptureBoundaries(observedSince: 0)
+    boundaries.recordStop(at: 100)
+    boundaries.recordStop(at: 100)
+    boundaries.recordStop(at: 200)
+    boundaries.removeTestStop(at: 100)
+    XCTAssertEqual(boundaries.continuity(from: 90, to: 110), false)
+    boundaries.removeTestStop(at: 100)
+    XCTAssertEqual(boundaries.continuity(from: 90, to: 110), true)
+    XCTAssertEqual(boundaries.continuity(from: 190, to: 210), false)
+  }
+
   @MainActor
   func testFiveMinuteSettingDoesNotPublishOneMinuteRetry() async throws {
     XCTAssertTrue(AppStoragePaths.isIsolated)
@@ -713,6 +725,7 @@ final class MinimumEventDurationTests: XCTestCase {
     if Date(timeIntervalSince1970: Double(base)).getDayInfoFor4AMBoundary().dayString
       != Date(timeIntervalSince1970: Double(base + 420)).getDayInfoFor4AMBoundary().dayString { base += 3600 }
     TimelineCaptureBoundaries.shared.recordStop(at: base + 30)
+    defer { TimelineCaptureBoundaries.shared.removeTestStop(at: base + 30) }
     let path = "minimum-stop-\(UUID().uuidString)"
     let storage = StorageManager.shared
     try storage.timedWrite("stop minimum setup") { db in
@@ -1035,6 +1048,7 @@ final class MinimumEventDurationTests: XCTestCase {
     for (mode, base) in [("stop", 1_804_000_020), ("4am", Int(boundary.timeIntervalSince1970) - 120)] {
       let path = "minimum-private-boundary-\(mode)-\(UUID().uuidString)"
       if mode == "stop" { TimelineCaptureBoundaries.shared.recordStop(at: base + 90) }
+      defer { if mode == "stop" { TimelineCaptureBoundaries.shared.removeTestStop(at: base + 90) } }
       let ids = try storage.timedWrite("privacy boundary setup") { db -> [Int64] in
         var batches: [Int64] = []
         for (start, end) in [(0, 60), (120, 420)] {

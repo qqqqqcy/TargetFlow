@@ -312,7 +312,7 @@ struct ActivityCard: View {
           )
           .foregroundColor(theme.textTertiary)
 
-        renderMarkdownText(summaryText(for: activity))
+        Text(verbatim: summaryText(for: activity))
           .font(
             Font.system(size: 12)
           )
@@ -334,7 +334,7 @@ struct ActivityCard: View {
             )
             .foregroundColor(theme.textTertiary)
 
-          renderMarkdownText(formattedDetailedSummary(activity.detailedSummary))
+          Text(verbatim: formattedDetailedSummary(activity.detailedSummary))
             .font(
               Font.system(size: 12)
             )
@@ -352,16 +352,6 @@ struct ActivityCard: View {
   private func summaryText(for activity: TimelineActivity) -> String {
     guard isFailedCard(activity) else { return activity.summary }
     return TimelineFailureClassifier.displaySummary(activity.summary)
-  }
-
-  private func renderMarkdownText(_ content: String) -> Text {
-    let options = AttributedString.MarkdownParsingOptions(
-      interpretedSyntax: .inlineOnlyPreservingWhitespace
-    )
-    if let parsed = try? AttributedString(markdown: content, options: options) {
-      return Text(parsed)
-    }
-    return Text(content)
   }
 
   private func formattedDetailedSummary(_ content: String) -> String {

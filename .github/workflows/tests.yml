@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Swift and Python tests
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Swift tests
+        run: bash scripts/test.sh -resultBundlePath "$RUNNER_TEMP/targetflow-tests.xcresult"
+      - name: Show Swift test failures
+        if: ${{ failure() }}
+        run: |
+          if [ -d "$RUNNER_TEMP/targetflow-tests.xcresult" ]; then
+            xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/targetflow-tests.xcresult" --format json > "$RUNNER_TEMP/test-summary.json"
+            python3 -c 'import json,os; d=json.load(open(os.environ["RUNNER_TEMP"]+"/test-summary.json")); [print(f.get("testIdentifierString"), f.get("failureText")) for f in d.get("testFailures", [])]'
+          fi
+      - name: Run Python unittest
+        if: ${{ success() || failure() }}
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v

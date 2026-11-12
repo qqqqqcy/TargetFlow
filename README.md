@@ -204,10 +204,14 @@ This is only for resolving permissions tied to an old signature; it is not requi
 ### Unit tests
 
 ```bash
-xcodebuild -project Dayflow/Dayflow.xcodeproj \
-  -scheme Dayflow -destination 'platform=macOS' \
-  -only-testing:DayflowTests CODE_SIGNING_ALLOWED=NO test
+bash scripts/test.sh
+# Run selected tests (additional xcodebuild test options are forwarded):
+bash scripts/test.sh -only-testing:DayflowTests/TestIsolationTests
 ```
+
+The runner enables two parallel test workers. Each invocation generates a unique run ID and passes it and an absolute test root through the Xcode scheme to every host. Each host uses its own UUID directory and a `local.targetflow.tests.<run-id>.<host-uuid>` defaults suite. The runner checks host registrations and removes only this run's data and exact defaults domains on success, failure, SIGINT, or SIGTERM, preserving a failed or interrupted exit status. It does not depend on the host inheriting `TMPDIR`.
+
+Xcode uses its default DerivedData and test results location. Use this script for automatic cleanup; running tests directly in Xcode keeps isolated data for inspection.
 
 ## App identity and data
 
