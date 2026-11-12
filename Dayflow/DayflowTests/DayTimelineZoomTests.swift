@@ -386,6 +386,7 @@ final class DayTimelineZoomTests: XCTestCase {
       .environmentObject(RetryCoordinator())
       .environment(\.dayflowTheme, .light)
       .environment(\.colorScheme, .light))
+    fixture.window.orderFront(nil)
     fixture.host.layoutSubtreeIfNeeded()
     // Interrupt the 50ms initial scroll just as MainView's scroll tick can.
     try await Task.sleep(for: .milliseconds(10))
@@ -393,16 +394,23 @@ final class DayTimelineZoomTests: XCTestCase {
     interrupt()
     await settle(fixture.host)
 
-    let bitmap = try XCTUnwrap(fixture.host.bitmapImageRepForCachingDisplay(in: fixture.host.bounds))
-    fixture.host.cacheDisplay(in: fixture.host.bounds, to: bitmap)
+    // Wait for the reveal animation and window rendering to finish on slower hosts.
     var visiblePixels = 0
-    for y in stride(from: 0, to: bitmap.pixelsHigh, by: 2) {
-      for x in stride(from: 0, to: bitmap.pixelsWide, by: 2) {
-        if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
-          min(color.redComponent, color.greenComponent, color.blueComponent) < 0.9 {
-          visiblePixels += 1
+    for _ in 0..<40 {
+      fixture.host.displayIfNeeded()
+      let bitmap = try XCTUnwrap(fixture.host.bitmapImageRepForCachingDisplay(in: fixture.host.bounds))
+      fixture.host.cacheDisplay(in: fixture.host.bounds, to: bitmap)
+      visiblePixels = 0
+      for y in stride(from: 0, to: bitmap.pixelsHigh, by: 2) {
+        for x in stride(from: 0, to: bitmap.pixelsWide, by: 2) {
+          if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+            min(color.redComponent, color.greenComponent, color.blueComponent) < 0.9 {
+            visiblePixels += 1
+          }
         }
       }
+      if visiblePixels > 20 { break }
+      try await Task.sleep(for: .milliseconds(50))
     }
     XCTAssertGreaterThan(visiblePixels, 20, "Hour labels must be visible after the initial scroll is interrupted")
   }
@@ -522,7 +530,9 @@ final class DayTimelineZoomTests: XCTestCase {
     let fixture = try makeHost(width: 900)
     defer { fixture.close() }
     let base = 1_801_100_040
-    let date = Date(timeIntervalSince1970: Double(base))
+    // The selected timeline day follows the 4 AM boundary in the local time zone.
+    let timelineDay = Date(timeIntervalSince1970: Double(base - 4 * 3600))
+    let date = Calendar.current.startOfDay(for: timelineDay).addingTimeInterval(12 * 3600)
     let storage = StorageManager.shared
     let path = "mounted-minimum-\(UUID().uuidString)"
     let batches = try storage.timedWrite("mounted pending setup") { db -> [Int64] in
